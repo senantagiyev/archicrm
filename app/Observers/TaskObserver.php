@@ -24,6 +24,15 @@ class TaskObserver
         if ($task->stage) {
             $this->readiness->recalculateStage($task->stage);
         }
+
+        // TZ §5.13: notify the assignee when a task is assigned to them.
+        if ($task->wasChanged('assignee_user_id') || ($task->wasRecentlyCreated && $task->assignee_user_id)) {
+            $task->loadMissing('assignee', 'project');
+
+            if ($task->assignee && $task->assignee_user_id !== auth()->id()) {
+                $task->assignee->notify(new \App\Notifications\TaskAssigned($task));
+            }
+        }
     }
 
     public function deleted(Task $task): void
