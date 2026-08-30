@@ -29,6 +29,8 @@ class AppServiceProvider extends ServiceProvider
         // into the *_type columns.
         Relation::enforceMorphMap([
             'user' => \App\Models\User::class,
+            'client' => \App\Models\Client::class,
+            'client_user' => \App\Models\ClientUser::class,
         ]);
 
         $this->guardAgainstLazyLoading();
