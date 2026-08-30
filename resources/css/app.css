@@ -1,0 +1,126 @@
+@import 'tailwindcss';
+
+@source "../views";
+@source "../js";
+
+/* Design tokens — mirrored from the ARCHI marketplace design system (Figma "archi 2").
+   Translucent colors are NOT separate tokens — use opacity modifiers, e.g.
+   text-black/50, border-black/10. */
+@theme {
+  /* fonts */
+  --font-sans: 'Inter', sans-serif;
+  --font-b2b: 'Manrope', sans-serif;
+
+  /* brand */
+  --color-yellow: #fdfe00;
+  --color-yellow-line: #ffe600;
+  --color-sel-bg: #fffde0;
+
+  /* base — the ARCHI "black" is #111111, not #000 */
+  --color-ink: #111111;
+  --color-ink-alt: #141414;
+  --color-off-white: #efefef;
+
+  /* state */
+  --color-green: #00a613;
+  --color-red: #d3524c;
+  --color-star: #ffe600;
+
+  /* semantic status palette — drives badges, toggles and status chips */
+  --color-ok: #229653;
+  --color-ok-soft: #e9f6ed;
+  --color-warn: #c88200;
+  --color-warn-soft: #fff4db;
+  --color-danger: #d33c32;
+  --color-success: #0a7a14;
+  --color-success-soft: #eafce9;
+  --color-error: #b4322c;
+  --color-error-soft: #fdeaea;
+  --color-neutral-soft: #f0f1f3;
+
+  /* gray backgrounds */
+  --color-gray-soft: #f3f5f7;
+  --color-gray-soft2: #f5f7f9;
+
+  /* radius — Figma DS: 3 / 4 / 8 / pill */
+  --radius-ds-sm: 3px;
+  --radius-ds: 4px;
+  --radius-ds-md: 8px;
+  --radius-pill: 100px;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    overflow-x: hidden;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    color: #000;
+    background: #fff;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  img {
+    display: block;
+    max-width: 100%;
+  }
+
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-size: revert;
+    font-weight: revert;
+  }
+
+  input,
+  select,
+  textarea {
+    font-family: inherit;
+    border: revert;
+    background-color: revert;
+    border-radius: revert;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ink);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+}
+
+@layer components {
+  /* ---- button (<x-ui.button>) — tone only; data-hover="false" = static ---- */
+  .ui-btn                            { @apply flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-ds; }
+  .ui-btn-primary                    { @apply bg-yellow text-ink; }
+  .ui-btn-primary[data-hover="true"] { @apply transition-[filter] duration-150 hover:brightness-95; }
+  .ui-btn-dark                       { @apply bg-ink text-white; }
+  .ui-btn-dark[data-hover="true"]    { @apply transition-[filter] duration-150 hover:brightness-110; }
+  .ui-btn-outline                    { @apply border border-black/20 bg-white text-ink; }
+  .ui-btn-outline[data-hover="true"] { @apply transition-colors duration-150 hover:border-black/35 hover:bg-gray-soft2; }
+  .ui-btn-ghost                      { @apply bg-transparent text-danger; }
+  .ui-btn-ghost[data-hover="true"]   { @apply transition-colors duration-150 hover:bg-danger/10; }
+  .ui-btn-danger                     { @apply border border-danger/80 bg-white text-danger; }
+  .ui-btn-danger[data-hover="true"]  { @apply transition-colors duration-150 hover:border-danger hover:bg-danger/8; }
+  .ui-btn-on-ink                     { @apply border border-white/35 bg-transparent text-white/85; }
+  .ui-btn-on-ink[data-hover="true"]  { @apply transition-colors duration-150 hover:border-white/60 hover:bg-white/10; }
+}
