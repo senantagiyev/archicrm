@@ -31,7 +31,13 @@ class AppServiceProvider extends ServiceProvider
             'user' => \App\Models\User::class,
             'client' => \App\Models\Client::class,
             'client_user' => \App\Models\ClientUser::class,
+            'project' => \App\Models\Project::class,
+            'stage' => \App\Models\Stage::class,
+            'task' => \App\Models\Task::class,
         ]);
+
+        \App\Models\Task::observe(\App\Observers\TaskObserver::class);
+        \App\Models\Stage::observe(\App\Observers\StageObserver::class);
 
         $this->guardAgainstLazyLoading();
     }

@@ -122,6 +122,10 @@ class ClientResource extends Resource
                     ->label('Məsul')
                     ->sortable()
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('projects_count')
+                    ->label('Layihələr')
+                    ->counts('projects')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('first_contact_at')
                     ->label('İlk müraciət')
                     ->date('d.m.Y')

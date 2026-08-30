@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::command('stages:mark-overdue')->dailyAt('06:00');
+
+// 12-month activity log retention (TZ §5.20).
+Schedule::command('activitylog:clean')->monthly();
