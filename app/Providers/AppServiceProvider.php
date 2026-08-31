@@ -19,8 +19,10 @@ use App\Observers\FinanceObserver;
 use App\Observers\StageObserver;
 use App\Observers\TaskObserver;
 use App\Translation\DatabaseTranslationLoader;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Translatable\Facades\Translatable;
 
@@ -65,7 +67,33 @@ class AppServiceProvider extends ServiceProvider
         ProcurementItem::observe(FinanceObserver::class);
         Payment::observe(FinanceObserver::class);
 
+        $this->registerRateLimiters();
         $this->guardAgainstLazyLoading();
+    }
+
+    /**
+     * Named throttles for every public/portal entry point. Auth endpoints are
+     * per-IP (brute-force defence); authed portal/staff endpoints are per-user
+     * so one tenant cannot exhaust another's budget. Read/poll limits are
+     * generous, write limits tight, auth limits strict.
+     */
+    private function registerRateLimiters(): void
+    {
+        $byUser = fn ($request, string $guard) => optional($request->user($guard))->getAuthIdentifier()
+            ? (string) $request->user($guard)->getAuthIdentifier()
+            : $request->ip();
+
+        RateLimiter::for('auth', fn ($request) => Limit::perMinute(5)->by($request->ip()));
+
+        RateLimiter::for('portal-write', fn ($request) => Limit::perMinute(60)->by('cw:'.$byUser($request, 'customer')));
+
+        RateLimiter::for('portal-autosave', fn ($request) => Limit::perMinute(240)->by('ca:'.$byUser($request, 'customer')));
+
+        RateLimiter::for('portal-read', fn ($request) => Limit::perMinute(120)->by('cr:'.$byUser($request, 'customer')));
+
+        RateLimiter::for('staff-write', fn ($request) => Limit::perMinute(90)->by('sw:'.$byUser($request, 'web')));
+
+        RateLimiter::for('locale', fn ($request) => Limit::perMinute(30)->by($request->ip()));
     }
 
     /**

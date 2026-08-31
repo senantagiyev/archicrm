@@ -14,12 +14,12 @@ Route::post('/locale', function () {
     }
 
     return back();
-})->name('locale.switch');
+})->middleware('throttle:locale')->name('locale.switch');
 
 Route::middleware(['auth:web'])->prefix('staff-chat')->name('staff.chat.')->group(function () {
-    Route::get('/unread-count', [ChatController::class, 'unreadCount'])->name('unread');
-    Route::get('/{project}/poll', [ChatController::class, 'poll'])->name('poll');
-    Route::post('/{project}', [ChatController::class, 'send'])->name('send');
+    Route::get('/unread-count', [ChatController::class, 'unreadCount'])->middleware('throttle:staff-write')->name('unread');
+    Route::get('/{project}/poll', [ChatController::class, 'poll'])->middleware('throttle:staff-write')->name('poll');
+    Route::post('/{project}', [ChatController::class, 'send'])->middleware('throttle:staff-write')->name('send');
 });
 
 require __DIR__.'/portal.php';

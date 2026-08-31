@@ -44,7 +44,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
-                fn (): string => view('filament.auth.turnstile-script')->render(),
+                fn (): string => view('filament.auth.recaptcha-script')->render(),
             )
             ->plugin(
                 TranslatableFieldsPlugin::make()

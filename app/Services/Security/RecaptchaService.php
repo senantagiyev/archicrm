@@ -5,24 +5,27 @@ namespace App\Services\Security;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Cloudflare Turnstile server-side verification (reCAPTCHA-equivalent).
- * A CAPTCHA token is only trustworthy after the server validates it against
- * siteverify — client-side rendering alone proves nothing (TZ security ask).
+ * Google reCAPTCHA v2 server-side verification. A CAPTCHA token is only
+ * trustworthy after the server validates it against siteverify — client-side
+ * rendering alone proves nothing (TZ security ask).
  */
-class TurnstileService
+class RecaptchaService
 {
-    private const VERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+    private const VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
+
+    /** The DOM field name Google's widget submits the token under. */
+    public const FIELD = 'g-recaptcha-response';
 
     /** Whether the CAPTCHA is active (both keys configured). */
     public function enabled(): bool
     {
-        return filled(config('services.turnstile.site_key'))
-            && filled(config('services.turnstile.secret_key'));
+        return filled(config('services.recaptcha.site_key'))
+            && filled(config('services.recaptcha.secret_key'));
     }
 
     /**
      * Verify a widget response token. Returns true when the CAPTCHA is disabled
-     * (dev/tests), otherwise only when Cloudflare confirms the token.
+     * (dev/tests), otherwise only when Google confirms the token.
      */
     public function verify(?string $token, ?string $ip = null): bool
     {
@@ -38,7 +41,7 @@ class TurnstileService
             $response = Http::asForm()
                 ->timeout(8)
                 ->post(self::VERIFY_URL, array_filter([
-                    'secret' => config('services.turnstile.secret_key'),
+                    'secret' => config('services.recaptcha.secret_key'),
                     'response' => $token,
                     'remoteip' => $ip,
                 ]));

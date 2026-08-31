@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientUser;
-use App\Rules\Turnstile;
+use App\Rules\Recaptcha;
 use App\Services\Portal\InvitationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -25,7 +25,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'email' => ['required', 'email'],
-            'cf-turnstile-response' => [new Turnstile],
+            'g-recaptcha-response' => [new Recaptcha],
         ]);
 
         $clientUser = ClientUser::where('email', $request->input('email'))->first();

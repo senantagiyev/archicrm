@@ -52,9 +52,9 @@
                         class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-sm outline-none transition-colors focus:border-ink">
                 </div>
 
-                @php $turnstileSiteKey = config('services.turnstile.site_key'); @endphp
-                @if ($turnstileSiteKey)
-                    <div class="cf-turnstile" data-sitekey="{{ $turnstileSiteKey }}" data-theme="light"></div>
+                @php $recaptchaSiteKey = config('services.recaptcha.site_key'); @endphp
+                @if ($recaptchaSiteKey)
+                    <div class="g-recaptcha" data-sitekey="{{ $recaptchaSiteKey }}"></div>
                 @endif
 
                 <button class="ui-btn ui-btn-dark h-12 w-full text-sm font-semibold" data-hover="true">
@@ -72,8 +72,8 @@
         © {{ date('Y') }} Archi CRM
     </footer>
 
-    @if (config('services.turnstile.site_key'))
-        <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    @if (config('services.recaptcha.site_key'))
+        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
     @endif
 </body>
 </html>

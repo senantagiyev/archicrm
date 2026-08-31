@@ -104,6 +104,16 @@ class SecurityTest extends TestCase
         $this->get($url)->assertForbidden();                      // replay blocked
     }
 
+    /** The login-link endpoint is throttled (brute-force defence). */
+    public function test_login_link_is_rate_limited(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            $this->post(route('portal.login-link'), ['email' => 'x@test.az'])->assertStatus(302);
+        }
+
+        $this->post(route('portal.login-link'), ['email' => 'x@test.az'])->assertStatus(429);
+    }
+
     /** SafeUpload rejects SVG and disguised markup, accepts a real image. */
     public function test_safe_upload_blocks_svg_and_scripts(): void
     {

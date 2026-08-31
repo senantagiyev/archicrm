@@ -1,12 +1,11 @@
-{{-- Explicit-render Turnstile bound to Livewire state (data.captcha_token). --}}
+{{-- Explicit-render Google reCAPTCHA v2 bound to Livewire state (data.captcha_token). --}}
 <div
     wire:ignore
     x-data="{
         render() {
-            if (! window.turnstile) return;
-            window.turnstile.render($refs.widget, {
+            if (! window.grecaptcha || ! window.grecaptcha.render) return;
+            window.grecaptcha.render($refs.widget, {
                 sitekey: @js($siteKey),
-                theme: 'light',
                 callback: (token) => $wire.set('data.captcha_token', token, false),
                 'expired-callback': () => $wire.set('data.captcha_token', '', false),
                 'error-callback': () => $wire.set('data.captcha_token', '', false),
@@ -14,8 +13,8 @@
         },
     }"
     x-init="
-        if (window.turnstile) render();
-        else document.addEventListener('turnstile-ready', () => render());
+        if (window.grecaptcha && window.grecaptcha.render) render();
+        else document.addEventListener('recaptcha-ready', () => render());
     "
 >
     <div x-ref="widget"></div>

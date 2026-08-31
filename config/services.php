@@ -36,14 +36,14 @@ return [
     ],
 
     /*
-     | Cloudflare Turnstile — bot/CAPTCHA protection on login forms. When both
+     | Google reCAPTCHA (v2) — bot/CAPTCHA protection on login forms. When both
      | keys are set the widget renders and the server verifies every submit via
-     | siteverify (see App\Services\Security\TurnstileService). With no keys the
+     | siteverify (see App\Services\Security\RecaptchaService). With no keys the
      | check is skipped so local dev and the test suite still work.
      */
-    'turnstile' => [
-        'site_key' => env('TURNSTILE_SITE_KEY'),
-        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+    'recaptcha' => [
+        'site_key' => env('RECAPTCHA_SITE_KEY'),
+        'secret_key' => env('RECAPTCHA_SECRET_KEY'),
     ],
 
 ];
