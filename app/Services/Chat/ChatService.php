@@ -6,6 +6,7 @@ use App\Models\ChatMessage;
 use App\Models\ClientUser;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -47,6 +48,83 @@ class ChatService
             ],
             ['last_read_message_id' => $lastMessageId, 'updated_at' => now(), 'created_at' => now()],
         );
+    }
+
+    /**
+     * Unread incoming messages per project for a participant.
+     *
+     * @param  list<int>  $projectIds
+     * @return array<int, int> [project_id => unread count]
+     */
+    public function unreadCounts(Model $participant, array $projectIds): array
+    {
+        if ($projectIds === []) {
+            return [];
+        }
+
+        return ChatMessage::query()
+            ->leftJoin('chat_reads', function ($join) use ($participant) {
+                $join->on('chat_reads.project_id', 'chat_messages.project_id')
+                    ->where('chat_reads.participant_type', $participant->getMorphClass())
+                    ->where('chat_reads.participant_id', $participant->getKey());
+            })
+            ->whereIn('chat_messages.project_id', $projectIds)
+            ->whereRaw('chat_messages.id > coalesce(chat_reads.last_read_message_id, 0)')
+            ->where(fn ($q) => $q
+                ->where('chat_messages.author_type', '!=', $participant->getMorphClass())
+                ->orWhere('chat_messages.author_id', '!=', $participant->getKey()))
+            ->groupBy('chat_messages.project_id')
+            ->selectRaw('chat_messages.project_id as pid, count(*) as c')
+            ->pluck('c', 'pid')
+            ->map(fn ($c) => (int) $c)
+            ->all();
+    }
+
+    /** Project ids a staff member's chat covers (same scoping as ProjectResource). */
+    public function staffProjectIds(User $user): array
+    {
+        $query = Project::query();
+
+        if (AccessMatrix::requiresOwnProject($user->role)) {
+            $query->where(fn ($q) => $q
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn ($m) => $m->whereKey($user->id)));
+        }
+
+        return $query->pluck('id')->all();
+    }
+
+    /**
+     * Conversation list for the chat module: scoped projects with their last
+     * message and unread count, unread + freshest first.
+     *
+     * @param  list<int>  $projectIds
+     */
+    public function conversations(Model $participant, array $projectIds): Collection
+    {
+        $projects = Project::whereIn('id', $projectIds)
+            ->with('client')
+            ->get();
+
+        $lastMessages = ChatMessage::whereIn('project_id', $projectIds)
+            ->whereIn('id', function ($q) use ($projectIds) {
+                $q->selectRaw('max(id)')->from('chat_messages')
+                    ->whereIn('project_id', $projectIds)
+                    ->groupBy('project_id');
+            })
+            ->get()
+            ->keyBy('project_id');
+
+        $unread = $this->unreadCounts($participant, $projectIds);
+
+        return $projects
+            ->map(fn (Project $p) => [
+                'project' => $p,
+                'last' => $lastMessages->get($p->id),
+                'unread' => $unread[$p->id] ?? 0,
+            ])
+            ->sortByDesc(fn ($c) => [$c['unread'] > 0, $c['last']?->id ?? 0])
+            ->values();
     }
 
     /** Serialize for the polling JSON — same shape on both sides. */

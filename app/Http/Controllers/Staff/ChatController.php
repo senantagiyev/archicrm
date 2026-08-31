@@ -26,6 +26,15 @@ class ChatController extends Controller
         return response()->json(['messages' => $this->chat->serialize($messages, $viewer)]);
     }
 
+    /** Total unread across the user's projects — feeds the global sound/badge poller. */
+    public function unreadCount(Request $request)
+    {
+        $user = $request->user();
+        $counts = $this->chat->unreadCounts($user, $this->chat->staffProjectIds($user));
+
+        return response()->json(['count' => array_sum($counts)]);
+    }
+
     public function send(Request $request, Project $project)
     {
         Gate::authorize('view', $project);

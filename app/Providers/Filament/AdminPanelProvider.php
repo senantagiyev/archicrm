@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -34,6 +35,10 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->viteTheme('resources/css/filament/app/theme.css')
             ->databaseNotifications()
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): string => view('filament.chat-global-sound')->render(),
+            )
             ->plugin(
                 TranslatableFieldsPlugin::make()
                     ->supportedLocales([

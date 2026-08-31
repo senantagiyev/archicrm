@@ -35,6 +35,17 @@ class ChatController extends Controller
         return response()->json(['messages' => $this->chat->serialize($messages, $viewer)]);
     }
 
+    /** Unread total across all of this customer's projects — global sound/badge poller. */
+    public function unread()
+    {
+        $viewer = Auth::guard('customer')->user();
+        $projectIds = $viewer->client->projects()->pluck('id')->all();
+
+        $counts = $this->chat->unreadCounts($viewer, $projectIds);
+
+        return response()->json(['count' => array_sum($counts)]);
+    }
+
     public function send(Request $request, int $project)
     {
         $project = $this->clientProject($project);

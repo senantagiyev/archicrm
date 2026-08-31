@@ -55,10 +55,13 @@
                     'payments' => [route('portal.payments', $project), t('portal.nav_payments')],
                     'chat' => [route('portal.chat', $project), t('portal.nav_chat')],
                 ] as $key => [$url, $label])
-                    <a href="{{ $url }}"
-                        class="whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-colors
+                    <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
+                        class="relative whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-colors
                             {{ $active === $key ? 'border-yellow-line text-ink' : 'border-transparent text-black/50 hover:text-ink' }}">
                         {{ $label }}
+                        @if ($key === 'chat')
+                            <span data-chat-dot hidden class="absolute -right-0.5 top-2 inline-block h-2 w-2 rounded-pill bg-danger"></span>
+                        @endif
                     </a>
                 @endforeach
             </div>
@@ -84,5 +87,45 @@
     <footer class="mx-auto max-w-[1240px] px-5 pb-8 pt-4 text-[12px] text-black/40">
         © {{ date('Y') }} Archi CRM
     </footer>
+
+    @auth('customer')
+    <script>
+        // Global chat sound + unread dot for the customer, on every portal page.
+        (() => {
+            const url = @json(route('portal.chat.unread'));
+            let last = null;
+
+            const beep = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const play = (freq, start) => {
+                        const osc = ctx.createOscillator();
+                        const gain = ctx.createGain();
+                        osc.connect(gain); gain.connect(ctx.destination);
+                        osc.frequency.value = freq;
+                        gain.gain.setValueAtTime(0.06, ctx.currentTime + start);
+                        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + start + 0.3);
+                        osc.start(ctx.currentTime + start); osc.stop(ctx.currentTime + start + 0.35);
+                    };
+                    play(880, 0); play(660, 0.18);
+                } catch (e) {}
+            };
+
+            const check = () => {
+                fetch(url, { headers: { Accept: 'application/json' } })
+                    .then(r => r.json())
+                    .then(d => {
+                        document.querySelectorAll('[data-chat-dot]').forEach(el => el.hidden = !(d.count > 0));
+                        if (last !== null && d.count > last) beep();
+                        last = d.count;
+                    })
+                    .catch(() => {});
+            };
+
+            check();
+            setInterval(check, 15000);
+        })();
+    </script>
+    @endauth
 </body>
 </html>

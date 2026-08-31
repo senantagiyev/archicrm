@@ -25,6 +25,20 @@
             const input = document.getElementById('chatInput');
             const csrf = form.querySelector('input[name="_token"]').value;
             let lastId = 0;
+            let firstLoad = true;
+
+            const beep = () => {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.frequency.value = 880;
+                    gain.gain.setValueAtTime(0.06, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+                    osc.start(); osc.stop(ctx.currentTime + 0.4);
+                } catch (e) {}
+            };
 
             const bubble = (m) => {
                 const wrap = document.createElement('div');
@@ -46,9 +60,16 @@
                 fetch(thread.dataset.pollUrl + '?after=' + lastId, { headers: { Accept: 'application/json' } })
                     .then(r => r.json())
                     .then(d => {
-                        if (!d.messages?.length) return;
-                        d.messages.forEach(m => { thread.append(bubble(m)); lastId = Math.max(lastId, m.id); });
+                        if (!d.messages?.length) { firstLoad = false; return; }
+                        let incoming = false;
+                        d.messages.forEach(m => {
+                            thread.append(bubble(m));
+                            lastId = Math.max(lastId, m.id);
+                            if (!m.mine) incoming = true;
+                        });
                         thread.scrollTop = thread.scrollHeight;
+                        if (incoming && !firstLoad) beep();
+                        firstLoad = false;
                     })
                     .catch(() => {});
             };

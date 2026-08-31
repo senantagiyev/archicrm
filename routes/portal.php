@@ -36,6 +36,7 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
         Route::get('/projects/{project}/payments', [PaymentController::class, 'index'])->name('payments');
 
+        Route::get('/chat-unread', [ChatController::class, 'unread'])->name('chat.unread');
         Route::get('/projects/{project}/chat', [ChatController::class, 'index'])->name('chat');
         Route::get('/projects/{project}/chat/poll', [ChatController::class, 'poll'])->name('chat.poll');
         Route::post('/projects/{project}/chat', [ChatController::class, 'send'])->name('chat.send');

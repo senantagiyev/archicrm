@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProjectResource\Pages;
 
+use App\Filament\Pages\ChatCenter;
 use App\Filament\Resources\ProjectResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
@@ -16,7 +17,7 @@ class EditProject extends EditRecord
             Actions\Action::make('chat')
                 ->label('Çat')
                 ->icon('heroicon-o-chat-bubble-left-right')
-                ->url(fn () => ProjectResource::getUrl('chat', ['record' => $this->record])),
+                ->url(fn () => ChatCenter::getUrl(['project' => $this->record->id])),
             Actions\DeleteAction::make()
                 ->requiresConfirmation()
                 ->modalHeading('Layihəni sil')
