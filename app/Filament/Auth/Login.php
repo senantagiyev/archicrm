@@ -5,8 +5,8 @@ namespace App\Filament\Auth;
 use App\Services\Security\RecaptchaService;
 use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Auth\Pages\Login as BaseLogin;
-use Filament\Forms\Components\View as ViewComponent;
 use Filament\Schemas\Components\Component;
+use Filament\Schemas\Components\View as ViewComponent;
 use Filament\Schemas\Schema;
 use Illuminate\Validation\ValidationException;
 
