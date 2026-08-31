@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum StageStatus: string
 {
+    use Concerns\TranslatesLabels;
+
     case NotStarted = 'not_started';
     case InProgress = 'in_progress';
     case Review = 'review';

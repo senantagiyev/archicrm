@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum ApprovalStatus: string
 {
+    use Concerns\TranslatesLabels;
+
     case Draft = 'draft';
     case Pending = 'pending';
     case Approved = 'approved';

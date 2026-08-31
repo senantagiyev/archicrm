@@ -96,6 +96,11 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
+    public function approvals(): HasMany
+    {
+        return $this->hasMany(Approval::class);
+    }
+
     /** Is the user the manager or a member of this project? */
     public function hasMember(User $user): bool
     {

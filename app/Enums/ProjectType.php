@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum ProjectType: string
 {
+    use Concerns\TranslatesLabels;
+
     case Apartment = 'apartment';
     case House = 'house';
     case Office = 'office';

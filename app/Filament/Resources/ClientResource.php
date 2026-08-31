@@ -151,6 +151,7 @@ class ClientResource extends Resource
     {
         return [
             ContactLogsRelationManager::class,
+            \App\Filament\Resources\ClientResource\RelationManagers\ClientUsersRelationManager::class,
         ];
     }
 

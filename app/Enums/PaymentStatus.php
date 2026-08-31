@@ -4,6 +4,8 @@ namespace App\Enums;
 
 enum PaymentStatus: string
 {
+    use Concerns\TranslatesLabels;
+
     case Pending = 'pending';
     case Paid = 'paid';
     case Overdue = 'overdue';
