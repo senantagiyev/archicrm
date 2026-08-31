@@ -44,6 +44,8 @@ return [
     'recaptcha' => [
         'site_key' => env('RECAPTCHA_SITE_KEY'),
         'secret_key' => env('RECAPTCHA_SECRET_KEY'),
+        // v3 is score-based: 1.0 = very likely human, 0.0 = very likely a bot.
+        'min_score' => env('RECAPTCHA_MIN_SCORE', 0.5),
     ],
 
 ];

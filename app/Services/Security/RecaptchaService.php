@@ -5,15 +5,15 @@ namespace App\Services\Security;
 use Illuminate\Support\Facades\Http;
 
 /**
- * Google reCAPTCHA v2 server-side verification. A CAPTCHA token is only
- * trustworthy after the server validates it against siteverify — client-side
- * rendering alone proves nothing (TZ security ask).
+ * Google reCAPTCHA v3 server-side verification. A CAPTCHA token is only
+ * trustworthy after the server validates it against siteverify AND the returned
+ * score clears the threshold — client-side execution alone proves nothing.
  */
 class RecaptchaService
 {
     private const VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 
-    /** The DOM field name Google's widget submits the token under. */
+    /** The DOM field name the token is submitted under. */
     public const FIELD = 'g-recaptcha-response';
 
     /** Whether the CAPTCHA is active (both keys configured). */
@@ -50,6 +50,17 @@ class RecaptchaService
             return false;
         }
 
-        return $response->successful() && ($response->json('success') === true);
+        if (! $response->successful() || $response->json('success') !== true) {
+            return false;
+        }
+
+        // v3 returns a score; v2 does not. When present, enforce the threshold.
+        $score = $response->json('score');
+
+        if ($score === null) {
+            return true;
+        }
+
+        return (float) $score >= (float) config('services.recaptcha.min_score', 0.5);
     }
 }

@@ -1,24 +1,24 @@
-{{-- Explicit-render Google reCAPTCHA v2 bound to Livewire state (data.captcha_token). --}}
+{{-- Google reCAPTCHA v3 (invisible) bound to Livewire state (data.captcha_token).
+     A token expires in ~2 min, so it is refreshed on load and every 90s. --}}
 <div
     wire:ignore
     x-data="{
-        render() {
-            if (! window.grecaptcha || ! window.grecaptcha.render) return;
-            window.grecaptcha.render($refs.widget, {
-                sitekey: @js($siteKey),
-                callback: (token) => $wire.set('data.captcha_token', token, false),
-                'expired-callback': () => $wire.set('data.captcha_token', '', false),
-                'error-callback': () => $wire.set('data.captcha_token', '', false),
+        refresh() {
+            if (! window.grecaptcha || ! window.grecaptcha.execute) return;
+            window.grecaptcha.ready(() => {
+                window.grecaptcha.execute(@js($siteKey), { action: 'staff_login' })
+                    .then((token) => $wire.set('data.captcha_token', token, false));
             });
         },
     }"
     x-init="
-        if (window.grecaptcha && window.grecaptcha.render) render();
-        else document.addEventListener('recaptcha-ready', () => render());
+        const start = () => { refresh(); setInterval(() => refresh(), 90000); };
+        if (window.grecaptcha && window.grecaptcha.execute) start();
+        else document.addEventListener('recaptcha-ready', start);
     "
 >
-    <div x-ref="widget"></div>
     @error('data.captcha_token')
-        <p class="mt-2 text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p>
+        <p class="text-sm text-danger-600 dark:text-danger-400">{{ $message }}</p>
     @enderror
+    <p class="text-[11px] text-gray-400 dark:text-gray-500">Bu sayt Google reCAPTCHA ilə qorunur.</p>
 </div>

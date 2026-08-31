@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Models\ClientUser;
-use App\Rules\Recaptcha;
 use App\Services\Portal\InvitationService;
+use App\Services\Security\RecaptchaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -21,12 +22,16 @@ class AuthController extends Controller
     }
 
     /** Passwordless: email a fresh signed link if the account exists. */
-    public function sendLoginLink(Request $request, InvitationService $invitations)
+    public function sendLoginLink(Request $request, InvitationService $invitations, RecaptchaService $recaptcha)
     {
-        $request->validate([
-            'email' => ['required', 'email'],
-            'g-recaptcha-response' => [new Recaptcha],
-        ]);
+        $request->validate(['email' => ['required', 'email']]);
+
+        // Verified unconditionally — a missing token must fail, not skip the check.
+        if (! $recaptcha->verify($request->input('g-recaptcha-response'), $request->ip())) {
+            throw ValidationException::withMessages([
+                'g-recaptcha-response' => t('portal.captcha_failed'),
+            ]);
+        }
 
         $clientUser = ClientUser::where('email', $request->input('email'))->first();
 

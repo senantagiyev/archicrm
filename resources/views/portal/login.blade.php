@@ -43,7 +43,8 @@
                 </div>
             @endif
 
-            <form method="post" action="{{ route('portal.login-link') }}" class="mt-8 space-y-4">
+            @php $recaptchaSiteKey = config('services.recaptcha.site_key'); @endphp
+            <form id="portalLoginForm" method="post" action="{{ route('portal.login-link') }}" class="mt-8 space-y-4">
                 @csrf
                 <div>
                     <label for="email" class="mb-1.5 block text-[13px] font-semibold">{{ t('portal.email') }}</label>
@@ -52,15 +53,21 @@
                         class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-sm outline-none transition-colors focus:border-ink">
                 </div>
 
-                @php $recaptchaSiteKey = config('services.recaptcha.site_key'); @endphp
                 @if ($recaptchaSiteKey)
-                    <div class="g-recaptcha" data-sitekey="{{ $recaptchaSiteKey }}"></div>
+                    {{-- v3: invisible; a fresh token is fetched at submit time. --}}
+                    <input type="hidden" name="g-recaptcha-response" id="recaptchaToken">
                 @endif
 
                 <button class="ui-btn ui-btn-dark h-12 w-full text-sm font-semibold" data-hover="true">
                     {{ t('portal.send_login_link') }}
                 </button>
             </form>
+
+            @if ($recaptchaSiteKey)
+                <p class="mt-3 text-[11px] leading-relaxed text-black/30">
+                    Bu sayt Google reCAPTCHA ilə qorunur.
+                </p>
+            @endif
 
             <p class="mt-8 text-[13px] leading-relaxed text-black/40">
                 {{ t('portal.login_no_link') }}
@@ -72,8 +79,28 @@
         © {{ date('Y') }} Archi CRM
     </footer>
 
-    @if (config('services.recaptcha.site_key'))
-        <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+    @if ($recaptchaSiteKey)
+        <script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaSiteKey }}"></script>
+        <script>
+            (() => {
+                const form = document.getElementById('portalLoginForm');
+                const field = document.getElementById('recaptchaToken');
+                const key = @json($recaptchaSiteKey);
+                let ready = false;
+
+                form.addEventListener('submit', (e) => {
+                    if (ready) return; // second pass: token set, let it through
+                    e.preventDefault();
+                    grecaptcha.ready(() => {
+                        grecaptcha.execute(key, { action: 'portal_login' }).then((token) => {
+                            field.value = token;
+                            ready = true;
+                            form.submit();
+                        });
+                    });
+                });
+            })();
+        </script>
     @endif
 </body>
 </html>

@@ -12,6 +12,7 @@ use App\Rules\SafeUpload;
 use App\Services\Portal\InvitationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 use Tests\TestCase;
@@ -102,6 +103,27 @@ class SecurityTest extends TestCase
         $this->get($url)->assertRedirect(route('portal.home'));   // first use works
         $this->post(route('portal.logout'));
         $this->get($url)->assertForbidden();                      // replay blocked
+    }
+
+    /** With reCAPTCHA enabled, a submit without a token is rejected. */
+    public function test_login_requires_recaptcha_when_enabled(): void
+    {
+        config([
+            'services.recaptcha.site_key' => 'test-site',
+            'services.recaptcha.secret_key' => 'test-secret',
+        ]);
+        Notification::fake();
+        Http::fake([
+            'www.google.com/*' => Http::response(['success' => false], 200),
+        ]);
+
+        // No g-recaptcha-response → rule fails → validation error, no link sent.
+        $this->from(route('portal.login'))
+            ->post(route('portal.login-link'), ['email' => 'test@test.az'])
+            ->assertRedirect(route('portal.login'))
+            ->assertSessionHasErrors('g-recaptcha-response');
+
+        Notification::assertNothingSent();
     }
 
     /** The login-link endpoint is throttled (brute-force defence). */
