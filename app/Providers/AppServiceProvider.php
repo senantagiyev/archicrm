@@ -40,6 +40,7 @@ class AppServiceProvider extends ServiceProvider
             'document' => \App\Models\Document::class,
             'project_file' => \App\Models\ProjectFile::class,
             'comment' => \App\Models\Comment::class,
+            'approval' => \App\Models\Approval::class,
         ]);
 
         \App\Models\Task::observe(\App\Observers\TaskObserver::class);

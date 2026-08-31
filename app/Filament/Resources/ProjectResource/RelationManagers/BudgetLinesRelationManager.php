@@ -96,10 +96,31 @@ class BudgetLinesRelationManager extends RelationManager
                 Actions\CreateAction::make()->label('Sətir əlavə et'),
             ])
             ->actions([
+                Actions\Action::make('requestApproval')
+                    ->label('Razılaşdırmaya göndər')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
+                    ->requiresConfirmation()
+                    ->modalDescription('Sətir sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
+                    ->action(fn ($record, \App\Services\Approvals\ApprovalService $service) => $service->request($record, auth()->user())),
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make()
                     ->requiresConfirmation()
                     ->hidden(fn ($record) => $record->approval_status === ApprovalStatus::Approved),
+            ])
+            ->bulkActions([
+                Actions\BulkAction::make('requestApprovalBulk')
+                    ->label('Razılaşdırmaya göndər')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->requiresConfirmation()
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function ($records, \App\Services\Approvals\ApprovalService $service) {
+                        foreach ($records as $record) {
+                            if (in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)) {
+                                $service->request($record, auth()->user());
+                            }
+                        }
+                    }),
             ]);
     }
 }

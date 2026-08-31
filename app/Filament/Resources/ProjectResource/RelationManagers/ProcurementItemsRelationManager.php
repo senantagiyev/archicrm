@@ -141,6 +141,13 @@ class ProcurementItemsRelationManager extends RelationManager
                 Actions\CreateAction::make()->label('Pozisiya əlavə et'),
             ])
             ->actions([
+                Actions\Action::make('requestApproval')
+                    ->label('Razılaşdırmaya göndər')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
+                    ->requiresConfirmation()
+                    ->modalDescription('Pozisiya sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
+                    ->action(fn ($record, \App\Services\Approvals\ApprovalService $service) => $service->request($record, auth()->user())),
                 Actions\Action::make('cancelItem')
                     ->label('Ləğv et')
                     ->icon('heroicon-o-x-circle')
