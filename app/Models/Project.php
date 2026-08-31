@@ -71,6 +71,31 @@ class Project extends Model
         return $this->hasMany(Task::class);
     }
 
+    public function budgetLines(): HasMany
+    {
+        return $this->hasMany(BudgetLine::class)->orderBy('position');
+    }
+
+    public function procurementItems(): HasMany
+    {
+        return $this->hasMany(ProcurementItem::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    public function files(): HasMany
+    {
+        return $this->hasMany(ProjectFile::class);
+    }
+
     /** Is the user the manager or a member of this project? */
     public function hasMember(User $user): bool
     {

@@ -16,6 +16,8 @@ use Illuminate\Support\Carbon;
 
 class StagesRelationManager extends RelationManager
 {
+    protected static bool $isLazy = false;
+
     protected static string $relationship = 'stages';
 
     protected static ?string $title = 'Mərhələlər';

@@ -34,10 +34,19 @@ class AppServiceProvider extends ServiceProvider
             'project' => \App\Models\Project::class,
             'stage' => \App\Models\Stage::class,
             'task' => \App\Models\Task::class,
+            'budget_line' => \App\Models\BudgetLine::class,
+            'procurement_item' => \App\Models\ProcurementItem::class,
+            'payment' => \App\Models\Payment::class,
+            'document' => \App\Models\Document::class,
+            'project_file' => \App\Models\ProjectFile::class,
+            'comment' => \App\Models\Comment::class,
         ]);
 
         \App\Models\Task::observe(\App\Observers\TaskObserver::class);
         \App\Models\Stage::observe(\App\Observers\StageObserver::class);
+        \App\Models\BudgetLine::observe(\App\Observers\FinanceObserver::class);
+        \App\Models\ProcurementItem::observe(\App\Observers\FinanceObserver::class);
+        \App\Models\Payment::observe(\App\Observers\FinanceObserver::class);
 
         $this->guardAgainstLazyLoading();
     }

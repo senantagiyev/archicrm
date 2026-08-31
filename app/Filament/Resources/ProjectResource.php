@@ -6,6 +6,7 @@ use App\Enums\ProjectStatus;
 use App\Enums\ProjectType;
 use App\Enums\StaffRole;
 use App\Filament\Resources\ProjectResource\Pages;
+use App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Filament\Resources\ProjectResource\RelationManagers\MembersRelationManager;
 use App\Filament\Resources\ProjectResource\RelationManagers\StagesRelationManager;
 use App\Models\Client;
@@ -173,6 +174,11 @@ class ProjectResource extends Resource
     {
         return [
             StagesRelationManager::class,
+            RelationManagers\BudgetLinesRelationManager::class,
+            RelationManagers\ProcurementItemsRelationManager::class,
+            RelationManagers\PaymentsRelationManager::class,
+            RelationManagers\DocumentsRelationManager::class,
+            RelationManagers\FilesRelationManager::class,
             MembersRelationManager::class,
         ];
     }

@@ -12,6 +12,8 @@ use Filament\Tables\Table;
 
 class ContactLogsRelationManager extends RelationManager
 {
+    protected static bool $isLazy = false;
+
     protected static string $relationship = 'contactLogs';
 
     protected static ?string $title = 'Ünsiyyət tarixçəsi';
