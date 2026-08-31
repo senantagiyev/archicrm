@@ -63,7 +63,9 @@ class CoreFlowsTest extends TestCase
         $this->assertSame('100.00', $line->fresh()->total);
         $this->assertSame(0.0, (float) $project->fresh()->debt); // draft — not counted
 
-        $line->update(['approval_status' => 'approved']);
+        // approval_status is not mass-assignable (security); it moves via the
+        // approval flow — forceFill mimics ApprovalService here.
+        $line->forceFill(['approval_status' => 'approved'])->save();
         $this->assertSame(100.0, (float) $project->fresh()->debt);
 
         $project->payments()->create(['title' => 'Avans', 'amount' => 40, 'status' => 'paid', 'paid_at' => now()]);

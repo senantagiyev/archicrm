@@ -7,6 +7,7 @@ use App\Models\ClientUser;
 use App\Notifications\PortalInvitation;
 use App\Notifications\PortalLoginLink;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class InvitationService
 {
@@ -41,10 +42,15 @@ class InvitationService
 
     private function signedLoginUrl(ClientUser $clientUser, int $days = 0, int $minutes = 0): string
     {
+        // One-time token: issuing a fresh link invalidates any previous one, and
+        // the token is cleared on first use (see AuthController::magicLogin).
+        $plain = Str::random(48);
+        $clientUser->forceFill(['magic_token' => hash('sha256', $plain)])->save();
+
         return URL::temporarySignedRoute(
             'portal.magic-login',
             $days ? now()->addDays($days) : now()->addMinutes($minutes),
-            ['clientUser' => $clientUser->id],
+            ['clientUser' => $clientUser->id, 't' => $plain],
         );
     }
 }

@@ -78,8 +78,9 @@ class ApprovalService
     private function setSubjectStatus(Model $approvable, ApprovalStatus $status): void
     {
         match (true) {
+            // forceFill: approval_status is deliberately non-fillable (audit HIGH-2).
             $approvable instanceof BudgetLine,
-            $approvable instanceof ProcurementItem => $approvable->update(['approval_status' => $status]),
+            $approvable instanceof ProcurementItem => $approvable->forceFill(['approval_status' => $status])->save(),
             $approvable instanceof Stage, $approvable instanceof Document => null,
             default => throw new InvalidArgumentException('Bu obyekt razılaşdırıla bilməz: '.$approvable::class),
         };

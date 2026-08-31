@@ -20,7 +20,7 @@ class ClientUser extends Authenticatable
         'client_id', 'name', 'email', 'password', 'locale', 'invited_at', 'last_login_at',
     ];
 
-    protected $hidden = ['password', 'remember_token'];
+    protected $hidden = ['password', 'remember_token', 'magic_token'];
 
     protected function casts(): array
     {

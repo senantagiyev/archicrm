@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\TaskResource;
 use App\Models\Task;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,7 +25,7 @@ class TaskDeadlineSoon extends Notification
             ->subject('Son tarix yaxınlaşır: '.$this->task->title)
             ->line("\"{$this->task->title}\" tapşırığının son tarixinə {$this->daysLeft} gün qalıb.")
             ->line('Layihə: '.$this->task->project->name)
-            ->action('Tapşırığa bax', \App\Filament\Resources\TaskResource::getUrl());
+            ->action('Tapşırığa bax', TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array

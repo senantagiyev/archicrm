@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\TaskResource;
 use App\Models\Task;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -25,7 +26,7 @@ class TaskAssigned extends Notification
             ->line("Sizə yeni tapşırıq təyin edildi: {$this->task->title}")
             ->line('Layihə: '.$this->task->project->name)
             ->line($this->task->deadline ? 'Son tarix: '.$this->task->deadline->format('d.m.Y') : '')
-            ->action('Tapşırığa bax', \App\Filament\Resources\TaskResource::getUrl());
+            ->action('Tapşırığa bax', TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array

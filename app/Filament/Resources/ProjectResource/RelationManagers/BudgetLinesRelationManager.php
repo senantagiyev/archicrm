@@ -100,7 +100,8 @@ class BudgetLinesRelationManager extends RelationManager
                 Actions\Action::make('requestApproval')
                     ->label('Razılaşdırmaya göndər')
                     ->icon('heroicon-o-paper-airplane')
-                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
+                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)
+                        && auth()->user()->can('update', $record))
                     ->requiresConfirmation()
                     ->modalDescription('Sətir sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
                     ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
@@ -117,7 +118,8 @@ class BudgetLinesRelationManager extends RelationManager
                     ->deselectRecordsAfterCompletion()
                     ->action(function ($records, ApprovalService $service) {
                         foreach ($records as $record) {
-                            if (in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)) {
+                            if (in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)
+                                && auth()->user()->can('update', $record)) {
                                 $service->request($record, auth()->user());
                             }
                         }

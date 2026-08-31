@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Auth\Login;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             // Hidden panel path — configurable via ADMIN_PATH in .env (security by obscurity
             // on top of auth, so bots hammering /admin and /app find nothing).
             ->path(config('app.admin_path'))
-            ->login()
+            ->login(Login::class)
             ->brandName('Archi CRM')
             ->colors([
                 'primary' => Color::hex('#111111'),
@@ -40,6 +41,10 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): string => view('filament.chat-global-sound')->render(),
+            )
+            ->renderHook(
+                PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
+                fn (): string => view('filament.auth.turnstile-script')->render(),
             )
             ->plugin(
                 TranslatableFieldsPlugin::make()

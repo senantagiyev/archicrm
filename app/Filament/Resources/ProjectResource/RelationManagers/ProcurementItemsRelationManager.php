@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Enums\ApprovalStatus;
 use App\Enums\PurchaseStatus;
 use App\Exports\ProcurementExport;
+use App\Rules\SafeUpload;
 use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
 use Filament\Forms;
@@ -31,6 +32,9 @@ class ProcurementItemsRelationManager extends RelationManager
                 ->label('Foto')
                 ->image()
                 ->imageEditor()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                ->maxSize(5120)
+                ->rules([SafeUpload::image()])
                 ->directory('procurement')
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('name')
@@ -145,7 +149,8 @@ class ProcurementItemsRelationManager extends RelationManager
                 Actions\Action::make('requestApproval')
                     ->label('Razılaşdırmaya göndər')
                     ->icon('heroicon-o-paper-airplane')
-                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
+                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)
+                        && auth()->user()->can('update', $record))
                     ->requiresConfirmation()
                     ->modalDescription('Pozisiya sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
                     ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
@@ -153,7 +158,8 @@ class ProcurementItemsRelationManager extends RelationManager
                     ->label('Ləğv et')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn ($record) => $record->isDeletionLocked() && $record->purchase_status !== PurchaseStatus::Cancelled)
+                    ->visible(fn ($record) => $record->isDeletionLocked() && $record->purchase_status !== PurchaseStatus::Cancelled
+                        && auth()->user()->can('update', $record))
                     ->form([
                         Forms\Components\Textarea::make('cancel_comment')
                             ->label('Ləğv səbəbi (məcburi)')

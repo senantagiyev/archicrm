@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\ProjectResource;
 use App\Models\Payment;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -24,7 +25,7 @@ class PaymentOverdue extends Notification
             ->subject('Ödəniş gecikir — '.$this->payment->project->name)
             ->line("\"{$this->payment->title}\" ödənişinin plan tarixi keçib.")
             ->line('Məbləğ: '.number_format((float) $this->payment->amount, 2).' ₼')
-            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->payment->project_id]));
+            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->payment->project_id]));
     }
 
     public function toDatabase(object $notifiable): array

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\DocumentType;
+use App\Rules\SafeUpload;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -36,6 +37,10 @@ class DocumentsRelationManager extends RelationManager
                 ->native(false),
             Forms\Components\FileUpload::make('file_path')
                 ->label('Fayl')
+                ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg', 'image/png', 'image/webp', 'text/plain', 'text/csv'])
+                ->maxSize(20480)
+                ->rules([SafeUpload::document()])
+                ->helperText('İcazə verilən formatlar: PDF, Word, Excel, şəkil (JPG/PNG). SVG və icra olunan fayllar qəbul edilmir.')
                 ->directory('documents')
                 ->required()
                 ->columnSpanFull(),

@@ -87,7 +87,8 @@ class PaymentsRelationManager extends RelationManager
                     ->label('Ödənildi')
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
-                    ->visible(fn ($record) => $record->status !== PaymentStatus::Paid)
+                    ->visible(fn ($record) => $record->status !== PaymentStatus::Paid
+                        && auth()->user()->can('update', $record))
                     ->requiresConfirmation()
                     ->action(fn ($record) => $record->update([
                         'status' => PaymentStatus::Paid,

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Filament\Resources\ProjectResource;
 use App\Models\Brief;
 use App\Models\Document;
 use Illuminate\Bus\Queueable;
@@ -24,7 +25,7 @@ class BriefCompleted extends Notification
         return (new MailMessage)
             ->subject('Brif tamamlandı — '.$this->brief->project->name)
             ->line('Sifarişçi brifi tam doldurdu. PDF ixracı layihənin sənədlərinə əlavə edildi.')
-            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->brief->project_id]));
+            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->brief->project_id]));
     }
 
     public function toDatabase(object $notifiable): array

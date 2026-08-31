@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Enums\ApprovalStatus;
+use App\Filament\Resources\ProjectResource;
 use App\Models\Approval;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -28,7 +29,7 @@ class ApprovalDecided extends Notification
             ->subject('Razılaşdırma qərarı — '.$this->approval->project->name)
             ->line("Sifarişçi {$verdict}: ".$this->approval->subjectLabel())
             ->line($this->approval->comment ? 'Şərh: '.$this->approval->comment : '')
-            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->approval->project_id]));
+            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->approval->project_id]));
     }
 
     public function toDatabase(object $notifiable): array

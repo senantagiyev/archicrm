@@ -14,10 +14,11 @@ class BudgetLine extends Model
 {
     use HasFactory, LogsActivity;
 
+    // approval_status is intentionally NOT fillable — it moves only through
+    // ApprovalService (customer decision), never mass assignment (audit HIGH-2).
     protected $fillable = [
         'project_id', 'stage_id', 'work_type', 'room', 'unit',
-        'qty', 'work_price', 'material_price', 'total',
-        'approval_status', 'position',
+        'qty', 'work_price', 'material_price', 'total', 'position',
     ];
 
     protected function casts(): array

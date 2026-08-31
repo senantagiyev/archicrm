@@ -15,10 +15,11 @@ class ProcurementItem extends Model
 {
     use HasFactory, LogsActivity;
 
+    // approval_status is NOT fillable — set only by ApprovalService (audit HIGH-2).
     protected $fillable = [
         'project_id', 'photo_path', 'sku', 'name', 'category', 'room',
         'price', 'qty', 'total', 'store', 'url',
-        'approval_status', 'purchase_status', 'cancel_comment', 'paid',
+        'purchase_status', 'cancel_comment', 'paid',
     ];
 
     protected function casts(): array
@@ -37,6 +38,13 @@ class ProcurementItem extends Model
     {
         static::saving(function (self $item): void {
             $item->total = round($item->qty * (float) $item->price, 2);
+        });
+
+        // TZ §5.10: enforce the deletion lock at the model, not just the UI (audit MEDIUM-1).
+        static::deleting(function (self $item): void {
+            if ($item->isDeletionLocked()) {
+                throw new \RuntimeException('Razılaşdırılmış və ödənilmiş pozisiya silinə bilməz.');
+            }
         });
     }
 
