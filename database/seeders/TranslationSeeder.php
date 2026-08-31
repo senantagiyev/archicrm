@@ -17,6 +17,7 @@ class TranslationSeeder extends Seeder
                 'login_hint' => 'E-poçtunuzu daxil edin — sizə birdəfəlik giriş linki göndərəcəyik.|Введите ваш e-mail — мы отправим одноразовую ссылку для входа.|Enter your email — we will send you a one-time login link.',
                 'email' => 'E-poçt|E-mail|Email',
                 'send_login_link' => 'Giriş linki göndər|Отправить ссылку|Send login link',
+                'login_no_link' => 'Linkiniz yoxdursa, bürodakı menecerinizə yazın — sizə portal dəvəti göndərəcək.|Если у вас нет ссылки, напишите вашему менеджеру в бюро — он отправит приглашение в портал.|No link yet? Ask your bureau manager to send you a portal invitation.',
                 'login_link_sent' => 'Əgər bu e-poçt sistemdə varsa, giriş linki göndərildi.|Если этот e-mail есть в системе, ссылка отправлена.|If this email exists, a login link has been sent.',
                 'nav_overview' => 'İcmal|Обзор|Overview',
                 'nav_approvals' => 'Razılaşdırmalar|Согласования|Approvals',
