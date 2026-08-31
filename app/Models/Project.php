@@ -48,7 +48,8 @@ class Project extends Model
 
     public function client(): BelongsTo
     {
-        return $this->belongsTo(Client::class);
+        // Clients soft-delete; their projects must keep showing who they belonged to.
+        return $this->belongsTo(Client::class)->withTrashed();
     }
 
     public function manager(): BelongsTo

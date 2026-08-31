@@ -43,7 +43,8 @@ class ProjectResource extends Resource
     /** TZ §5.4 "Öz layihələri": non-owner roles see only their projects. */
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        // Table closures read client/manager — eager load against the N+1 guard.
+        $query = parent::getEloquentQuery()->with(['client', 'manager']);
         $user = auth()->user();
 
         if ($user && AccessMatrix::requiresOwnProject($user->role)) {
@@ -127,7 +128,7 @@ class ProjectResource extends Resource
                     ->label('Layihə')
                     ->searchable()
                     ->sortable()
-                    ->description(fn (Project $r) => $r->client->name),
+                    ->description(fn (Project $r) => $r->client?->name),
                 Tables\Columns\TextColumn::make('type')
                     ->label('Tip')
                     ->badge()

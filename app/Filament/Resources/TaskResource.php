@@ -43,7 +43,8 @@ class TaskResource extends Resource
     /** Own-project scoping for non-manager roles. */
     public static function getEloquentQuery(): Builder
     {
-        $query = parent::getEloquentQuery();
+        // Table closures read project/stage/assignee — eager load against the N+1 guard.
+        $query = parent::getEloquentQuery()->with(['project', 'stage', 'assignee']);
         $user = auth()->user();
 
         if ($user && AccessMatrix::requiresOwnProject($user->role)) {
