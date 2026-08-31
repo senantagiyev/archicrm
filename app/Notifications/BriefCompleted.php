@@ -24,7 +24,7 @@ class BriefCompleted extends Notification
         return (new MailMessage)
             ->subject('Brif tamamlandı — '.$this->brief->project->name)
             ->line('Sifarişçi brifi tam doldurdu. PDF ixracı layihənin sənədlərinə əlavə edildi.')
-            ->action('Layihəyə bax', url('/app/projects/'.$this->brief->project_id.'/edit'));
+            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->brief->project_id]));
     }
 
     public function toDatabase(object $notifiable): array

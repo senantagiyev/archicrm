@@ -24,7 +24,7 @@ class TaskOverdue extends Notification
             ->subject('Tapşırıq gecikdi: '.$this->task->title)
             ->line("\"{$this->task->title}\" tapşırığının son tarixi keçdi.")
             ->line('Layihə: '.$this->task->project->name)
-            ->action('Tapşırığa bax', url('/app/tasks'));
+            ->action('Tapşırığa bax', \App\Filament\Resources\TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array

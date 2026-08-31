@@ -15,6 +15,8 @@ return [
 
     'name' => env('APP_NAME', 'Laravel'),
 
+    'admin_path' => env('ADMIN_PATH', 'idaresistem229'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Environment

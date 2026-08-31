@@ -27,7 +27,9 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->id('app')
-            ->path('app')
+            // Hidden panel path — configurable via ADMIN_PATH in .env (security by obscurity
+            // on top of auth, so bots hammering /admin and /app find nothing).
+            ->path(config('app.admin_path'))
             ->login()
             ->brandName('Archi CRM')
             ->colors([

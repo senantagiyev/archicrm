@@ -24,7 +24,7 @@ class TaskDeadlineSoon extends Notification
             ->subject('Son tarix yaxınlaşır: '.$this->task->title)
             ->line("\"{$this->task->title}\" tapşırığının son tarixinə {$this->daysLeft} gün qalıb.")
             ->line('Layihə: '.$this->task->project->name)
-            ->action('Tapşırığa bax', url('/app/tasks'));
+            ->action('Tapşırığa bax', \App\Filament\Resources\TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array

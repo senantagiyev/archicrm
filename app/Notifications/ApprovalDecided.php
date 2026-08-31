@@ -28,7 +28,7 @@ class ApprovalDecided extends Notification
             ->subject('Razılaşdırma qərarı — '.$this->approval->project->name)
             ->line("Sifarişçi {$verdict}: ".$this->approval->subjectLabel())
             ->line($this->approval->comment ? 'Şərh: '.$this->approval->comment : '')
-            ->action('Layihəyə bax', url('/app/projects/'.$this->approval->project_id.'/edit'));
+            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->approval->project_id]));
     }
 
     public function toDatabase(object $notifiable): array

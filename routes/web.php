@@ -3,7 +3,8 @@
 use App\Http\Controllers\Staff\ChatController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect('/app'));
+Route::get('/', fn () => view('landing'))->name('landing');
+Route::get('/giris', fn () => view('entry'))->name('entry');
 
 Route::post('/locale', function () {
     $locale = request()->string('locale')->toString();

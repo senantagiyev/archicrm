@@ -25,7 +25,7 @@ class TaskAssigned extends Notification
             ->line("Sizə yeni tapşırıq təyin edildi: {$this->task->title}")
             ->line('Layihə: '.$this->task->project->name)
             ->line($this->task->deadline ? 'Son tarix: '.$this->task->deadline->format('d.m.Y') : '')
-            ->action('Tapşırığa bax', url('/app/tasks'));
+            ->action('Tapşırığa bax', \App\Filament\Resources\TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array

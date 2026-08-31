@@ -24,7 +24,7 @@ class PaymentOverdue extends Notification
             ->subject('Ödəniş gecikir — '.$this->payment->project->name)
             ->line("\"{$this->payment->title}\" ödənişinin plan tarixi keçib.")
             ->line('Məbləğ: '.number_format((float) $this->payment->amount, 2).' ₼')
-            ->action('Layihəyə bax', url('/app/projects/'.$this->payment->project_id.'/edit'));
+            ->action('Layihəyə bax', \App\Filament\Resources\ProjectResource::getUrl('edit', ['record' => $this->payment->project_id]));
     }
 
     public function toDatabase(object $notifiable): array
