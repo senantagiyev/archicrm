@@ -23,6 +23,12 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/', [ProjectController::class, 'index'])->name('home');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
+        Route::get('/projects/{project}/brief', [\App\Http\Controllers\Portal\BriefController::class, 'index'])->name('brief');
+        Route::post('/projects/{project}/brief/rooms', [\App\Http\Controllers\Portal\BriefController::class, 'addRoom'])->name('brief.rooms.add');
+        Route::get('/projects/{project}/brief/{section}/{room?}', [\App\Http\Controllers\Portal\BriefController::class, 'section'])->name('brief.section');
+        Route::patch('/projects/{project}/brief-autosave/{section}', [\App\Http\Controllers\Portal\BriefController::class, 'autosave'])->name('brief.autosave');
+        Route::post('/projects/{project}/brief-submit/{section}', [\App\Http\Controllers\Portal\BriefController::class, 'submit'])->name('brief.submit');
+
         Route::get('/projects/{project}/documents', [DocumentController::class, 'index'])->name('documents');
         Route::get('/projects/{project}/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 

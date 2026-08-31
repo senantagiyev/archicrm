@@ -174,6 +174,7 @@ class ProjectResource extends Resource
     {
         return [
             StagesRelationManager::class,
+            RelationManagers\BriefAnswersRelationManager::class,
             RelationManagers\BudgetLinesRelationManager::class,
             RelationManagers\ProcurementItemsRelationManager::class,
             RelationManagers\PaymentsRelationManager::class,

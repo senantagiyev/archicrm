@@ -49,6 +49,7 @@
                 <span class="mr-3 hidden max-w-[220px] truncate py-3 text-sm font-bold sm:block">{{ $project->name }}</span>
                 @foreach ([
                     'overview' => [route('portal.projects.show', $project), t('portal.nav_overview')],
+                    'brief' => [route('portal.brief', $project), t('portal.nav_brief')],
                     'approvals' => [route('portal.approvals', $project), t('portal.nav_approvals')],
                     'documents' => [route('portal.documents', $project), t('portal.nav_documents')],
                     'payments' => [route('portal.payments', $project), t('portal.nav_payments')],

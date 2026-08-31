@@ -101,6 +101,16 @@ class Project extends Model
         return $this->hasMany(Approval::class);
     }
 
+    public function brief(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Brief::class);
+    }
+
+    public function briefAnswers(): \Illuminate\Database\Eloquent\Relations\HasManyThrough
+    {
+        return $this->hasManyThrough(BriefAnswer::class, Brief::class);
+    }
+
     /** Is the user the manager or a member of this project? */
     public function hasMember(User $user): bool
     {
