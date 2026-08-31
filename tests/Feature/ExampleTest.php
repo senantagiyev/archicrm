@@ -8,7 +8,7 @@ class ExampleTest extends TestCase
 {
     public function test_the_landing_page_renders(): void
     {
-        $this->get('/')->assertOk()->assertSee('ARCHI CRM');
+        $this->get('/')->assertOk()->assertSee('Dizayn bürosu üçün idarəetmə sistemi');
     }
 
     public function test_the_entry_page_offers_both_logins(): void
