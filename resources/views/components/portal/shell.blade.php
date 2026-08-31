@@ -53,6 +53,7 @@
                     'approvals' => [route('portal.approvals', $project), t('portal.nav_approvals')],
                     'documents' => [route('portal.documents', $project), t('portal.nav_documents')],
                     'payments' => [route('portal.payments', $project), t('portal.nav_payments')],
+                    'chat' => [route('portal.chat', $project), t('portal.nav_chat')],
                 ] as $key => [$url, $label])
                     <a href="{{ $url }}"
                         class="whitespace-nowrap border-b-2 px-3 py-3 text-sm font-semibold transition-colors

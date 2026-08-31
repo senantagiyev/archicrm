@@ -13,6 +13,10 @@ class EditProject extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            Actions\Action::make('chat')
+                ->label('Çat')
+                ->icon('heroicon-o-chat-bubble-left-right')
+                ->url(fn () => \App\Filament\Resources\ProjectResource::getUrl('chat', ['record' => $this->record])),
             Actions\DeleteAction::make()
                 ->requiresConfirmation()
                 ->modalHeading('Layihəni sil')

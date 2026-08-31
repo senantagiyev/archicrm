@@ -14,4 +14,9 @@ Route::post('/locale', function () {
     return back();
 })->name('locale.switch');
 
+Route::middleware(['auth:web'])->prefix('staff-chat')->name('staff.chat.')->group(function () {
+    Route::get('/{project}/poll', [\App\Http\Controllers\Staff\ChatController::class, 'poll'])->name('poll');
+    Route::post('/{project}', [\App\Http\Controllers\Staff\ChatController::class, 'send'])->name('send');
+});
+
 require __DIR__.'/portal.php';

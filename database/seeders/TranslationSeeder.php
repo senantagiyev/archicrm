@@ -70,6 +70,9 @@ class TranslationSeeder extends Seeder
                 'brief_required_missing' => 'Məcburi suallar cavabsız qalıb: :count|Не отвечены обязательные вопросы: :count|Required questions unanswered: :count',
                 'yes' => 'Bəli|Да|Yes',
                 'no' => 'Xeyr|Нет|No',
+                'nav_chat' => 'Çat|Чат|Chat',
+                'chat_placeholder' => 'Mesajınızı yazın...|Напишите сообщение...|Type your message...',
+                'chat_send' => 'Göndər|Отправить|Send',
             ],
             'enums' => [
                 'stage_status.not_started' => 'Başlanmayıb|Не начат|Not started',

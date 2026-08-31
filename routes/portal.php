@@ -34,6 +34,10 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
         Route::get('/projects/{project}/payments', [PaymentController::class, 'index'])->name('payments');
 
+        Route::get('/projects/{project}/chat', [\App\Http\Controllers\Portal\ChatController::class, 'index'])->name('chat');
+        Route::get('/projects/{project}/chat/poll', [\App\Http\Controllers\Portal\ChatController::class, 'poll'])->name('chat.poll');
+        Route::post('/projects/{project}/chat', [\App\Http\Controllers\Portal\ChatController::class, 'send'])->name('chat.send');
+
         Route::get('/projects/{project}/approvals', [ApprovalController::class, 'index'])->name('approvals');
         Route::post('/approvals/{approval}/decide', [ApprovalController::class, 'decide'])->name('approvals.decide');
     });

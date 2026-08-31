@@ -101,6 +101,11 @@ class Project extends Model
         return $this->hasMany(Approval::class);
     }
 
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ChatMessage::class);
+    }
+
     public function brief(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
         return $this->hasOne(Brief::class);
