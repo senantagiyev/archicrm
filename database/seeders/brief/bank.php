@@ -10,7 +10,6 @@
  * Sual: [key, label_az, type, options|null, required, allows_designer_choice]
  * options: [value => label_az]
  */
-
 $opt = fn (array $pairs) => collect($pairs)
     ->map(fn ($label, $value) => ['value' => $value, 'label' => ['az' => $label]])
     ->values()

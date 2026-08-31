@@ -9,6 +9,7 @@ use App\Models\Project;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ApprovalResource extends Resource
 {
@@ -83,7 +84,7 @@ class ApprovalResource extends Resource
             ->bulkActions([]);
     }
 
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->with(['approvable', 'project', 'requestedBy']);
     }

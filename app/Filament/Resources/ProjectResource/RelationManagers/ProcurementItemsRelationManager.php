@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Enums\ApprovalStatus;
 use App\Enums\PurchaseStatus;
 use App\Exports\ProcurementExport;
+use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -147,7 +148,7 @@ class ProcurementItemsRelationManager extends RelationManager
                     ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
                     ->requiresConfirmation()
                     ->modalDescription('Pozisiya sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
-                    ->action(fn ($record, \App\Services\Approvals\ApprovalService $service) => $service->request($record, auth()->user())),
+                    ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
                 Actions\Action::make('cancelItem')
                     ->label('Ləğv et')
                     ->icon('heroicon-o-x-circle')

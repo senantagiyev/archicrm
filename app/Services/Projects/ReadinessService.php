@@ -17,7 +17,7 @@ class ReadinessService
     public function recalculateStage(Stage $stage): void
     {
         $counts = $stage->tasks()
-            ->selectRaw("count(*) as total, sum(case when status = ? then 1 else 0 end) as done", [TaskStatus::Done->value])
+            ->selectRaw('count(*) as total, sum(case when status = ? then 1 else 0 end) as done', [TaskStatus::Done->value])
             ->first();
 
         $readiness = ($counts->total ?? 0) > 0

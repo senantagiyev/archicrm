@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\ApprovalStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 
@@ -26,7 +27,7 @@ class ProjectController extends Controller
         $project->load(['stages', 'manager']);
 
         $pendingApprovals = $project->approvals()
-            ->where('status', \App\Enums\ApprovalStatus::Pending->value)
+            ->where('status', ApprovalStatus::Pending->value)
             ->count();
 
         return view('portal.projects.show', compact('project', 'pendingApprovals'));

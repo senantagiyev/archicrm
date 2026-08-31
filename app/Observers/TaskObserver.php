@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Enums\TaskStatus;
 use App\Models\Task;
+use App\Notifications\TaskAssigned;
 use App\Services\Projects\ReadinessService;
 
 class TaskObserver
@@ -30,7 +31,7 @@ class TaskObserver
             $task->loadMissing('assignee', 'project');
 
             if ($task->assignee && $task->assignee_user_id !== auth()->id()) {
-                $task->assignee->notify(new \App\Notifications\TaskAssigned($task));
+                $task->assignee->notify(new TaskAssigned($task));
             }
         }
     }

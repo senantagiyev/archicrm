@@ -6,9 +6,9 @@ use App\Filament\Resources\TranslationResource\Pages;
 use App\Models\Translation;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,12 +17,18 @@ class TranslationResource extends Resource
 {
     protected static ?string $model = Translation::class;
 
-    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-language';
-    protected static string | \UnitEnum | null $navigationGroup = 'Sistem';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-language';
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Sistem';
+
     protected static ?int $navigationSort = 90;
+
     protected static ?string $navigationLabel = 'Tərcümələr';
+
     protected static ?string $modelLabel = 'Tərcümə';
+
     protected static ?string $pluralModelLabel = 'Tərcümələr';
+
     protected static ?string $recordTitleAttribute = 'key';
 
     public static function form(Schema $form): Schema

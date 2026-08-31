@@ -6,6 +6,7 @@ use App\Enums\ClientSource;
 use App\Enums\ClientStatus;
 use App\Enums\StaffRole;
 use App\Filament\Resources\ClientResource\Pages;
+use App\Filament\Resources\ClientResource\RelationManagers\ClientUsersRelationManager;
 use App\Filament\Resources\ClientResource\RelationManagers\ContactLogsRelationManager;
 use App\Models\Client;
 use App\Models\User;
@@ -151,7 +152,7 @@ class ClientResource extends Resource
     {
         return [
             ContactLogsRelationManager::class,
-            \App\Filament\Resources\ClientResource\RelationManagers\ClientUsersRelationManager::class,
+            ClientUsersRelationManager::class,
         ];
     }
 

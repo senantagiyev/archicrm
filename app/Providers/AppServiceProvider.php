@@ -2,6 +2,22 @@
 
 namespace App\Providers;
 
+use App\Models\Approval;
+use App\Models\BudgetLine;
+use App\Models\Client;
+use App\Models\ClientUser;
+use App\Models\Comment;
+use App\Models\Document;
+use App\Models\Payment;
+use App\Models\ProcurementItem;
+use App\Models\Project;
+use App\Models\ProjectFile;
+use App\Models\Stage;
+use App\Models\Task;
+use App\Models\User;
+use App\Observers\FinanceObserver;
+use App\Observers\StageObserver;
+use App\Observers\TaskObserver;
 use App\Translation\DatabaseTranslationLoader;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -28,26 +44,26 @@ class AppServiceProvider extends ServiceProvider
         // (User) and portal customers (ClientUser), so class names must never leak
         // into the *_type columns.
         Relation::enforceMorphMap([
-            'user' => \App\Models\User::class,
-            'client' => \App\Models\Client::class,
-            'client_user' => \App\Models\ClientUser::class,
-            'project' => \App\Models\Project::class,
-            'stage' => \App\Models\Stage::class,
-            'task' => \App\Models\Task::class,
-            'budget_line' => \App\Models\BudgetLine::class,
-            'procurement_item' => \App\Models\ProcurementItem::class,
-            'payment' => \App\Models\Payment::class,
-            'document' => \App\Models\Document::class,
-            'project_file' => \App\Models\ProjectFile::class,
-            'comment' => \App\Models\Comment::class,
-            'approval' => \App\Models\Approval::class,
+            'user' => User::class,
+            'client' => Client::class,
+            'client_user' => ClientUser::class,
+            'project' => Project::class,
+            'stage' => Stage::class,
+            'task' => Task::class,
+            'budget_line' => BudgetLine::class,
+            'procurement_item' => ProcurementItem::class,
+            'payment' => Payment::class,
+            'document' => Document::class,
+            'project_file' => ProjectFile::class,
+            'comment' => Comment::class,
+            'approval' => Approval::class,
         ]);
 
-        \App\Models\Task::observe(\App\Observers\TaskObserver::class);
-        \App\Models\Stage::observe(\App\Observers\StageObserver::class);
-        \App\Models\BudgetLine::observe(\App\Observers\FinanceObserver::class);
-        \App\Models\ProcurementItem::observe(\App\Observers\FinanceObserver::class);
-        \App\Models\Payment::observe(\App\Observers\FinanceObserver::class);
+        Task::observe(TaskObserver::class);
+        Stage::observe(StageObserver::class);
+        BudgetLine::observe(FinanceObserver::class);
+        ProcurementItem::observe(FinanceObserver::class);
+        Payment::observe(FinanceObserver::class);
 
         $this->guardAgainstLazyLoading();
     }

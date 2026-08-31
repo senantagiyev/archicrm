@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ClientUser;
 use App\Models\User;
 
 return [
@@ -74,7 +75,7 @@ return [
 
         'client_users' => [
             'driver' => 'eloquent',
-            'model' => App\Models\ClientUser::class,
+            'model' => ClientUser::class,
         ],
 
         // 'users' => [

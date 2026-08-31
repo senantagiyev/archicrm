@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\ApprovalStatus;
+use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -102,7 +103,7 @@ class BudgetLinesRelationManager extends RelationManager
                     ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true))
                     ->requiresConfirmation()
                     ->modalDescription('Sətir sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
-                    ->action(fn ($record, \App\Services\Approvals\ApprovalService $service) => $service->request($record, auth()->user())),
+                    ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make()
                     ->requiresConfirmation()
@@ -114,7 +115,7 @@ class BudgetLinesRelationManager extends RelationManager
                     ->icon('heroicon-o-paper-airplane')
                     ->requiresConfirmation()
                     ->deselectRecordsAfterCompletion()
-                    ->action(function ($records, \App\Services\Approvals\ApprovalService $service) {
+                    ->action(function ($records, ApprovalService $service) {
                         foreach ($records as $record) {
                             if (in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)) {
                                 $service->request($record, auth()->user());

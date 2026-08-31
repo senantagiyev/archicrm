@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Portal\ApprovalController;
 use App\Http\Controllers\Portal\AuthController;
+use App\Http\Controllers\Portal\BriefController;
+use App\Http\Controllers\Portal\ChatController;
 use App\Http\Controllers\Portal\DocumentController;
 use App\Http\Controllers\Portal\PaymentController;
 use App\Http\Controllers\Portal\ProjectController;
@@ -23,20 +25,20 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/', [ProjectController::class, 'index'])->name('home');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
-        Route::get('/projects/{project}/brief', [\App\Http\Controllers\Portal\BriefController::class, 'index'])->name('brief');
-        Route::post('/projects/{project}/brief/rooms', [\App\Http\Controllers\Portal\BriefController::class, 'addRoom'])->name('brief.rooms.add');
-        Route::get('/projects/{project}/brief/{section}/{room?}', [\App\Http\Controllers\Portal\BriefController::class, 'section'])->name('brief.section');
-        Route::patch('/projects/{project}/brief-autosave/{section}', [\App\Http\Controllers\Portal\BriefController::class, 'autosave'])->name('brief.autosave');
-        Route::post('/projects/{project}/brief-submit/{section}', [\App\Http\Controllers\Portal\BriefController::class, 'submit'])->name('brief.submit');
+        Route::get('/projects/{project}/brief', [BriefController::class, 'index'])->name('brief');
+        Route::post('/projects/{project}/brief/rooms', [BriefController::class, 'addRoom'])->name('brief.rooms.add');
+        Route::get('/projects/{project}/brief/{section}/{room?}', [BriefController::class, 'section'])->name('brief.section');
+        Route::patch('/projects/{project}/brief-autosave/{section}', [BriefController::class, 'autosave'])->name('brief.autosave');
+        Route::post('/projects/{project}/brief-submit/{section}', [BriefController::class, 'submit'])->name('brief.submit');
 
         Route::get('/projects/{project}/documents', [DocumentController::class, 'index'])->name('documents');
         Route::get('/projects/{project}/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
         Route::get('/projects/{project}/payments', [PaymentController::class, 'index'])->name('payments');
 
-        Route::get('/projects/{project}/chat', [\App\Http\Controllers\Portal\ChatController::class, 'index'])->name('chat');
-        Route::get('/projects/{project}/chat/poll', [\App\Http\Controllers\Portal\ChatController::class, 'poll'])->name('chat.poll');
-        Route::post('/projects/{project}/chat', [\App\Http\Controllers\Portal\ChatController::class, 'send'])->name('chat.send');
+        Route::get('/projects/{project}/chat', [ChatController::class, 'index'])->name('chat');
+        Route::get('/projects/{project}/chat/poll', [ChatController::class, 'poll'])->name('chat.poll');
+        Route::post('/projects/{project}/chat', [ChatController::class, 'send'])->name('chat.send');
 
         Route::get('/projects/{project}/approvals', [ApprovalController::class, 'index'])->name('approvals');
         Route::post('/approvals/{approval}/decide', [ApprovalController::class, 'decide'])->name('approvals.decide');

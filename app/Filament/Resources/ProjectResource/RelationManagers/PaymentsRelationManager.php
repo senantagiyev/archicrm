@@ -6,6 +6,7 @@ use App\Enums\PaymentStatus;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -48,7 +49,7 @@ class PaymentsRelationManager extends RelationManager
             Forms\Components\DateTimePicker::make('paid_at')
                 ->label('Ödənilmə tarixi (fakt)')
                 ->native(false)
-                ->visible(fn (\Filament\Schemas\Components\Utilities\Get $get) => $get('status') === PaymentStatus::Paid->value)
+                ->visible(fn (Get $get) => $get('status') === PaymentStatus::Paid->value)
                 ->default(now()),
         ])->columns(2);
     }

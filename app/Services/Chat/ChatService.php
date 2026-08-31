@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Single send/read entry point — Phase 2 swaps polling for broadcasting by
@@ -38,7 +39,7 @@ class ChatService
 
     public function markRead(Project $project, Model $participant, int $lastMessageId): void
     {
-        \Illuminate\Support\Facades\DB::table('chat_reads')->updateOrInsert(
+        DB::table('chat_reads')->updateOrInsert(
             [
                 'project_id' => $project->id,
                 'participant_type' => $participant->getMorphClass(),

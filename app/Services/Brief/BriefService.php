@@ -7,6 +7,7 @@ use App\Models\Brief;
 use App\Models\BriefAnswer;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
+use App\Models\Document;
 use App\Models\Project;
 use App\Notifications\BriefCompleted;
 use App\Notifications\BriefSectionSubmitted;
@@ -115,7 +116,7 @@ class BriefService
     }
 
     /** Render the whole brief to PDF and attach it to the project documents. */
-    public function exportPdf(Brief $brief): \App\Models\Document
+    public function exportPdf(Brief $brief): Document
     {
         $map = $this->sectionMap($brief);
         $answers = $brief->answers()->with('question')->get();

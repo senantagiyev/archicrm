@@ -6,7 +6,6 @@ use App\Models\Brief;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class BriefSectionSubmitted extends Notification

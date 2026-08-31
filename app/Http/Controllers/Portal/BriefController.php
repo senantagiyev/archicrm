@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
+use App\Models\Brief;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
 use App\Services\Brief\BriefService;
@@ -141,7 +142,7 @@ class BriefController extends Controller
             ->with('status', t('portal.brief_section_submitted'));
     }
 
-    private function resolveRoom(Request $request, \App\Models\Brief $brief): ?BriefRoom
+    private function resolveRoom(Request $request, Brief $brief): ?BriefRoom
     {
         $roomId = $request->input('room_id');
 

@@ -17,6 +17,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Outerweb\FilamentTranslatableFields\TranslatableFieldsPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -34,7 +35,7 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/app/theme.css')
             ->databaseNotifications()
             ->plugin(
-                \Outerweb\FilamentTranslatableFields\TranslatableFieldsPlugin::make()
+                TranslatableFieldsPlugin::make()
                     ->supportedLocales([
                         'az' => 'Azərbaycan',
                         'ru' => 'Русский',
