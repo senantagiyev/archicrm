@@ -126,7 +126,7 @@ class CalendarController extends Controller
      */
     private function accessibleProjectIds($user)
     {
-        if (! $user || ! AccessMatrix::requiresOwnProject($user->role)) {
+        if (! $user || ! AccessMatrix::requiresOwnProject($user)) {
             return null;
         }
 

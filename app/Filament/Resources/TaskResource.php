@@ -47,7 +47,7 @@ class TaskResource extends Resource
         $query = parent::getEloquentQuery()->with(['project', 'stage', 'assignee']);
         $user = auth()->user();
 
-        if ($user && AccessMatrix::requiresOwnProject($user->role)) {
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
             $query->where(fn (Builder $q) => $q
                 ->where('assignee_user_id', $user->id)
                 ->orWhereHas('project', fn (Builder $p) => $p

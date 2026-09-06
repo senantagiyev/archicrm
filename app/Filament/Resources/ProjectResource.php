@@ -47,7 +47,7 @@ class ProjectResource extends Resource
         $query = parent::getEloquentQuery()->with(['client', 'manager']);
         $user = auth()->user();
 
-        if ($user && AccessMatrix::requiresOwnProject($user->role)) {
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
             $query->where(fn (Builder $q) => $q
                 ->where('manager_user_id', $user->id)
                 ->orWhereHas('members', fn (Builder $m) => $m->whereKey($user->id)));

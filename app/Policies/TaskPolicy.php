@@ -12,7 +12,7 @@ class TaskPolicy
 {
     public function viewAny(User $user): bool
     {
-        return AccessMatrix::allows($user->role, Domain::StagesTasks, AccessLevel::View);
+        return AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::View);
     }
 
     public function view(User $user, Task $task): bool
@@ -22,7 +22,7 @@ class TaskPolicy
 
     public function create(User $user): bool
     {
-        return AccessMatrix::allows($user->role, Domain::StagesTasks, AccessLevel::Edit);
+        return AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Edit);
     }
 
     public function update(User $user, Task $task): bool
@@ -38,11 +38,11 @@ class TaskPolicy
 
     private function allowsOn(User $user, Task $task, AccessLevel $minimum): bool
     {
-        if (! AccessMatrix::allows($user->role, Domain::StagesTasks, $minimum)) {
+        if (! AccessMatrix::allows($user, Domain::StagesTasks, $minimum)) {
             return false;
         }
 
-        if (AccessMatrix::requiresOwnProject($user->role)) {
+        if (AccessMatrix::requiresOwnProject($user)) {
             $task->loadMissing('project');
 
             return $user->id === $task->assignee_user_id || $task->project->hasMember($user);

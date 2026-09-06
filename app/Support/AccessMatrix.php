@@ -5,11 +5,15 @@ namespace App\Support;
 use App\Enums\AccessLevel;
 use App\Enums\Domain;
 use App\Enums\StaffRole;
+use App\Models\Role;
+use App\Models\User;
 
 /**
- * The TZ §5.4 access matrix, encoded as code. Policies consult this for the
- * level and separately enforce project membership where the TZ says "Öz"
- * (own projects only) — see requiresOwnProject().
+ * The TZ §5.4 access matrix. The const below is the canonical built-in matrix; it
+ * is seeded into the `roles` table (RoleSeeder) so owners can edit it and add
+ * custom roles (TZ V1.2 constructor). At runtime a user's access resolves from
+ * their DB role (custom role_id, else the seeded system role keyed by the enum),
+ * falling back to the const when no DB row exists (fresh installs / tests).
  *
  * Enforced at the policy/API level, not just by hiding UI (TZ §5.20).
  */
@@ -92,9 +96,8 @@ class AccessMatrix
     ];
 
     /**
-     * Roles whose project-scoped access applies to their OWN projects only
-     * (project membership or being the responsible manager). Owner and
-     * Accountant see across all projects at their matrix level.
+     * Built-in roles whose project-scoped access applies to their OWN projects only.
+     * Owner and Accountant see across all projects at their matrix level.
      */
     private const OWN_PROJECTS_ONLY = [
         StaffRole::ProjectManager->value,
@@ -103,18 +106,86 @@ class AccessMatrix
         StaffRole::Procurement->value,
     ];
 
-    public static function level(StaffRole $role, Domain $domain): AccessLevel
+    /** @var array<string, array{levels: array<string,int>, own: bool}> Per-request resolve cache. */
+    private static array $cache = [];
+
+    public static function level(User $user, Domain $domain): AccessLevel
     {
-        return self::LEVELS[$role->value][$domain->value] ?? AccessLevel::None;
+        $levels = self::resolve($user)['levels'];
+
+        return AccessLevel::from((int) ($levels[$domain->value] ?? 0));
     }
 
-    public static function allows(StaffRole $role, Domain $domain, AccessLevel $minimum): bool
+    public static function allows(User $user, Domain $domain, AccessLevel $minimum): bool
     {
-        return self::level($role, $domain)->atLeast($minimum);
+        return self::level($user, $domain)->atLeast($minimum);
     }
 
-    public static function requiresOwnProject(StaffRole $role): bool
+    public static function requiresOwnProject(User $user): bool
     {
-        return in_array($role->value, self::OWN_PROJECTS_ONLY, true);
+        return self::resolve($user)['own'];
+    }
+
+    /** Clear the per-request cache (call after a role/assignment change in the same request). */
+    public static function flushCache(): void
+    {
+        self::$cache = [];
+    }
+
+    /**
+     * The built-in matrix in seed-ready form: key => [name, levels(domain=>int), own].
+     *
+     * @return array<string, array{name: string, levels: array<string,int>, own: bool}>
+     */
+    public static function systemRoles(): array
+    {
+        $roles = [];
+
+        foreach (self::LEVELS as $key => $domains) {
+            $roles[$key] = [
+                'name' => StaffRole::from($key)->label(),
+                'levels' => array_map(fn (AccessLevel $l) => $l->value, $domains),
+                'own' => in_array($key, self::OWN_PROJECTS_ONLY, true),
+            ];
+        }
+
+        return $roles;
+    }
+
+    /**
+     * Resolve a user's effective matrix: custom role → seeded system role → const.
+     *
+     * @return array{levels: array<string,int>, own: bool}
+     */
+    private static function resolve(User $user): array
+    {
+        $key = $user->role_id ? 'id:'.$user->role_id : 'enum:'.($user->role?->value ?? 'none');
+
+        if (isset(self::$cache[$key])) {
+            return self::$cache[$key];
+        }
+
+        $role = null;
+        if ($user->role_id) {
+            $role = Role::find($user->role_id);
+        }
+        if (! $role && $user->role) {
+            $role = Role::where('key', $user->role->value)->first();
+        }
+
+        if ($role) {
+            return self::$cache[$key] = ['levels' => $role->levels, 'own' => (bool) $role->own_projects_only];
+        }
+
+        // Const fallback (no DB roles seeded yet, or unknown role).
+        $enumKey = $user->role?->value;
+        $levels = isset(self::LEVELS[$enumKey])
+            ? array_map(fn (AccessLevel $l) => $l->value, self::LEVELS[$enumKey])
+            : [];
+
+        return self::$cache[$key] = [
+            'levels' => $levels,
+            'own' => in_array($enumKey, self::OWN_PROJECTS_ONLY, true),
+        ];
     }
 }

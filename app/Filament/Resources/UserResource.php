@@ -50,10 +50,17 @@ class UserResource extends Resource
                     ->tel()
                     ->maxLength(32),
                 Forms\Components\Select::make('role')
-                    ->label('Rol')
+                    ->label('Baza rolu')
                     ->options(collect(StaffRole::cases())->mapWithKeys(fn ($r) => [$r->value => $r->label()]))
                     ->required()
                     ->native(false),
+                Forms\Components\Select::make('role_id')
+                    ->label('Xüsusi rol (istəyə görə)')
+                    ->relationship('customRole', 'name', fn ($query) => $query->where('active', true)->where('is_system', false))
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->helperText('Seçilərsə, giriş hüquqları baza rolu əvəzinə bu xüsusi roldan götürülür.'),
                 Forms\Components\TextInput::make('password')
                     ->label('Şifrə')
                     ->password()

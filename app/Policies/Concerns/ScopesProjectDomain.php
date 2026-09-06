@@ -20,16 +20,16 @@ trait ScopesProjectDomain
 
     protected function allowsAny(User $user, AccessLevel $minimum): bool
     {
-        return AccessMatrix::allows($user->role, $this->domain(), $minimum);
+        return AccessMatrix::allows($user, $this->domain(), $minimum);
     }
 
     protected function allowsOn(User $user, ?Project $project, AccessLevel $minimum): bool
     {
-        if (! AccessMatrix::allows($user->role, $this->domain(), $minimum)) {
+        if (! AccessMatrix::allows($user, $this->domain(), $minimum)) {
             return false;
         }
 
-        if ($project && AccessMatrix::requiresOwnProject($user->role)) {
+        if ($project && AccessMatrix::requiresOwnProject($user)) {
             return $project->hasMember($user);
         }
 

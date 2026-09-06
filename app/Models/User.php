@@ -7,6 +7,7 @@ use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -19,7 +20,7 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'name', 'email', 'password', 'phone', 'role', 'is_active', 'locale', 'avatar_path',
+        'name', 'email', 'password', 'phone', 'role', 'role_id', 'is_active', 'locale', 'avatar_path',
         'hourly_internal_cost', 'weekly_capacity_hours',
     ];
 
@@ -43,6 +44,12 @@ class User extends Authenticatable implements FilamentUser
     public function isOwner(): bool
     {
         return $this->role === StaffRole::Owner;
+    }
+
+    /** Custom (DB) role that overrides the StaffRole enum matrix when assigned. */
+    public function customRole(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
     }
 
     public function responsibleClients(): HasMany

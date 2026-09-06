@@ -12,7 +12,7 @@ class ClientPolicy
 {
     public function viewAny(User $user): bool
     {
-        return AccessMatrix::allows($user->role, Domain::Clients, AccessLevel::View);
+        return AccessMatrix::allows($user, Domain::Clients, AccessLevel::View);
     }
 
     public function view(User $user, Client $client): bool
@@ -22,17 +22,17 @@ class ClientPolicy
 
     public function create(User $user): bool
     {
-        return AccessMatrix::allows($user->role, Domain::Clients, AccessLevel::Edit);
+        return AccessMatrix::allows($user, Domain::Clients, AccessLevel::Edit);
     }
 
     public function update(User $user, Client $client): bool
     {
-        return AccessMatrix::allows($user->role, Domain::Clients, AccessLevel::Edit);
+        return AccessMatrix::allows($user, Domain::Clients, AccessLevel::Edit);
     }
 
     public function delete(User $user, Client $client): bool
     {
-        return AccessMatrix::allows($user->role, Domain::Clients, AccessLevel::Full);
+        return AccessMatrix::allows($user, Domain::Clients, AccessLevel::Full);
     }
 
     public function restore(User $user, Client $client): bool

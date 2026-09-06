@@ -85,7 +85,7 @@ class ChatService
     {
         $query = Project::query();
 
-        if (AccessMatrix::requiresOwnProject($user->role)) {
+        if (AccessMatrix::requiresOwnProject($user)) {
             $query->where(fn ($q) => $q
                 ->where('manager_user_id', $user->id)
                 ->orWhereHas('members', fn ($m) => $m->whereKey($user->id)));

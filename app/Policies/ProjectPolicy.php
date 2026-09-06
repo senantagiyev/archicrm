@@ -12,7 +12,7 @@ class ProjectPolicy
 {
     public function viewAny(User $user): bool
     {
-        return AccessMatrix::allows($user->role, Domain::Projects, AccessLevel::View);
+        return AccessMatrix::allows($user, Domain::Projects, AccessLevel::View);
     }
 
     public function view(User $user, Project $project): bool
@@ -23,7 +23,7 @@ class ProjectPolicy
     public function create(User $user): bool
     {
         // Owner and PM (matrix level Full) may open projects.
-        return AccessMatrix::allows($user->role, Domain::Projects, AccessLevel::Full);
+        return AccessMatrix::allows($user, Domain::Projects, AccessLevel::Full);
     }
 
     public function update(User $user, Project $project): bool
@@ -53,11 +53,11 @@ class ProjectPolicy
      */
     private function allowsOn(User $user, Project $project, AccessLevel $minimum): bool
     {
-        if (! AccessMatrix::allows($user->role, Domain::Projects, $minimum)) {
+        if (! AccessMatrix::allows($user, Domain::Projects, $minimum)) {
             return false;
         }
 
-        if (AccessMatrix::requiresOwnProject($user->role)) {
+        if (AccessMatrix::requiresOwnProject($user)) {
             return $project->hasMember($user);
         }
 
