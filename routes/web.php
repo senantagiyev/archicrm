@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Staff\ChatController;
 use Illuminate\Support\Facades\Route;
 
@@ -21,5 +22,10 @@ Route::middleware(['auth:web'])->prefix('staff-chat')->name('staff.chat.')->grou
     Route::get('/{project}/poll', [ChatController::class, 'poll'])->middleware('throttle:staff-write')->name('poll');
     Route::post('/{project}', [ChatController::class, 'send'])->middleware('throttle:staff-write')->name('send');
 });
+
+// Unified staff calendar feed (TZ §8.7) — consumed by the Filament Calendar page.
+Route::middleware(['auth:web'])->get('/calendar/events', [CalendarController::class, 'events'])
+    ->middleware('throttle:staff-write')
+    ->name('calendar.events');
 
 require __DIR__.'/portal.php';
