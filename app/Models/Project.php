@@ -99,6 +99,11 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
+    public function deliverables(): HasMany
+    {
+        return $this->hasMany(Deliverable::class);
+    }
+
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);

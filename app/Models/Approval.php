@@ -64,6 +64,7 @@ class Approval extends Model
             $this->approvable instanceof ProcurementItem => 'Komplektasiya: '.$this->approvable->name,
             $this->approvable instanceof Stage => 'Mərhələ: '.$this->approvable->name,
             $this->approvable instanceof Document => 'Sənəd: '.$this->approvable->title,
+            $this->approvable instanceof Deliverable => 'Dizayn: '.$this->approvable->title,
             default => 'Obyekt #'.$this->approvable_id,
         };
     }

@@ -7,6 +7,8 @@ use App\Models\BudgetLine;
 use App\Models\Client;
 use App\Models\ClientUser;
 use App\Models\Comment;
+use App\Models\Deliverable;
+use App\Models\DeliverableVersion;
 use App\Models\Document;
 use App\Models\Expense;
 use App\Models\Invoice;
@@ -71,6 +73,8 @@ class AppServiceProvider extends ServiceProvider
             'invoice' => Invoice::class,
             'expense' => Expense::class,
             'meeting' => Meeting::class,
+            'deliverable' => Deliverable::class,
+            'deliverable_version' => DeliverableVersion::class,
         ]);
 
         Task::observe(TaskObserver::class);

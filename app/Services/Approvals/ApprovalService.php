@@ -6,12 +6,14 @@ use App\Enums\ApprovalStatus;
 use App\Models\Approval;
 use App\Models\BudgetLine;
 use App\Models\ClientUser;
+use App\Models\Deliverable;
 use App\Models\Document;
 use App\Models\ProcurementItem;
 use App\Models\Stage;
 use App\Models\User;
 use App\Notifications\ApprovalDecided;
 use App\Notifications\ApprovalRequested;
+use App\Services\Design\DeliverableService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use InvalidArgumentException;
@@ -81,8 +83,22 @@ class ApprovalService
             // forceFill: approval_status is deliberately non-fillable (audit HIGH-2).
             $approvable instanceof BudgetLine,
             $approvable instanceof ProcurementItem => $approvable->forceFill(['approval_status' => $status])->save(),
+            // Deliverables run their own version state machine (TZ §9.2).
+            $approvable instanceof Deliverable => $this->applyDeliverableDecision($approvable, $status),
             $approvable instanceof Stage, $approvable instanceof Document => null,
             default => throw new InvalidArgumentException('Bu obyekt razılaşdırıla bilməz: '.$approvable::class),
+        };
+    }
+
+    private function applyDeliverableDecision(Deliverable $deliverable, ApprovalStatus $status): void
+    {
+        $service = app(DeliverableService::class);
+
+        match ($status) {
+            ApprovalStatus::Pending => $service->markSentForApproval($deliverable),
+            ApprovalStatus::Approved => $service->onApproved($deliverable),
+            ApprovalStatus::Rejected => $service->onRevisionRequired($deliverable),
+            default => null,
         };
     }
 }

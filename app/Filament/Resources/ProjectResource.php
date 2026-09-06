@@ -176,6 +176,7 @@ class ProjectResource extends Resource
         return [
             StagesRelationManager::class,
             RelationManagers\BriefAnswersRelationManager::class,
+            RelationManagers\DeliverablesRelationManager::class,
             RelationManagers\BudgetLinesRelationManager::class,
             RelationManagers\ProcurementItemsRelationManager::class,
             RelationManagers\PaymentsRelationManager::class,
