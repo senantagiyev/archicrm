@@ -7,28 +7,21 @@
     <meta name="description" content="Archi CRM-ə giriş: büro komandası üçün panel, sifarişçi üçün portal.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
 </head>
 <body class="flex min-h-screen flex-col bg-white text-ink antialiased">
 
     <header class="border-b border-black/8">
-        <div class="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
-            <a href="{{ route('landing') }}" class="flex items-center gap-3" aria-label="Archi CRM">
-                <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-                    <rect width="28" height="28" rx="7" fill="#fdfe00"/>
-                    <path d="M8.4 20.6 14 7.6l5.6 13" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.9 15.7h6.2" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/>
-                </svg>
-                <span class="text-[17px] tracking-tight"><span class="font-extrabold">Archi</span> <span class="font-normal text-black/40">CRM</span></span>
-            </a>
+        <div class="mx-auto flex h-[74px] max-w-[1120px] items-center justify-between px-6">
+            <a href="{{ route('landing') }}"><x-archi-logo /></a>
             <a href="{{ route('landing') }}" class="text-[13px] font-medium text-black/45 transition-colors hover:text-ink">Ana səhifə</a>
         </div>
     </header>
 
     <main class="flex flex-1 items-center justify-center px-6 py-20">
         <div class="w-full max-w-2xl">
-            <h1 class="text-center text-[28px] font-extrabold tracking-tight sm:text-[32px]">Necə daxil olursunuz?</h1>
+            <h1 class="text-center font-b2b text-[28px] font-extrabold tracking-tight sm:text-[32px]">Necə daxil olursunuz?</h1>
 
             <div class="mt-12 grid gap-4 sm:grid-cols-2">
                 {{-- Büro komandası --}}

@@ -32,9 +32,11 @@ class AdminPanelProvider extends PanelProvider
             // on top of auth, so bots hammering /admin and /app find nothing).
             ->path(config('app.admin_path'))
             ->login(Login::class)
-            ->brandName('Archi CRM')
+            ->brandName('ARCHI')
+            ->font('Inter')
             ->colors([
                 'primary' => Color::hex('#111111'),
+                'warning' => Color::hex('#c88200'),
             ])
             ->viteTheme('resources/css/filament/app/theme.css')
             ->databaseNotifications()

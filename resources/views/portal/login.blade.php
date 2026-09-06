@@ -7,28 +7,24 @@
     <meta name="description" content="Archi CRM müştəri portalına giriş.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
 </head>
-<body class="flex min-h-screen flex-col bg-white text-ink antialiased">
+<body class="flex min-h-screen flex-col bg-gray-soft2 text-ink antialiased">
 
-    <header class="border-b border-black/8">
-        <div class="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
-            <a href="{{ route('landing') }}" class="flex items-center gap-3" aria-label="Archi CRM">
-                <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-                    <rect width="28" height="28" rx="7" fill="#fdfe00"/>
-                    <path d="M8.4 20.6 14 7.6l5.6 13" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.9 15.7h6.2" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/>
-                </svg>
-                <span class="text-[17px] tracking-tight"><span class="font-extrabold">Archi</span> <span class="font-normal text-black/40">CRM</span></span>
-            </a>
+    <header class="border-b border-black/8 bg-white">
+        <div class="mx-auto flex h-[74px] max-w-[1120px] items-center justify-between px-6">
+            <a href="{{ route('landing') }}"><x-archi-logo /></a>
             <a href="{{ route('entry') }}" class="text-[13px] font-medium text-black/45 transition-colors hover:text-ink">Geri</a>
         </div>
     </header>
 
     <main class="flex flex-1 items-center justify-center px-6 py-16">
-        <div class="w-full max-w-sm">
-            <h1 class="text-[26px] font-extrabold tracking-tight">{{ t('portal.login_title') }}</h1>
+        <div class="w-full max-w-[420px] rounded-[18px] border border-black/8 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
+            <span class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-black/45">
+                <span class="h-2 w-2 rounded-[2px] bg-yellow"></span>Müştəri portalı
+            </span>
+            <h1 class="mt-4 font-b2b text-[26px] font-extrabold tracking-tight">{{ t('portal.login_title') }}</h1>
             <p class="mt-2 text-[14px] leading-relaxed text-black/55">{{ t('portal.login_hint') }}</p>
 
             @if (session('status'))

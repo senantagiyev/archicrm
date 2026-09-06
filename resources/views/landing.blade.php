@@ -7,7 +7,7 @@
     <meta name="description" content="Archi CRM — dizayn və memarlıq bürosu üçün idarəetmə sistemi. Layihələr, müştərilər, smeta və təsdiqlər bir yerdə.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
     <style>
         /* ── Portal demo animation (10s loop) ─────────────────────── */
@@ -64,16 +64,12 @@
 
     {{-- Header --}}
     <header class="sticky top-0 z-40 border-b border-black/8 bg-white/90 backdrop-blur">
-        <div class="mx-auto flex h-16 max-w-[1120px] items-center justify-between px-6">
-            <a href="{{ route('landing') }}" class="flex items-center gap-3" aria-label="Archi CRM">
-                <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
-                    <rect width="28" height="28" rx="7" fill="#fdfe00"/>
-                    <path d="M8.4 20.6 14 7.6l5.6 13" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.9 15.7h6.2" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/>
-                </svg>
-                <span class="text-[17px] tracking-tight"><span class="font-extrabold">Archi</span> <span class="font-normal text-black/40">CRM</span></span>
-            </a>
-            <a href="{{ route('entry') }}" class="ui-btn ui-btn-dark h-10 px-5 text-[13px] font-semibold" data-hover="true">Daxil ol</a>
+        <div class="mx-auto flex h-[74px] max-w-[1120px] items-center justify-between px-6">
+            <a href="{{ route('landing') }}"><x-archi-logo /></a>
+            <div class="flex items-center gap-6">
+                <span class="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-black/35 sm:inline">Gələcəyi birlikdə tikirik</span>
+                <a href="{{ route('entry') }}" class="ui-btn ui-btn-dark h-10 px-5 text-[13px] font-semibold" data-hover="true">Daxil ol</a>
+            </div>
         </div>
     </header>
 
@@ -81,11 +77,14 @@
     <section class="mx-auto max-w-[1120px] px-6 pt-20 pb-24 lg:pt-28">
         <div class="grid items-center gap-16 lg:grid-cols-[1fr_360px] lg:gap-24">
             <div class="max-w-xl">
-                <h1 class="text-[40px] font-extrabold leading-[1.1] tracking-tight sm:text-[52px]">
-                    Dizayn bürosu üçün idarəetmə sistemi<span class="text-black/30">.</span>
+                <span class="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em] text-black/45">
+                    <span class="h-2.5 w-2.5 rounded-[3px] bg-yellow"></span>CRM Sistem
+                </span>
+                <h1 class="mt-5 font-b2b text-[40px] font-extrabold leading-[1.08] tracking-tight sm:text-[54px]">
+                    Daha güclü əlaqələr.<br><span class="relative inline-block">Daha böyük layihələr.<span class="absolute -bottom-1 left-0 h-[6px] w-full rounded-pill bg-yellow"></span></span>
                 </h1>
-                <p class="mt-6 text-lg leading-relaxed text-black/60">
-                    Layihələr, müştərilər, smeta və təsdiqlər — hamısı bir yerdə.
+                <p class="mt-7 text-lg leading-relaxed text-black/60">
+                    Layihələr, müştərilər, smeta və təsdiqlər — memarlıq bürosunun bütün işi bir yerdə.
                 </p>
                 <div class="mt-10 flex items-center gap-5">
                     <a href="{{ route('entry') }}" class="ui-btn ui-btn-dark h-12 px-8 text-[15px] font-semibold" data-hover="true">Daxil ol</a>
@@ -206,15 +205,8 @@
     {{-- Footer --}}
     <footer class="border-t border-black/8">
         <div class="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-4 px-6 py-8">
-            <div class="flex items-center gap-2.5">
-                <svg width="20" height="20" viewBox="0 0 28 28" aria-hidden="true">
-                    <rect width="28" height="28" rx="7" fill="#fdfe00"/>
-                    <path d="M8.4 20.6 14 7.6l5.6 13" fill="none" stroke="#111111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M10.9 15.7h6.2" stroke="#111111" stroke-width="2.4" stroke-linecap="round"/>
-                </svg>
-                <span class="text-[13px]"><span class="font-extrabold">Archi</span> <span class="text-black/40">CRM</span></span>
-            </div>
-            <p class="text-[12px] text-black/40">© {{ date('Y') }} Archi CRM · Dizayn bürosu üçün idarəetmə sistemi</p>
+            <a href="{{ route('landing') }}"><x-archi-logo :sub="false" /></a>
+            <p class="text-[12px] text-black/40">© {{ date('Y') }} ARCHI · Memarlıq bürosu üçün idarəetmə sistemi</p>
         </div>
     </footer>
 

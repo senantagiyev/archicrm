@@ -2,3 +2,130 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+
+/* ============================================================
+   ARCHI admin — UX/UI polish (visual only, no behaviour change)
+   Black / white / yellow identity, calmer density, clear hierarchy.
+   ============================================================ */
+
+:root {
+  --archi-yellow: #f2d900;
+  --archi-yellow-soft: #fff8c2;
+  --archi-ink: #141210;
+}
+
+/* ---- Typography: heavier, tighter headings ---- */
+.fi-header-heading,
+.fi-section-header-heading,
+.fi-modal-heading {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* ---- Sidebar: quieter groups, roomier items ---- */
+.fi-sidebar-group-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.fi-sidebar-nav {
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+}
+.fi-sidebar-item-button {
+  border-radius: 10px;
+  font-weight: 500;
+  transition: background-color .15s ease, color .15s ease;
+}
+
+/* ---- Active nav item: ARCHI yellow rail + soft tint ---- */
+.fi-sidebar-item.fi-active > .fi-sidebar-item-button,
+.fi-sidebar-item-active > .fi-sidebar-item-button,
+.fi-sidebar-item.fi-active .fi-sidebar-item-button {
+  background-color: var(--archi-yellow-soft);
+  color: var(--archi-ink);
+  box-shadow: inset 3px 0 0 0 var(--archi-yellow);
+  font-weight: 600;
+}
+.fi-sidebar-item.fi-active .fi-sidebar-item-icon,
+.fi-sidebar-item-active .fi-sidebar-item-icon {
+  color: var(--archi-ink);
+}
+.dark .fi-sidebar-item.fi-active > .fi-sidebar-item-button,
+.dark .fi-sidebar-item-active > .fi-sidebar-item-button,
+.dark .fi-sidebar-item.fi-active .fi-sidebar-item-button {
+  background-color: rgba(253, 224, 0, 0.14);
+  color: #fde000;
+  box-shadow: inset 3px 0 0 0 #fde000;
+}
+.dark .fi-sidebar-item.fi-active .fi-sidebar-item-icon,
+.dark .fi-sidebar-item-active .fi-sidebar-item-icon {
+  color: #fde000;
+}
+
+/* ---- Brand name in sidebar ---- */
+.fi-sidebar-header .fi-logo {
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/* ---- Cards / sections / widgets: consistent radius, softer edge ---- */
+.fi-section,
+.fi-wi-stats-overview-stat,
+.fi-ta,
+.fi-modal-window {
+  border-radius: 14px;
+}
+.fi-section {
+  box-shadow: 0 1px 2px rgba(20, 18, 10, 0.04), 0 4px 16px rgba(20, 18, 10, 0.04);
+}
+
+/* ---- Stat tiles: bolder number, quiet label ---- */
+.fi-wi-stats-overview-stat-value {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.fi-wi-stats-overview-stat-label {
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+/* ---- Tables: quiet uppercase headers, roomier rows ---- */
+.fi-ta-header-cell {
+  background-clip: padding-box;
+}
+.fi-ta-header-cell .fi-ta-header-cell-label,
+.fi-ta-header-cell button span {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  opacity: 0.65;
+}
+.fi-ta-row {
+  transition: background-color .12s ease;
+}
+
+/* ---- Primary (ink) buttons: crisper ---- */
+.fi-btn {
+  font-weight: 600;
+  border-radius: 9px;
+}
+
+/* ---- Topbar: subtle bottom hairline, no heavy shadow ---- */
+.fi-topbar > nav {
+  box-shadow: inset 0 -1px 0 0 rgba(17, 17, 17, 0.06);
+}
+
+/* ---- Global search & inputs: rounder ---- */
+.fi-input-wrp {
+  border-radius: 10px;
+}
+
+/* ---- Badges: slightly tighter ---- */
+.fi-badge {
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}

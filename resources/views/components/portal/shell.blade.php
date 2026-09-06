@@ -8,16 +8,13 @@
     <title>{{ $title ? $title.' — ' : '' }}Archi CRM</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
     @vite('resources/css/app.css')
 </head>
 <body class="min-h-screen bg-gray-soft2">
     <header class="bg-ink text-white">
-        <div class="mx-auto flex h-16 max-w-[1240px] items-center justify-between px-5">
-            <a href="{{ route('portal.home') }}" class="flex items-center gap-2">
-                <span class="inline-block h-3 w-3 bg-yellow"></span>
-                <span class="text-lg font-bold tracking-wide">ARCHI CRM</span>
-            </a>
+        <div class="mx-auto flex h-[68px] max-w-[1240px] items-center justify-between px-5">
+            <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" /></a>
 
             <div class="flex items-center gap-4">
                 <form method="post" action="{{ route('locale.switch') }}" class="flex items-center gap-1 text-[12px] font-semibold uppercase">
