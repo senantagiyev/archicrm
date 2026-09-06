@@ -114,6 +114,21 @@ class Project extends Model
         return $this->hasMany(ChangeRequest::class);
     }
 
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
+    }
+
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(Expense::class);
+    }
+
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);

@@ -24,6 +24,7 @@ use App\Models\SpecificationItem;
 use App\Models\Stage;
 use App\Models\Supplier;
 use App\Models\Task;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Observers\FinanceObserver;
 use App\Observers\StageObserver;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
             'deliverable_version' => DeliverableVersion::class,
             'specification_item' => SpecificationItem::class,
             'change_request' => ChangeRequest::class,
+            'time_entry' => TimeEntry::class,
         ]);
 
         Task::observe(TaskObserver::class);

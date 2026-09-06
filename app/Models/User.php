@@ -20,6 +20,7 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = [
         'name', 'email', 'password', 'phone', 'role', 'is_active', 'locale', 'avatar_path',
+        'hourly_internal_cost', 'weekly_capacity_hours',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -64,5 +65,10 @@ class User extends Authenticatable implements FilamentUser
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assignee_user_id');
+    }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
     }
 }
