@@ -30,6 +30,7 @@ use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Observers\FinanceObserver;
+use App\Observers\LeadObserver;
 use App\Observers\StageObserver;
 use App\Observers\TaskObserver;
 use App\Translation\DatabaseTranslationLoader;
@@ -94,6 +95,7 @@ class AppServiceProvider extends ServiceProvider
         BudgetLine::observe(FinanceObserver::class);
         ProcurementItem::observe(FinanceObserver::class);
         Payment::observe(FinanceObserver::class);
+        Lead::observe(LeadObserver::class);
 
         $this->registerRateLimiters();
         $this->guardAgainstLazyLoading();

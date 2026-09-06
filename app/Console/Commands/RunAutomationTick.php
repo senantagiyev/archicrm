@@ -4,11 +4,15 @@ namespace App\Console\Commands;
 
 use App\Enums\ApprovalStatus;
 use App\Enums\InvoiceStatus;
+use App\Enums\LeadStatus;
+use App\Enums\PurchaseOrderStatus;
 use App\Enums\StaffRole;
 use App\Models\Approval;
 use App\Models\Invoice;
+use App\Models\Lead;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\PurchaseOrder;
 use App\Models\User;
 use App\Notifications\AutomationAlert;
 use App\Services\Automation\AutomationEngine;
@@ -35,6 +39,8 @@ class RunAutomationTick extends Command
         $sent += $this->meetingReminders($engine);        // rule 39
         $sent += $this->briefReminders($engine);          // rule 12
         $sent += $this->budgetOverrunAlerts($engine);     // rule 30
+        $sent += $this->leadSlaAlerts($engine);           // rule 2
+        $sent += $this->deliveryLateAlerts($engine);      // rule 24
 
         $this->info("Avtomatlaşdırma tick: {$sent} bildiriş göndərildi.");
 
@@ -258,6 +264,88 @@ class RunAutomationTick extends Command
         }
 
         return $count;
+    }
+
+    /** Rule 2: lead with no first contact past the SLA → alert responsible (or owners). */
+    private function leadSlaAlerts(AutomationEngine $engine): int
+    {
+        if (! $engine->isEnabled('rule-2')) {
+            return 0;
+        }
+
+        $days = (int) setting('lead.first_contact_sla_days', 2);
+        $today = today()->toDateString();
+        $count = 0;
+
+        $leads = Lead::query()
+            ->whereNull('first_contact_date')
+            ->whereNotIn('status', [LeadStatus::Won->value, LeadStatus::Lost->value, LeadStatus::Archived->value])
+            ->whereDate('created_at', '<=', today()->subDays($days))
+            ->with('responsible')
+            ->get();
+
+        foreach ($leads as $lead) {
+            $recipients = $lead->responsible ? collect([$lead->responsible]) : $this->owners();
+
+            foreach ($recipients as $user) {
+                $engine->once('rule-2', "lead:{$lead->id}:user:{$user->id}:{$today}", function () use ($user, $lead, &$count) {
+                    $user->notify(new AutomationAlert(
+                        'Lidlə əlaqə gecikir (SLA)',
+                        trim("\"{$lead->first_name} {$lead->last_name}\"").' lidi ilə hələ ilk əlaqə saxlanılmayıb.',
+                        null,
+                        ['lead_id' => $lead->id],
+                        'rule-2',
+                    ));
+                    $count++;
+                });
+            }
+        }
+
+        return $count;
+    }
+
+    /** Rule 24: purchase order past its expected delivery and not received → procurement alert. */
+    private function deliveryLateAlerts(AutomationEngine $engine): int
+    {
+        if (! $engine->isEnabled('rule-24')) {
+            return 0;
+        }
+
+        $today = today()->toDateString();
+        $count = 0;
+
+        $orders = PurchaseOrder::query()
+            ->whereNotNull('expected_delivery')
+            ->whereDate('expected_delivery', '<', today())
+            ->whereNotIn('status', [PurchaseOrderStatus::Received->value, PurchaseOrderStatus::Cancelled->value])
+            ->with('supplier')
+            ->get();
+
+        foreach ($orders as $order) {
+            foreach ($this->procurementStaff() as $user) {
+                $engine->once('rule-24', "po:{$order->id}:user:{$user->id}:{$today}", function () use ($user, $order, &$count) {
+                    $user->notify(new AutomationAlert(
+                        'Çatdırılma gecikib',
+                        'Satınalma sifarişi #'.$order->id.' — gözlənilən çatdırılma tarixi keçib ('.$order->expected_delivery->format('d.m.Y').').',
+                        null,
+                        ['purchase_order_id' => $order->id],
+                        'rule-24',
+                    ));
+                    $count++;
+                });
+            }
+        }
+
+        return $count;
+    }
+
+    /** @return Collection<int,User> */
+    private function procurementStaff()
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->whereIn('role', [StaffRole::Owner->value, StaffRole::Procurement->value])
+            ->get();
     }
 
     /** @return Collection<int,User> */

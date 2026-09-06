@@ -3,6 +3,8 @@
 namespace App\Services\Approvals;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\TaskPriority;
+use App\Enums\TaskStatus;
 use App\Models\Approval;
 use App\Models\BudgetLine;
 use App\Models\ClientUser;
@@ -10,9 +12,11 @@ use App\Models\Deliverable;
 use App\Models\Document;
 use App\Models\ProcurementItem;
 use App\Models\Stage;
+use App\Models\Task;
 use App\Models\User;
 use App\Notifications\ApprovalDecided;
 use App\Notifications\ApprovalRequested;
+use App\Services\Automation\AutomationEngine;
 use App\Services\Design\DeliverableService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -74,7 +78,43 @@ class ApprovalService
 
         $approval->requestedBy?->notify(new ApprovalDecided($approval));
 
+        if (! $approved) {
+            $this->createRevisionTask($approval, $comment);
+        }
+
         return $approval;
+    }
+
+    /**
+     * Əlavə B rule 18: a rejected approval spawns a revision task for the requester.
+     * Tasks require a stage; when the project has one we attach the task there,
+     * otherwise the ApprovalDecided notification above is the only signal.
+     */
+    private function createRevisionTask(Approval $approval, ?string $comment): void
+    {
+        if (! app(AutomationEngine::class)->isEnabled('rule-18') || ! $approval->project_id) {
+            return;
+        }
+
+        $stage = Stage::query()
+            ->where('project_id', $approval->project_id)
+            ->orderBy('position')
+            ->first();
+
+        if (! $stage) {
+            return;
+        }
+
+        Task::create([
+            'stage_id' => $stage->id,
+            'project_id' => $approval->project_id,
+            'title' => 'Düzəliş: '.$approval->subjectLabel(),
+            'description' => $comment,
+            'assignee_user_id' => $approval->requested_by_user_id,
+            'author_user_id' => $approval->requested_by_user_id,
+            'status' => TaskStatus::Todo->value,
+            'priority' => TaskPriority::High->value,
+        ]);
     }
 
     private function setSubjectStatus(Model $approvable, ApprovalStatus $status): void

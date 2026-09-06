@@ -11,6 +11,7 @@ use App\Models\Document;
 use App\Models\Project;
 use App\Notifications\BriefCompleted;
 use App\Notifications\BriefSectionSubmitted;
+use App\Services\Automation\AutomationEngine;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
@@ -110,7 +111,8 @@ class BriefService
 
         $project = $brief->project;
 
-        if ($project->manager) {
+        // Əlavə B rule 13: notify the team the brief is ready for review (toggleable).
+        if ($project->manager && app(AutomationEngine::class)->isEnabled('rule-13')) {
             $project->manager->notify(new BriefCompleted($brief, $document));
         }
     }
