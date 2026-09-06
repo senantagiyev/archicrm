@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Portal;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 
@@ -24,12 +25,21 @@ class ProjectController extends Controller
     public function show(int $project)
     {
         $project = $this->clientProject($project);
-        $project->load(['stages', 'manager']);
+        $project->load(['stages', 'manager', 'brief']);
 
         $pendingApprovals = $project->approvals()
             ->where('status', ApprovalStatus::Pending->value)
             ->count();
 
-        return view('portal.projects.show', compact('project', 'pendingApprovals'));
+        // Lightweight counts for the portal quick-access cards.
+        $briefProgress = (int) ($project->brief?->progress ?? 0);
+        $documentsCount = $project->documents()->where('visible_to_client', true)->count();
+        $paymentsDue = $project->payments()
+            ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Overdue->value])
+            ->count();
+
+        return view('portal.projects.show', compact(
+            'project', 'pendingApprovals', 'briefProgress', 'documentsCount', 'paymentsDue'
+        ));
     }
 }
