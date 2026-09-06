@@ -177,11 +177,13 @@ class ProjectResource extends Resource
             StagesRelationManager::class,
             RelationManagers\BriefAnswersRelationManager::class,
             RelationManagers\DeliverablesRelationManager::class,
+            RelationManagers\SpecificationsRelationManager::class,
             RelationManagers\BudgetLinesRelationManager::class,
             RelationManagers\ProcurementItemsRelationManager::class,
             RelationManagers\PaymentsRelationManager::class,
             RelationManagers\DocumentsRelationManager::class,
             RelationManagers\FilesRelationManager::class,
+            RelationManagers\ChangeRequestsRelationManager::class,
             MembersRelationManager::class,
         ];
     }

@@ -104,6 +104,16 @@ class Project extends Model
         return $this->hasMany(Deliverable::class);
     }
 
+    public function specificationItems(): HasMany
+    {
+        return $this->hasMany(SpecificationItem::class);
+    }
+
+    public function changeRequests(): HasMany
+    {
+        return $this->hasMany(ChangeRequest::class);
+    }
+
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Approval;
 use App\Models\BudgetLine;
+use App\Models\ChangeRequest;
 use App\Models\Client;
 use App\Models\ClientUser;
 use App\Models\Comment;
@@ -19,6 +20,7 @@ use App\Models\ProcurementItem;
 use App\Models\Project;
 use App\Models\ProjectFile;
 use App\Models\PurchaseOrder;
+use App\Models\SpecificationItem;
 use App\Models\Stage;
 use App\Models\Supplier;
 use App\Models\Task;
@@ -75,6 +77,8 @@ class AppServiceProvider extends ServiceProvider
             'meeting' => Meeting::class,
             'deliverable' => Deliverable::class,
             'deliverable_version' => DeliverableVersion::class,
+            'specification_item' => SpecificationItem::class,
+            'change_request' => ChangeRequest::class,
         ]);
 
         Task::observe(TaskObserver::class);
