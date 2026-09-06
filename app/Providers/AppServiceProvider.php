@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Approval;
+use App\Models\AutomationRule;
 use App\Models\BudgetLine;
 use App\Models\ChangeRequest;
 use App\Models\Client;
@@ -85,6 +86,7 @@ class AppServiceProvider extends ServiceProvider
             'time_entry' => TimeEntry::class,
             'project_decision' => ProjectDecision::class,
             'punch_list_issue' => PunchListIssue::class,
+            'automation_rule' => AutomationRule::class,
         ]);
 
         Task::observe(TaskObserver::class);

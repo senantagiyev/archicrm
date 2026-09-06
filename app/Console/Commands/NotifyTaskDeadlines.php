@@ -6,6 +6,7 @@ use App\Enums\TaskStatus;
 use App\Models\Task;
 use App\Notifications\TaskDeadlineSoon;
 use App\Notifications\TaskOverdue;
+use App\Services\Automation\AutomationEngine;
 use Illuminate\Console\Command;
 
 class NotifyTaskDeadlines extends Command
@@ -30,17 +31,22 @@ class NotifyTaskDeadlines extends Command
         }
 
         // Newly overdue (deadline was yesterday) — assignee + project manager (TZ §5.13).
-        $overdue = Task::query()
-            ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
-            ->whereDate('deadline', today()->subDay())
-            ->with(['assignee', 'project.manager'])
-            ->get();
+        // Gated by Əlavə B rule 9 so it can be switched off from Admin → Avtomatlaşdırmalar.
+        $overdue = collect();
 
-        foreach ($overdue as $task) {
-            $task->assignee?->notify(new TaskOverdue($task));
+        if (app(AutomationEngine::class)->isEnabled('rule-9')) {
+            $overdue = Task::query()
+                ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
+                ->whereDate('deadline', today()->subDay())
+                ->with(['assignee', 'project.manager'])
+                ->get();
 
-            if ($task->project->manager && ! $task->project->manager->is($task->assignee)) {
-                $task->project->manager->notify(new TaskOverdue($task));
+            foreach ($overdue as $task) {
+                $task->assignee?->notify(new TaskOverdue($task));
+
+                if ($task->project->manager && ! $task->project->manager->is($task->assignee)) {
+                    $task->project->manager->notify(new TaskOverdue($task));
+                }
             }
         }
 

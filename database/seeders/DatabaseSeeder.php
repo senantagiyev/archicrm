@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             StageTemplateSeeder::class,
             BriefQuestionBankSeeder::class,
             TranslationSeeder::class,
+            AutomationRuleSeeder::class,
         ]);
     }
 }
