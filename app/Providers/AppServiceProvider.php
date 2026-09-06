@@ -8,11 +8,17 @@ use App\Models\Client;
 use App\Models\ClientUser;
 use App\Models\Comment;
 use App\Models\Document;
+use App\Models\Expense;
+use App\Models\Invoice;
+use App\Models\Lead;
+use App\Models\Meeting;
 use App\Models\Payment;
 use App\Models\ProcurementItem;
 use App\Models\Project;
 use App\Models\ProjectFile;
+use App\Models\PurchaseOrder;
 use App\Models\Stage;
+use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\User;
 use App\Observers\FinanceObserver;
@@ -59,6 +65,12 @@ class AppServiceProvider extends ServiceProvider
             'project_file' => ProjectFile::class,
             'comment' => Comment::class,
             'approval' => Approval::class,
+            'lead' => Lead::class,
+            'supplier' => Supplier::class,
+            'purchase_order' => PurchaseOrder::class,
+            'invoice' => Invoice::class,
+            'expense' => Expense::class,
+            'meeting' => Meeting::class,
         ]);
 
         Task::observe(TaskObserver::class);
