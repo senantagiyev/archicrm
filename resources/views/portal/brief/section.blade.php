@@ -43,7 +43,9 @@
                         $delegated = $answer?->delegated_to_designer ?? false;
                         $value = $answer?->value;
                     @endphp
-                    <div class="rounded-ds-md border border-black/10 bg-white p-5" data-question="{{ $question->id }}">
+                    <div class="rounded-ds-md border border-black/10 bg-white p-5" data-question="{{ $question->id }}"
+                        data-key="{{ $question->key }}"
+                        @if (! empty($question->skip_logic['question'])) data-skip="{{ json_encode($question->skip_logic) }}" @endif>
                         <div class="mb-3 flex items-start justify-between gap-3">
                             <label class="text-sm font-bold">
                                 {{ $question->getTranslation('label', $locale) }}
@@ -101,6 +103,20 @@
                                     <input data-field type="number" value="{{ $value }}" {{ $completed ? 'disabled' : '' }}
                                         class="h-11 w-40 rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
                                     @break
+                                @case('image_select')
+                                    {{-- Uses the same single-choice mechanism: selected marker is the bg-ink class, read by collect(). --}}
+                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" data-single-choice>
+                                        @foreach ($question->options ?? [] as $option)
+                                            <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
+                                                class="overflow-hidden rounded-ds-md border text-left transition-colors
+                                                    {{ $value === $option['value'] ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
+                                                <span class="block aspect-[4/3] w-full bg-gray-soft2 bg-cover bg-center"
+                                                    style="background-image:url('{{ storage_url($option['image_url'] ?? '') }}')"></span>
+                                                <span class="block px-3 py-2 text-[13px] font-semibold">{{ $option['label'][$locale] ?? $option['label']['az'] }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                    @break
                                 @default
                                     <input data-field type="text" value="{{ $value }}" {{ $completed ? 'disabled' : '' }}
                                         class="h-11 w-full rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
@@ -156,6 +172,27 @@
                 return block.querySelector('[data-field]')?.value ?? null;
             };
 
+            // ── Skip logic: show a question only when its condition matches ──
+            const currentValueByKey = () => {
+                const map = {};
+                document.querySelectorAll('[data-question]').forEach(b => { map[b.dataset.key] = collect(b); });
+                return map;
+            };
+            const matches = (rule, values) => {
+                const actual = values[rule.question];
+                const expected = rule.value;
+                if (rule.operator === 'not_equals') return actual !== expected;
+                if (rule.operator === 'in') return [].concat(expected).includes(actual);
+                return Array.isArray(actual) ? actual.includes(expected) : actual === expected;
+            };
+            const applySkip = () => {
+                const values = currentValueByKey();
+                document.querySelectorAll('[data-skip]').forEach(b => {
+                    let rule; try { rule = JSON.parse(b.dataset.skip); } catch (e) { return; }
+                    b.hidden = !matches(rule, values);
+                });
+            };
+
             document.querySelectorAll('[data-question]').forEach(block => {
                 const id = block.dataset.question;
                 const delegate = block.querySelector('[data-delegate]');
@@ -187,7 +224,12 @@
                         }
 
                         send(id, collect(block), delegate?.checked ?? false);
+                        applySkip();
                     });
+                });
+
+                block.querySelectorAll('[data-field]').forEach(field => {
+                    field.addEventListener('input', () => applySkip());
                 });
 
                 delegate?.addEventListener('change', () => {
@@ -196,6 +238,8 @@
                     send(id, delegate.checked ? null : collect(block), delegate.checked);
                 });
             });
+
+            applySkip(); // initial evaluation on load
         })();
     </script>
     @endunless

@@ -69,6 +69,7 @@ class TranslationSeeder extends Seeder
                 'brief_save_exit' => 'Saxla və çıx|Сохранить и выйти|Save & exit',
                 'brief_submit_section' => 'Bölməni göndər|Отправить раздел|Submit section',
                 'brief_saved' => 'Saxlanıldı|Сохранено|Saved',
+                'brief_minutes' => 'dəqiqə|мин|min',
                 'brief_save_error' => 'Saxlama xətası|Ошибка сохранения|Save error',
                 'brief_section_submitted' => 'Bölmə dizaynerə göndərildi.|Раздел отправлен дизайнеру.|Section sent to the designer.',
                 'brief_required_missing' => 'Məcburi suallar cavabsız qalıb: :count|Не отвечены обязательные вопросы: :count|Required questions unanswered: :count',

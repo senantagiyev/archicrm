@@ -126,8 +126,17 @@ class BriefController extends Controller
             ->get()
             ->keyBy('brief_question_id');
 
+        // Values keyed by question key, for skip-logic evaluation.
+        $valuesByKey = $section->questions
+            ->mapWithKeys(fn ($q) => [$q->key => $answers->get($q->id)?->value])
+            ->all();
+
+        // A required question is only "missing" when it is actually shown (skip
+        // logic satisfied) and neither answered nor delegated.
         $missing = $section->questions
-            ->filter(fn ($q) => $q->is_required && ! ($answers->get($q->id)?->isAnswered() ?? false));
+            ->filter(fn ($q) => $q->is_required
+                && $q->shouldShow($valuesByKey)
+                && ! ($answers->get($q->id)?->isAnswered() ?? false));
 
         if ($missing->isNotEmpty()) {
             return back()->withErrors([

@@ -11,7 +11,7 @@ class BriefQuestion extends Model
     use HasTranslations;
 
     protected $fillable = [
-        'brief_section_id', 'key', 'label', 'help', 'type', 'options',
+        'brief_section_id', 'key', 'label', 'help', 'type', 'options', 'skip_logic',
         'is_required', 'allows_designer_choice', 'position', 'active',
     ];
 
@@ -21,10 +21,37 @@ class BriefQuestion extends Model
     {
         return [
             'options' => 'array',
+            'skip_logic' => 'array',
             'is_required' => 'boolean',
             'allows_designer_choice' => 'boolean',
             'active' => 'boolean',
         ];
+    }
+
+    /**
+     * TZ §8.8 skip logic: a question is shown only when its condition matches a
+     * previously answered value. No rule → always shown. $valuesByKey maps other
+     * questions' keys to their current answer value.
+     *
+     * @param  array<string, mixed>  $valuesByKey
+     */
+    public function shouldShow(array $valuesByKey): bool
+    {
+        $rule = $this->skip_logic;
+        if (blank($rule) || blank($rule['question'] ?? null)) {
+            return true;
+        }
+
+        $actual = $valuesByKey[$rule['question']] ?? null;
+        $expected = $rule['value'] ?? null;
+
+        return match ($rule['operator'] ?? 'equals') {
+            'not_equals' => $actual !== $expected,
+            'in' => in_array($actual, (array) $expected, true),
+            default => is_array($actual)
+                ? in_array($expected, $actual, true)   // multiselect contains
+                : $actual === $expected,
+        };
     }
 
     public function section(): BelongsTo

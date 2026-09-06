@@ -10,7 +10,7 @@ class BriefSection extends Model
 {
     use HasTranslations;
 
-    protected $fillable = ['key', 'name', 'intro', 'icon', 'position', 'room_type', 'active'];
+    protected $fillable = ['key', 'name', 'intro', 'icon', 'estimated_minutes', 'position', 'room_type', 'active'];
 
     public array $translatable = ['name', 'intro'];
 

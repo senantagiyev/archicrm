@@ -35,6 +35,9 @@
                         <span class="rounded-pill bg-warn-soft px-2.5 py-0.5 text-[11px] font-semibold text-warn">{{ t('portal.brief_in_progress') }}</span>
                     @endif
                 </div>
+                @if (($entry['section']->estimated_minutes ?? 0) > 0)
+                    <p class="mb-2 text-[11px] text-black/40">≈ {{ $entry['section']->estimated_minutes }} {{ t('portal.brief_minutes') }}</p>
+                @endif
                 <div class="mb-1.5 flex items-center justify-between text-[12px] text-black/50">
                     <span>{{ $entry['answered_count'] }}/{{ $entry['question_count'] }}</span>
                     <span class="font-bold text-ink">{{ $entry['progress'] }}%</span>
