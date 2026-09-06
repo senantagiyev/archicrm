@@ -18,7 +18,8 @@ class ProcurementItem extends Model
     // approval_status is NOT fillable — set only by ApprovalService (audit HIGH-2).
     protected $fillable = [
         'project_id', 'photo_path', 'sku', 'name', 'category', 'room',
-        'price', 'qty', 'total', 'store', 'url',
+        'price', 'qty', 'total', 'store', 'url', 'attachment_url',
+        'reserve_percent', 'delivery_assembly_price',
         'purchase_status', 'cancel_comment', 'paid',
     ];
 
@@ -30,6 +31,8 @@ class ProcurementItem extends Model
             'price' => 'decimal:2',
             'qty' => 'decimal:2',
             'total' => 'decimal:2',
+            'reserve_percent' => 'decimal:2',
+            'delivery_assembly_price' => 'decimal:2',
             'paid' => 'boolean',
         ];
     }

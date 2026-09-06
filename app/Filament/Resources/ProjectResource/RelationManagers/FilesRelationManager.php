@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\FileCategory;
+use App\Enums\FileVisibility;
 use App\Rules\SafeUpload;
 use Filament\Actions;
 use Filament\Forms;
@@ -59,6 +60,11 @@ class FilesRelationManager extends RelationManager
                     ->badge()
                     ->color('gray')
                     ->formatStateUsing(fn (FileCategory $state) => $state->label()),
+                Tables\Columns\TextColumn::make('visibility')
+                    ->label('Görünürlük')
+                    ->badge()
+                    ->formatStateUsing(fn (FileVisibility $state) => $state->label())
+                    ->color(fn (FileVisibility $state) => $state->color()),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Tarix')
                     ->dateTime('d.m.Y H:i')
@@ -69,6 +75,9 @@ class FilesRelationManager extends RelationManager
                 Tables\Filters\SelectFilter::make('category')
                     ->label('Kateqoriya')
                     ->options(collect(FileCategory::cases())->mapWithKeys(fn ($c) => [$c->value => $c->label()])),
+                Tables\Filters\SelectFilter::make('visibility')
+                    ->label('Görünürlük')
+                    ->options(collect(FileVisibility::cases())->mapWithKeys(fn ($v) => [$v->value => $v->label()])),
             ])
             ->headerActions([
                 Actions\CreateAction::make()
@@ -81,6 +90,22 @@ class FilesRelationManager extends RelationManager
                     }),
             ])
             ->actions([
+                Actions\Action::make('publishToClient')
+                    ->label('Müştəriyə dərc et')
+                    ->icon('heroicon-o-paper-airplane')
+                    ->color('info')
+                    ->visible(fn ($record) => $record->visibility === FileVisibility::Internal)
+                    ->requiresConfirmation()
+                    ->modalHeading('Faylı müştəriyə dərc et')
+                    ->modalDescription(fn ($record) => ($record->title ?: basename($record->file_path)).' — müştəri portalında görünəcək. Görünürlük: Müştəri ilə paylaşılıb.')
+                    ->action(fn ($record) => $record->update(['visibility' => FileVisibility::ClientShared])),
+                Actions\Action::make('unpublish')
+                    ->label('Dərcdən çıxar')
+                    ->icon('heroicon-o-eye-slash')
+                    ->color('gray')
+                    ->visible(fn ($record) => $record->visibility === FileVisibility::ClientShared)
+                    ->requiresConfirmation()
+                    ->action(fn ($record) => $record->update(['visibility' => FileVisibility::Internal])),
                 Actions\Action::make('download')
                     ->label('Yüklə')
                     ->icon('heroicon-o-arrow-down-tray')

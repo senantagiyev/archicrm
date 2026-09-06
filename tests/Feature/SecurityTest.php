@@ -136,6 +136,23 @@ class SecurityTest extends TestCase
         $this->post(route('portal.login-link'), ['email' => 'x@test.az'])->assertStatus(429);
     }
 
+    /** TZ v2.0 §A#2/#4: estimate hidden from client by default; file scope excludes internal. */
+    public function test_client_visibility_defaults_and_file_scope(): void
+    {
+        [, , $project] = $this->project();
+
+        $line = $project->budgetLines()->create(['work_type' => 'W', 'qty' => 1, 'work_price' => 10]);
+        $this->assertFalse($line->fresh()->visible_to_client, 'estimate line hidden from client by default');
+
+        $internal = $project->files()->create(['category' => 'other', 'file_path' => 'a.pdf']);
+        $shared = $project->files()->create(['category' => 'other', 'file_path' => 'b.pdf', 'visibility' => 'client_shared']);
+        $this->assertSame('internal', $internal->fresh()->visibility->value);
+
+        $visibleIds = $project->files()->clientVisible()->pluck('id');
+        $this->assertTrue($visibleIds->contains($shared->id));
+        $this->assertFalse($visibleIds->contains($internal->id));
+    }
+
     /** SafeUpload rejects SVG and disguised markup, accepts a real image. */
     public function test_safe_upload_blocks_svg_and_scripts(): void
     {

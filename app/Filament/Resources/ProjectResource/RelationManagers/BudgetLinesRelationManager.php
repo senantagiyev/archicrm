@@ -54,6 +54,10 @@ class BudgetLinesRelationManager extends RelationManager
                 ->default(0)
                 ->minValue(0)
                 ->suffix('₼'),
+            Forms\Components\Toggle::make('visible_to_client')
+                ->label('Sifarişçiyə görünür')
+                ->helperText('Yalnız yekun məbləğ göstərilir; iş/material qiymətləri müştəriyə heç vaxt ötürülmür.')
+                ->inline(false),
         ])->columns(2);
     }
 
@@ -81,6 +85,12 @@ class BudgetLinesRelationManager extends RelationManager
                     ->money('AZN')
                     ->weight('bold')
                     ->summarize(Tables\Columns\Summarizers\Sum::make()->money('AZN')->label('Cəm')),
+                Tables\Columns\IconColumn::make('visible_to_client')
+                    ->label('Müştəriyə')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-eye')
+                    ->falseIcon('heroicon-o-eye-slash')
+                    ->tooltip(fn ($record) => $record->visible_to_client ? 'Müştəri yekun məbləği görür' : 'Müştəriyə görünmür'),
                 Tables\Columns\TextColumn::make('approval_status')
                     ->label('Razılaşma')
                     ->badge()

@@ -19,6 +19,7 @@ class BudgetLine extends Model
     protected $fillable = [
         'project_id', 'stage_id', 'work_type', 'room', 'unit',
         'qty', 'work_price', 'material_price', 'total', 'position',
+        'visible_to_client',
     ];
 
     protected function casts(): array
@@ -29,6 +30,7 @@ class BudgetLine extends Model
             'work_price' => 'decimal:2',
             'material_price' => 'decimal:2',
             'total' => 'decimal:2',
+            'visible_to_client' => 'boolean',
         ];
     }
 

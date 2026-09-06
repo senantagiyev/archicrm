@@ -62,11 +62,29 @@ class ProcurementItemsRelationManager extends RelationManager
                 ->default(1)
                 ->minValue(0)
                 ->required(),
+            Forms\Components\TextInput::make('reserve_percent')
+                ->label('Ehtiyat %')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->maxValue(100)
+                ->suffix('%')
+                ->helperText('Zədə/itki üçün ehtiyat faizi.'),
+            Forms\Components\TextInput::make('delivery_assembly_price')
+                ->label('Çatdırılma / yığılma')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->suffix('₼'),
             Forms\Components\TextInput::make('store')
                 ->label('Mağaza / təchizatçı')
                 ->maxLength(191),
             Forms\Components\TextInput::make('url')
                 ->label('Link')
+                ->url()
+                ->maxLength(191),
+            Forms\Components\TextInput::make('attachment_url')
+                ->label('Sənəd/əlavə linki')
                 ->url()
                 ->maxLength(191),
             Forms\Components\Select::make('purchase_status')
