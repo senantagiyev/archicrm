@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Enums\ApprovalStatus;
 use App\Enums\PurchaseStatus;
 use App\Exports\ProcurementExport;
+use App\Filament\Concerns\OptimisticLock;
 use App\Rules\SafeUpload;
 use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
@@ -191,7 +192,7 @@ class ProcurementItemsRelationManager extends RelationManager
                         'purchase_status' => PurchaseStatus::Cancelled,
                         'cancel_comment' => $data['cancel_comment'],
                     ])),
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
                 Actions\DeleteAction::make()
                     ->requiresConfirmation()
                     ->hidden(fn ($record) => $record->isDeletionLocked()),

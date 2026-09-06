@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeliverableVersionStatus;
+use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use RuntimeException;
 
 class DeliverableVersion extends Model
 {
-    use HasFactory;
+    use HasFactory, HasOptimisticLock;
 
     protected $fillable = [
         'deliverable_id', 'version_number', 'file_path',
@@ -41,8 +42,9 @@ class DeliverableVersion extends Model
             }
 
             // Allow only the approved → locked transition (+ its locked_at stamp).
+            // row_version is an infra counter (optimistic lock), not domain data.
             $dirty = array_keys($version->getDirty());
-            $allowed = ['status', 'locked_at', 'updated_at'];
+            $allowed = ['status', 'locked_at', 'updated_at', 'row_version'];
             if (array_diff($dirty, $allowed) !== []
                 || ($version->status !== DeliverableVersionStatus::Locked)) {
                 throw new RuntimeException('Təsdiqlənmiş versiya dəyişdirilə bilməz — yalnız yeni versiya yaradın.');

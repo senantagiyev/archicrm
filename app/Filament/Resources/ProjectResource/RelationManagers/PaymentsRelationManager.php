@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\PaymentStatus;
+use App\Filament\Concerns\OptimisticLock;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -94,7 +95,7 @@ class PaymentsRelationManager extends RelationManager
                         'status' => PaymentStatus::Paid,
                         'paid_at' => now(),
                     ])),
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
                 Actions\DeleteAction::make()->requiresConfirmation(),
             ]);
     }

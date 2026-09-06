@@ -2,12 +2,15 @@
 
 namespace App\Filament\Resources\ExpenseResource\Pages;
 
+use App\Filament\Concerns\HandlesRowVersionConflict;
 use App\Filament\Resources\ExpenseResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditExpense extends EditRecord
 {
+    use HandlesRowVersionConflict;
+
     protected static string $resource = ExpenseResource::class;
 
     protected function getHeaderActions(): array

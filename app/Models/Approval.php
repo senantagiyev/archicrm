@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ApprovalStatus;
+use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -11,7 +12,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Approval extends Model
 {
-    use LogsActivity;
+    use HasOptimisticLock, LogsActivity;
 
     protected $fillable = [
         'approvable_type', 'approvable_id', 'project_id',

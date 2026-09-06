@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Enums\DeliverableStatus;
 use App\Enums\DeliverableType;
 use App\Enums\DeliverableVersionStatus;
+use App\Filament\Concerns\OptimisticLock;
 use App\Models\User;
 use App\Rules\SafeUpload;
 use App\Services\Approvals\ApprovalService;
@@ -115,7 +116,7 @@ class DeliverablesRelationManager extends RelationManager
                         $service->request($record, auth()->user());
                     })
                     ->successNotificationTitle('Razılaşdırmaya göndərildi'),
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
                 Actions\DeleteAction::make()
                     ->requiresConfirmation()
                     ->hidden(fn ($record) => $record->status === DeliverableStatus::Approved),

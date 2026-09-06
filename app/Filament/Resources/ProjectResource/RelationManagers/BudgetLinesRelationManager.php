@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\ApprovalStatus;
+use App\Filament\Concerns\OptimisticLock;
 use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
 use Filament\Forms;
@@ -115,7 +116,7 @@ class BudgetLinesRelationManager extends RelationManager
                     ->requiresConfirmation()
                     ->modalDescription('Sətir sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
                     ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
-                Actions\EditAction::make(),
+                Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
                 Actions\DeleteAction::make()
                     ->requiresConfirmation()
                     ->hidden(fn ($record) => $record->approval_status === ApprovalStatus::Approved),
