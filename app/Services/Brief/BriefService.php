@@ -7,6 +7,7 @@ use App\Models\Brief;
 use App\Models\BriefAnswer;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
+use App\Models\BriefTemplate;
 use App\Models\Document;
 use App\Models\Project;
 use App\Notifications\BriefCompleted;
@@ -20,7 +21,17 @@ class BriefService
 {
     public function forProject(Project $project): Brief
     {
-        return Brief::firstOrCreate(['project_id' => $project->id]);
+        $brief = Brief::firstOrCreate(
+            ['project_id' => $project->id],
+            ['brief_template_id' => optional(BriefTemplate::default())->id],
+        );
+
+        // Legacy briefs created before templates existed → attach the default.
+        if (! $brief->brief_template_id && ($default = BriefTemplate::default())) {
+            $brief->forceFill(['brief_template_id' => $default->id])->save();
+        }
+
+        return $brief;
     }
 
     /**
@@ -31,7 +42,9 @@ class BriefService
      */
     public function sectionMap(Brief $brief): Collection
     {
+        // Scope to the brief's template; a template-less brief (legacy/tests) sees all.
         $sections = BriefSection::where('active', true)
+            ->when($brief->brief_template_id, fn ($q, $id) => $q->where('brief_template_id', $id))
             ->orderBy('position')
             ->with('questions')
             ->get();

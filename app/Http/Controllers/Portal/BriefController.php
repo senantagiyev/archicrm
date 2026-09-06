@@ -24,7 +24,11 @@ class BriefController extends Controller
         $brief->load('rooms');
 
         $map = $this->briefs->sectionMap($brief);
-        $roomSections = BriefSection::where('active', true)->whereNotNull('room_type')->orderBy('position')->get();
+        $roomSections = BriefSection::where('active', true)
+            ->whereNotNull('room_type')
+            ->when($brief->brief_template_id, fn ($q, $id) => $q->where('brief_template_id', $id))
+            ->orderBy('position')
+            ->get();
 
         return view('portal.brief.index', compact('project', 'brief', 'map', 'roomSections'));
     }
@@ -39,7 +43,9 @@ class BriefController extends Controller
             'label' => ['nullable', 'string', 'max:100'],
         ]);
 
-        $section = BriefSection::where('room_type', $validated['room_type'])->firstOrFail();
+        $section = BriefSection::where('room_type', $validated['room_type'])
+            ->when($brief->brief_template_id, fn ($q, $id) => $q->where('brief_template_id', $id))
+            ->firstOrFail();
         $count = $brief->rooms()->where('room_type', $validated['room_type'])->count();
 
         $brief->rooms()->create([

@@ -4,6 +4,10 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Models\BriefAnswer;
 use App\Models\BriefSection;
+use App\Models\BriefTemplate;
+use App\Services\Brief\BriefService;
+use Filament\Actions;
+use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -69,7 +73,26 @@ class BriefAnswersRelationManager extends RelationManager
                         }
                     }),
             ])
-            ->headerActions([])
+            ->headerActions([
+                Actions\Action::make('briefTemplate')
+                    ->label('Brif şablonu')
+                    ->icon('heroicon-o-rectangle-stack')
+                    ->modalDescription('Layihənin brif şablonunu seçin. Müştəri brifi doldurmağa başladıqdan sonra şablonu dəyişmək tövsiyə olunmur.')
+                    ->schema([
+                        Forms\Components\Select::make('brief_template_id')
+                            ->label('Şablon')
+                            ->options(fn () => BriefTemplate::where('active', true)->orderBy('position')->get()
+                                ->mapWithKeys(fn ($t) => [$t->id => $t->getTranslation('name', 'az')]))
+                            ->default(fn () => optional($this->getOwnerRecord()->brief)->brief_template_id
+                                ?? optional(BriefTemplate::default())->id)
+                            ->required()
+                            ->native(false),
+                    ])
+                    ->action(function (array $data) {
+                        $brief = app(BriefService::class)->forProject($this->getOwnerRecord());
+                        $brief->update(['brief_template_id' => $data['brief_template_id']]);
+                    }),
+            ])
             ->actions([]);
     }
 }
