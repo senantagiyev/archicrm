@@ -187,6 +187,11 @@ class InvoiceResource extends Resource
             ->bulkActions([]);
     }
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['number', 'project.name', 'client.name'];
+    }
+
     public static function getPages(): array
     {
         return [

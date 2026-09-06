@@ -103,6 +103,11 @@ class MeetingResource extends Resource
             ->bulkActions([]);
     }
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['title', 'project.name'];
+    }
+
     public static function getPages(): array
     {
         return [

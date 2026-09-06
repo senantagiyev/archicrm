@@ -156,6 +156,11 @@ class PurchaseOrderResource extends Resource
             ->bulkActions([]);
     }
 
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['supplier.name', 'project.name'];
+    }
+
     public static function getPages(): array
     {
         return [

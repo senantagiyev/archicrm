@@ -129,6 +129,16 @@ class Project extends Model
         return $this->hasMany(Expense::class);
     }
 
+    public function decisions(): HasMany
+    {
+        return $this->hasMany(ProjectDecision::class)->latest('decided_at');
+    }
+
+    public function punchListIssues(): HasMany
+    {
+        return $this->hasMany(PunchListIssue::class);
+    }
+
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);

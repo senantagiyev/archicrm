@@ -184,6 +184,8 @@ class ProjectResource extends Resource
             RelationManagers\DocumentsRelationManager::class,
             RelationManagers\FilesRelationManager::class,
             RelationManagers\ChangeRequestsRelationManager::class,
+            RelationManagers\DecisionsRelationManager::class,
+            RelationManagers\PunchListRelationManager::class,
             MembersRelationManager::class,
         ];
     }

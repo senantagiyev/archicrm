@@ -18,7 +18,9 @@ use App\Models\Meeting;
 use App\Models\Payment;
 use App\Models\ProcurementItem;
 use App\Models\Project;
+use App\Models\ProjectDecision;
 use App\Models\ProjectFile;
+use App\Models\PunchListIssue;
 use App\Models\PurchaseOrder;
 use App\Models\SpecificationItem;
 use App\Models\Stage;
@@ -81,6 +83,8 @@ class AppServiceProvider extends ServiceProvider
             'specification_item' => SpecificationItem::class,
             'change_request' => ChangeRequest::class,
             'time_entry' => TimeEntry::class,
+            'project_decision' => ProjectDecision::class,
+            'punch_list_issue' => PunchListIssue::class,
         ]);
 
         Task::observe(TaskObserver::class);
