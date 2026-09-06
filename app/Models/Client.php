@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ClientSource;
 use App\Enums\ClientStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,7 +15,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Client extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use BelongsToTenant, HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'name', 'company', 'phone', 'whatsapp', 'telegram', 'email',

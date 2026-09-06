@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DeliverableStatus;
 use App\Enums\DeliverableType;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +17,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Deliverable extends Model
 {
-    use HasFactory, HasOptimisticLock, LogsActivity, SoftDeletes;
+    use BelongsToTenant, HasFactory, HasOptimisticLock, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'project_id', 'stage_id', 'type', 'title', 'description',

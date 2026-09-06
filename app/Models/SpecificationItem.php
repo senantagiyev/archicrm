@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\SpecificationCategory;
 use App\Enums\SpecificationStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class SpecificationItem extends Model
 {
-    use HasFactory, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected $fillable = [
         'project_id', 'category', 'room', 'product_name', 'brand', 'model',

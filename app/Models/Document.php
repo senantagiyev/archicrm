@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DocumentType;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Document extends Model
 {
-    use HasFactory, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected $fillable = [
         'project_id', 'type', 'title', 'file_path', 'size', 'mime',

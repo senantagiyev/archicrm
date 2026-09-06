@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\InvoiceStatus;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class Invoice extends Model
 {
-    use HasFactory, HasOptimisticLock, LogsActivity, SoftDeletes;
+    use BelongsToTenant, HasFactory, HasOptimisticLock, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'project_id', 'client_id', 'number', 'issue_date', 'due_date',

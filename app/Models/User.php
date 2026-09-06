@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StaffRole;
+use App\Models\Concerns\BelongsToTenant;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -17,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, SoftDeletes;
+    use BelongsToTenant, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'name', 'email', 'password', 'phone', 'role', 'role_id', 'is_active', 'locale', 'avatar_path',

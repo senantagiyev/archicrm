@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\DeliverableVersionStatus;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,7 +12,7 @@ use RuntimeException;
 
 class DeliverableVersion extends Model
 {
-    use HasFactory, HasOptimisticLock;
+    use BelongsToTenant, HasFactory, HasOptimisticLock;
 
     protected $fillable = [
         'deliverable_id', 'version_number', 'file_path',

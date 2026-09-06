@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PurchaseOrderStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class PurchaseOrder extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use BelongsToTenant, HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'supplier_id', 'project_id', 'order_date', 'items',

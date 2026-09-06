@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ApprovalStatus;
 use App\Enums\PurchaseStatus;
+use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ProcurementItem extends Model
 {
-    use HasFactory, HasOptimisticLock, LogsActivity;
+    use BelongsToTenant, HasFactory, HasOptimisticLock, LogsActivity;
 
     // approval_status is NOT fillable — set only by ApprovalService (audit HIGH-2).
     protected $fillable = [

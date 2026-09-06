@@ -33,6 +33,7 @@ use App\Observers\FinanceObserver;
 use App\Observers\LeadObserver;
 use App\Observers\StageObserver;
 use App\Observers\TaskObserver;
+use App\Support\TenantContext;
 use App\Translation\DatabaseTranslationLoader;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
@@ -45,6 +46,9 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // One tenant context per request; SetTenant middleware fills it after auth.
+        $this->app->singleton(TenantContext::class);
+
         // Serve UI translations from the database (Filament "Tərcümələr" module),
         // falling back to lang/*/validation.php and other framework files on disk.
         $this->app->extend('translation.loader', function ($loader, $app): DatabaseTranslationLoader {

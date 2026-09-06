@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\ChangeRequestStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class ChangeRequest extends Model
 {
-    use HasFactory, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected $fillable = [
         'project_id', 'number', 'requested_by', 'requested_by_user_id',

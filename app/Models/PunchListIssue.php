@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\PunchIssuePriority;
 use App\Enums\PunchIssueStatus;
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,7 +13,7 @@ use Spatie\Activitylog\Traits\LogsActivity;
 
 class PunchListIssue extends Model
 {
-    use HasFactory, LogsActivity;
+    use BelongsToTenant, HasFactory, LogsActivity;
 
     protected $fillable = [
         'project_id', 'room', 'title', 'description', 'photo_url', 'priority',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -14,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
  */
 class ClientUser extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use BelongsToTenant, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
         'client_id', 'name', 'email', 'password', 'locale', 'invited_at', 'last_login_at',
