@@ -58,8 +58,8 @@ class ChangeRequestsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('cost_impact')->label('+Dəyər')->money('AZN'),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')->badge()
-                    ->formatStateUsing(fn (ChangeRequestStatus $s) => $s->label())
-                    ->color(fn (ChangeRequestStatus $s) => $s->color()),
+                    ->formatStateUsing(fn (ChangeRequestStatus $state) => $state->label())
+                    ->color(fn (ChangeRequestStatus $state) => $state->color()),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

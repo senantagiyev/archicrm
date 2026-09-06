@@ -37,7 +37,7 @@ class UpcomingDeadlinesWidget extends TableWidget
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Mərhələ')
-                    ->description(fn (Stage $r) => $r->project->name),
+                    ->description(fn (Stage $r) => $r->project?->name),
                 Tables\Columns\TextColumn::make('responsible.name')
                     ->label('Məsul')
                     ->placeholder('—'),

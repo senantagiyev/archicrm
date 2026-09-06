@@ -63,8 +63,8 @@ class SpecificationsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('quantity')->label('Miqdar')->numeric(2),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')->badge()
-                    ->formatStateUsing(fn (SpecificationStatus $s) => $s->label())
-                    ->color(fn (SpecificationStatus $s) => $s->color()),
+                    ->formatStateUsing(fn (SpecificationStatus $state) => $state->label())
+                    ->color(fn (SpecificationStatus $state) => $state->color()),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')

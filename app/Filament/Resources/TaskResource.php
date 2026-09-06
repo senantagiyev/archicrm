@@ -137,7 +137,7 @@ class TaskResource extends Resource
                 Tables\Columns\TextColumn::make('title')
                     ->label('Tapşırıq')
                     ->searchable()
-                    ->description(fn (Task $r) => $r->project->name.' — '.$r->stage->name)
+                    ->description(fn (Task $r) => collect([$r->project?->name, $r->stage?->name])->filter()->implode(' — '))
                     ->wrap(),
                 Tables\Columns\TextColumn::make('assignee.name')
                     ->label('İcraçı')

@@ -88,7 +88,7 @@ class TimeEntryResource extends Resource
                     ->money('AZN'),
                 Tables\Columns\TextColumn::make('source')
                     ->label('Mənbə')->badge()
-                    ->formatStateUsing(fn (TimeEntrySource $s) => $s->label()),
+                    ->formatStateUsing(fn (TimeEntrySource $state) => $state->label()),
                 Tables\Columns\TextColumn::make('created_at')->label('Tarix')->date('d.m.Y')->sortable(),
             ])
             ->defaultSort('created_at', 'desc')

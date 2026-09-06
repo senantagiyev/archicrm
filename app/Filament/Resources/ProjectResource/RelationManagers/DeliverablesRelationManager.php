@@ -62,8 +62,8 @@ class DeliverablesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->formatStateUsing(fn (DeliverableStatus $s) => $s->label())
-                    ->color(fn (DeliverableStatus $s) => $s->color()),
+                    ->formatStateUsing(fn (DeliverableStatus $state) => $state->label())
+                    ->color(fn (DeliverableStatus $state) => $state->color()),
                 Tables\Columns\TextColumn::make('currentVersion.version_number')
                     ->label('Cari versiya')
                     ->formatStateUsing(fn ($state) => $state ? 'v'.$state : '—'),
