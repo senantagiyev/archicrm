@@ -28,6 +28,10 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/projects/{project}/brief', [BriefController::class, 'index'])->name('brief');
         // Screen 11 — must be declared before the {section} catch-all below.
         Route::get('/projects/{project}/brief/summary', [BriefController::class, 'summary'])->name('brief.summary');
+        Route::get('/projects/{project}/brief/sent', [BriefController::class, 'sent'])->name('brief.sent');
+        Route::get('/projects/{project}/brief/clarifications', [BriefController::class, 'clarifications'])->name('brief.clarifications');
+        Route::post('/projects/{project}/brief-clarifications', [BriefController::class, 'sendClarifications'])
+            ->middleware('throttle:portal-write')->name('brief.clarifications.send');
         Route::get('/projects/{project}/brief/{section}/{room?}', [BriefController::class, 'section'])->name('brief.section');
 
         Route::middleware('throttle:portal-write')->group(function () {

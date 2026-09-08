@@ -1,7 +1,12 @@
 @php
     $locale = app()->getLocale();
     $sectionTitle = $room?->label ?? $section->getTranslation('name', $locale);
-    $completed = $brief->isCompleted();
+    // Screen 13: a locked brief keeps only clarification-flagged questions editable.
+    $briefLocked = $brief->isLocked();
+    $editableIds = $editableQuestionIds ?? [];
+    $comments = $comments ?? collect();
+    $anyEditable = ! $briefLocked || $editableIds !== [];
+    $completed = $briefLocked;
     $optLabel = fn ($option) => $option['label'][$locale] ?? $option['label']['az'] ?? $option['value'];
 @endphp
 
@@ -60,11 +65,20 @@
                         $delegated = $answer?->delegated_to_designer ?? false;
                         $value = $answer?->value;
                         $visible = $question->shouldShow($values);
+                        $comment = $comments->get($question->id);
+                        $completed = $briefLocked && ! in_array($question->id, $editableIds, true);
                     @endphp
-                    <div class="rounded-ds-md border border-black/10 bg-white p-5" data-question="{{ $question->id }}"
+                    <div class="rounded-ds-md border {{ $comment ? 'border-yellow-line ring-2 ring-yellow/40' : 'border-black/10' }} bg-white p-5" data-question="{{ $question->id }}"
                         data-key="{{ $question->key }}" data-type="{{ $question->type }}"
                         @unless ($visible) hidden @endunless
                         @if (! empty($question->skip_logic['question'])) data-skip="{{ json_encode($question->skip_logic) }}" @endif>
+                        @if ($comment)
+                            <div class="mb-3 rounded-ds-md bg-sel-bg px-3 py-2 text-[13px]">
+                                <span class="font-bold">{{ t('portal.brief_designer_asks') }}:</span>
+                                {{ $comment->body }}
+                                <span class="ml-1 text-black/45">— {{ $comment->user?->name }}</span>
+                            </div>
+                        @endif
                         <div class="mb-3 flex items-start justify-between gap-3">
                             <label class="text-sm font-bold">
                                 {{ $question->getTranslation('label', $locale) }}
@@ -296,7 +310,7 @@
         </div>
     </div>
 
-    @unless ($completed)
+    @unless (! $anyEditable)
     <script>
         (() => {
             const form = document.getElementById('briefForm');
@@ -317,8 +331,11 @@
                     body: JSON.stringify({ question_id: questionId, value, delegated, room_id: roomId }),
                 })
                 .then(r => r.json())
-                .then(d => { if (d.ok) saveState.textContent = @json(t('portal.brief_saved')) + ' ' + d.saved_at; })
-                .catch(() => { saveState.textContent = @json(t('portal.brief_save_error')); });
+                .then(d => {
+                    if (d.ok) { saveState.textContent = @json(t('portal.brief_saved')) + ' ' + d.saved_at; saveState.classList.remove('text-danger'); }
+                    else { saveState.textContent = d.error || @json(t('portal.brief_save_error')); saveState.classList.add('text-danger'); }
+                })
+                .catch(() => { saveState.textContent = @json(t('portal.brief_save_error')); saveState.classList.add('text-danger'); });
             };
 
             // ── Value extraction, one branch per question type ──
@@ -428,11 +445,21 @@
                             btn.classList.remove(...inactive); btn.classList.add(...active);
                         } else {
                             const isActive = btn.classList.contains('bg-ink');
-                            btn.classList.toggle('border-ink', !isActive);
-                            btn.classList.toggle('bg-ink', !isActive);
-                            btn.classList.toggle('text-white', !isActive);
-                            btn.classList.toggle('border-black/20', isActive);
-                            btn.classList.toggle('bg-white', isActive);
+                            const setOn = (b, on) => {
+                                b.classList.toggle('border-ink', on); b.classList.toggle('bg-ink', on); b.classList.toggle('text-white', on);
+                                b.classList.toggle('border-black/20', !on); b.classList.toggle('bg-white', !on);
+                            };
+                            setOn(btn, !isActive);
+
+                            // Part 10 №16 exclusive_override: «Dizaynerin ixtiyarına» is exclusive
+                            // with every concrete pick in the same block, in both directions.
+                            if (!isActive) {
+                                if (btn.value === 'designer') {
+                                    group.querySelectorAll('[data-choice]').forEach(b => { if (b !== btn) setOn(b, false); });
+                                } else {
+                                    group.querySelectorAll('[data-choice][value="designer"]').forEach(b => setOn(b, false));
+                                }
+                            }
                         }
 
                         save(block, delegate);

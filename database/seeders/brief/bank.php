@@ -240,6 +240,9 @@ return [
                 ]),
                 'required' => false, 'delegatable' => true],
             ['key' => 'custom_style_reference', 'label' => 'Öz referanslarınız (link və ya təsvir)', 'type' => 'textarea', 'options' => null, 'required' => false, 'delegatable' => false],
+            // Part 9.4: file_upload / url — the upload half of the pair.
+            ['key' => 'custom_style_reference_file', 'label' => 'Referans foto yükləyin', 'type' => 'file', 'options' => null, 'required' => false, 'delegatable' => false,
+                'help' => 'PDF, JPG və ya PNG.'],
             ['key' => 'open_to_unconventional', 'label' => 'Qeyri-standart həllərə hazırsınız?', 'type' => 'select',
                 'options' => $opt(['yes' => 'Bəli', 'no' => 'Xeyr', 'designer' => 'Dizaynerin ixtiyarına']),
                 'required' => false, 'delegatable' => true],
@@ -248,6 +251,9 @@ return [
             ['key' => 'style_extra_notes', 'label' => 'Üslub üzrə əlavə istəklər', 'type' => 'textarea', 'options' => null, 'required' => false, 'delegatable' => false,
                 'help' => 'Nə nəzərə alınmalı, nədən qaçınmalı.'],
             ['key' => 'favorite_item_keep', 'label' => 'Yeni interyerə köçürüləcək sevimli əşya', 'type' => 'textarea', 'options' => null, 'required' => false, 'delegatable' => false],
+            // Part 9.4: text + file_upload — the photo half of the pair.
+            ['key' => 'favorite_item_photo', 'label' => 'Sevimli əşyanın fotosu', 'type' => 'file', 'options' => null, 'required' => false, 'delegatable' => false,
+                'help' => 'JPG, PNG və ya PDF.'],
             ['key' => 'color_palette_visual', 'label' => 'Rəng palitrası', 'type' => 'color_swatch',
                 'options' => [
                     'base_max' => 4,
@@ -610,7 +616,8 @@ return [
     ]),
 
     $roomSection('room_kids', 'kids', ['az' => 'Uşaq otağı', 'ru' => 'Детская', 'en' => 'Kids room'], [
-        ['key' => 'kids_age_gender', 'label' => 'Uşağın yaşı və cinsi', 'type' => 'text', 'options' => null, 'required' => true, 'delegatable' => false],
+        // Screen 08b: every room field is Optional.
+        ['key' => 'kids_age_gender', 'label' => 'Uşağın yaşı və cinsi', 'type' => 'text', 'options' => null, 'required' => false, 'delegatable' => false],
         ['key' => 'kids_zones', 'label' => 'Lazım olan zonalar', 'type' => 'multiselect',
             'options' => $opt(['sleep' => 'Yuxu', 'study' => 'Dərs', 'play' => 'Oyun', 'sport' => 'İdman küncü', 'creative' => 'Yaradıcılıq', 'designer' => 'Dizaynerin ixtiyarına']),
             'required' => false, 'delegatable' => true],
@@ -702,7 +709,7 @@ return [
     ]),
 
     $roomSection('room_other', 'other_room', ['az' => 'Digər otaq', 'ru' => 'Другое помещение', 'en' => 'Other room'], [
-        ['key' => 'other_room_name', 'label' => 'Otağın adı / təyinatı', 'type' => 'text', 'options' => null, 'required' => true, 'delegatable' => false],
+        ['key' => 'other_room_name', 'label' => 'Otağın adı / təyinatı', 'type' => 'text', 'options' => null, 'required' => false, 'delegatable' => false],
         ['key' => 'other_room_function', 'label' => 'Bu otaq necə istifadə olunacaq?', 'type' => 'textarea', 'options' => null, 'required' => false, 'delegatable' => false],
         $roomStorage('other_room'), $roomDecor('other_room'), $roomNotes('other_room'),
     ]),

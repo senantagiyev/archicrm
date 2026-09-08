@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\BriefStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use App\Models\Brief;
@@ -22,11 +23,18 @@ class BriefController extends Controller
     {
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
+
+        // Spec 13.2 №9: first open of a sent brief → in_progress.
+        if ($brief->statusEnum() === BriefStatus::Sent) {
+            $brief->forceFill(['status' => BriefStatus::InProgress->value])->save();
+        }
+
         $brief->load('rooms');
 
         $map = $this->briefs->sectionMap($brief);
+        $openComments = $brief->openComments()->count();
 
-        return view('portal.brief.index', compact('project', 'brief', 'map'));
+        return view('portal.brief.index', compact('project', 'brief', 'map', 'openComments'));
     }
 
     public function section(int $project, BriefSection $section, ?BriefRoom $room = null)
@@ -51,7 +59,24 @@ class BriefController extends Controller
         // wizard is seeded with the whole brief's answers, not just this page's.
         $values = $this->briefs->valuesByKey($brief, $room);
 
-        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map', 'values'));
+        // Screen 13: while clarification is pending only the flagged questions stay editable.
+        $comments = $brief->needsClarification()
+            ? $brief->openComments()->where('brief_room_id', $room?->id)->with('user')->get()->keyBy('brief_question_id')
+            : collect();
+        $editableQuestionIds = $brief->isLocked() ? $comments->keys()->all() : null;
+
+        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map', 'values', 'comments', 'editableQuestionIds'));
+    }
+
+    /** Whether the client may write this question right now (free edit, or flagged during clarification). */
+    private function canEdit(Brief $brief, int $questionId, ?BriefRoom $room): bool
+    {
+        if (! $brief->isLocked()) {
+            return true;
+        }
+
+        return $brief->needsClarification()
+            && $brief->openComments()->where('brief_question_id', $questionId)->where('brief_room_id', $room?->id)->exists();
     }
 
     /** Debounced autosave from the wizard (one field per request). */
@@ -61,8 +86,6 @@ class BriefController extends Controller
         $brief = $this->briefs->forProject($project);
         $room = $this->resolveRoom($request, $brief);
 
-        abort_if($brief->isCompleted(), 403);
-
         $validated = $request->validate([
             'question_id' => ['required', 'integer'],
             'value' => ['nullable'],
@@ -71,13 +94,34 @@ class BriefController extends Controller
 
         $question = $section->questions()->findOrFail($validated['question_id']);
 
+        // Locked brief: only questions flagged for clarification may change (Screen 13).
+        abort_unless($this->canEdit($brief, $question->id, $room), 403);
+
+        $value = $validated['value'];
+
+        // Part 10 №16 exclusive_override: «Dizaynerin ixtiyarına» cancels sibling picks.
+        if (is_array($value) && array_is_list($value) && in_array('designer', $value, true) && count($value) > 1) {
+            $value = ['designer'];
+        }
+
+        // Screen 02 inline rule: design area cannot exceed total area.
+        if (in_array($question->key, ['design_area_sqm', 'total_area_sqm'], true) && ! $validated['delegated']) {
+            $current = $this->briefs->valuesByKey($brief, $room);
+            $total = (float) ($question->key === 'total_area_sqm' ? $value : ($current['total_area_sqm'] ?? 0));
+            $design = (float) ($question->key === 'design_area_sqm' ? $value : ($current['design_area_sqm'] ?? 0));
+
+            if ($total > 0 && $design > $total) {
+                return response()->json(['ok' => false, 'error' => t('portal.brief_area_error')], 422);
+            }
+        }
+
         $brief->answers()->updateOrCreate(
             [
                 'brief_question_id' => $question->id,
                 'brief_room_id' => $room?->id,
             ],
             [
-                'value' => $validated['delegated'] ? null : $validated['value'],
+                'value' => $validated['delegated'] ? null : $value,
                 'delegated_to_designer' => $validated['delegated'],
                 'answered_at' => now(),
             ],
@@ -107,8 +151,6 @@ class BriefController extends Controller
         $brief = $this->briefs->forProject($project);
         $room = $this->resolveRoom($request, $brief);
 
-        abort_if($brief->isCompleted(), 403);
-
         $validated = $request->validate([
             'question_id' => ['required', 'integer'],
             'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png', SafeUpload::document()],
@@ -116,6 +158,7 @@ class BriefController extends Controller
 
         $question = $section->questions()->findOrFail($validated['question_id']);
         abort_unless($question->type === 'file', 422);
+        abort_unless($this->canEdit($brief, $question->id, $room), 403);
 
         $file = $request->file('file');
         $path = $file->store('brief/'.$brief->id, 'public');
@@ -184,8 +227,50 @@ class BriefController extends Controller
         // Consent is what gates the button (spec Part 10 №20) — it is also a
         // required question, so it is listed in $missing; the view needs it flagged.
         $consented = ($values['pdpa_consent'] ?? null) === '1';
+        $validationErrors = $this->briefs->validationErrors($brief);
 
-        return view('portal.brief.summary', compact('project', 'brief', 'map', 'missing', 'values', 'consented'));
+        return view('portal.brief.summary', compact('project', 'brief', 'map', 'missing', 'values', 'consented', 'validationErrors'));
+    }
+
+    /** Screen 12 — confirmation; on deep-link reopen shows the current lifecycle state. */
+    public function sent(int $project)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+
+        if (! $brief->isLocked()) {
+            return redirect()->route('portal.brief', $project);
+        }
+
+        $openComments = $brief->openComments()->count();
+
+        return view('portal.brief.sent', compact('project', 'brief', 'openComments'));
+    }
+
+    /** Screen 13 — Needs Clarification: only the flagged questions are editable. */
+    public function clarifications(int $project)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+
+        $comments = $brief->openComments()->with(['question.section', 'room', 'user'])->latest()->get();
+
+        return view('portal.brief.clarifications', compact('project', 'brief', 'comments'));
+    }
+
+    /** Screen 13 → v(n+1): resolves every open comment and returns the brief to submitted. */
+    public function sendClarifications(int $project)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+
+        abort_unless($brief->needsClarification(), 403);
+
+        $this->briefs->answerClarifications($brief, auth('customer')->user());
+
+        return redirect()
+            ->route('portal.brief.sent', $project)
+            ->with('status', t('portal.brief_clarifications_sent'));
     }
 
     /** Screen 11 → 12: whole-brief submit, blocked until Required + consent are in. */
@@ -194,25 +279,27 @@ class BriefController extends Controller
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
 
-        if ($brief->isCompleted()) {
-            return redirect()->route('portal.brief', $project);
+        if ($brief->isLocked()) {
+            return redirect()->route('portal.brief.sent', $project);
         }
 
         $missing = $this->briefs->missingRequired($brief);
         $consented = ($this->briefs->valuesByKey($brief)['pdpa_consent'] ?? null) === '1';
+        $validationErrors = $this->briefs->validationErrors($brief);
 
-        if ($missing->isNotEmpty() || ! $consented) {
+        if ($missing->isNotEmpty() || ! $consented || $validationErrors !== []) {
             return back()->withErrors([
-                'brief' => $consented
-                    ? t('portal.brief_required_missing', ['count' => $missing->count()])
-                    : t('portal.brief_consent_required'),
+                'brief' => $validationErrors[0]
+                    ?? ($consented
+                        ? t('portal.brief_required_missing', ['count' => $missing->count()])
+                        : t('portal.brief_consent_required')),
             ]);
         }
 
-        $this->briefs->complete($brief);
+        $this->briefs->submit($brief, auth('customer')->user());
 
         return redirect()
-            ->route('portal.brief', $project)
+            ->route('portal.brief.sent', $project)
             ->with('status', t('portal.brief_sent_success'));
     }
 

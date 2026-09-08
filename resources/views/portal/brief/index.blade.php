@@ -27,13 +27,28 @@
         </div>
     @endif
 
-    @if ($brief->isCompleted())
-        {{-- Screen 12 — göndərmənin təsdiqi --}}
-        <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft p-6">
-            <p class="text-lg font-bold text-ok">✓ {{ t('portal.brief_sent_title') }}</p>
-            <p class="mt-1.5 text-sm text-ok/90">{{ t('portal.brief_sent_body') }}</p>
-            <p class="mt-1 text-sm text-ok/90">{{ t('portal.brief_completed_note') }}</p>
-        </div>
+    @if ($brief->isLocked())
+        {{-- Screen 12 / 13 — lifecycle state (submitted / needs_clarification / approved) --}}
+        @if ($brief->needsClarification())
+            <div class="mb-6 rounded-ds-md border border-yellow-line bg-sel-bg p-6">
+                <p class="text-lg font-bold">✎ {{ t('portal.brief_needs_clar_title') }}</p>
+                <p class="mt-1.5 text-sm text-black/70">{{ t('portal.brief_needs_clar_body', ['count' => $openComments ?? 0]) }}</p>
+                <a href="{{ route('portal.brief.clarifications', $project) }}" class="ui-btn ui-btn-dark mt-4 h-10 px-5 text-sm font-bold" data-hover="true">
+                    {{ t('portal.brief_answer_clarifications') }} →
+                </a>
+            </div>
+        @elseif ($brief->isApproved())
+            <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft p-6">
+                <p class="text-lg font-bold text-ok">✓ {{ t('portal.brief_approved_title') }}</p>
+                <p class="mt-1.5 text-sm text-ok/90">{{ t('portal.brief_approved_body') }}</p>
+            </div>
+        @else
+            <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft p-6">
+                <p class="text-lg font-bold text-ok">✓ {{ t('portal.brief_sent_title') }}</p>
+                <p class="mt-1.5 text-sm text-ok/90">{{ t('portal.brief_sent_body') }}</p>
+                <p class="mt-1 text-sm text-ok/90">{{ t('portal.brief_completed_note') }}</p>
+            </div>
+        @endif
     @else
         {{-- Screen 00 — welcome: dəyər + vaxt qiymətləndirməsi + override ipucu --}}
         <div class="mb-6 rounded-ds-md border border-black/10 bg-white p-5">

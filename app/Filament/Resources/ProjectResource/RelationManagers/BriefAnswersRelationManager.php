@@ -2,10 +2,10 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
+use App\Filament\Resources\ProjectResource;
 use App\Models\BriefAnswer;
 use App\Models\BriefSection;
 use App\Models\BriefTemplate;
-use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
 use Filament\Actions;
 use Filament\Forms;
@@ -68,21 +68,12 @@ class BriefAnswersRelationManager extends RelationManager
                     }),
             ])
             ->headerActions([
-                // Spec Part 12 §3–4: risklər + doldurulmamış məcburi sahələr.
+                // Spec Part 12 / Screen 14: full Designer View (summary, risks, priorities, versions).
                 Actions\Action::make('briefReview')
-                    ->label('Risklər və boşluqlar')
-                    ->icon('heroicon-o-exclamation-triangle')
+                    ->label('Dizayner baxışı')
+                    ->icon('heroicon-o-eye')
                     ->color('warning')
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Bağla')
-                    ->modalContent(function () {
-                        $brief = app(BriefService::class)->forProject($this->getOwnerRecord());
-
-                        return view('filament.brief-review', [
-                            'risks' => app(BriefRiskDetector::class)->detect($brief),
-                            'missing' => app(BriefService::class)->missingRequired($brief),
-                        ]);
-                    }),
+                    ->url(fn () => ProjectResource::getUrl('brief-review', ['record' => $this->getOwnerRecord()])),
                 Actions\Action::make('briefTemplate')
                     ->label('Brif şablonu')
                     ->icon('heroicon-o-rectangle-stack')

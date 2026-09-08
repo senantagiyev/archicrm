@@ -201,6 +201,7 @@ class ProjectResource extends Resource
             'index' => Pages\ListProjects::route('/'),
             'create' => Pages\CreateProject::route('/create'),
             'edit' => Pages\EditProject::route('/{record}/edit'),
+            'brief-review' => Pages\BriefReview::route('/{record}/brief-review'),
         ];
     }
 }

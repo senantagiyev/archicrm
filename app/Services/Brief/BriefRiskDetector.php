@@ -10,7 +10,8 @@ use Illuminate\Support\Carbon;
  * MVP dəsti: R1, R2, R4, R5, R6, R8 (xarici qiymət sorğu kitabları tələb
  * etməyən qaydalar). R3/R7 — V2.
  *
- * Hər risk: ['code', 'level' => critical|important|missing, 'message'].
+ * Hər risk: ['code', 'level' => critical|important|missing, 'message', 'keys' => [question keys]].
+ * `keys` lets the Designer View raise the priority of the exact answers involved.
  */
 class BriefRiskDetector
 {
@@ -26,7 +27,7 @@ class BriefRiskDetector
         'rooms_only' => 30,
     ];
 
-    /** @return array<int, array{code: string, level: string, message: string}> */
+    /** @return array<int, array{code: string, level: string, message: string, keys: list<string>}> */
     public function detect(Brief $brief): array
     {
         $v = app(BriefService::class)->valuesByKey($brief);
@@ -42,6 +43,7 @@ class BriefRiskDetector
                 'level' => 'critical',
                 'message' => 'Göstərilən büdcə '.rtrim(rtrim(number_format($area, 1, ',', ' '), '0'), ',')
                     .' m² sahə üçün kifayət etməyə bilər. Konsepsiyanın startından əvvəl gözləntiləri müzakirə etməyi tövsiyə edirik.',
+                'keys' => ['project_budget_range', 'design_area_sqm'],
             ];
         }
 
@@ -57,6 +59,7 @@ class BriefRiskDetector
                     'code' => 'R2',
                     'level' => 'important',
                     'message' => 'Müddət seçilmiş əməkdaşlıq formatı üçün riskli görünür.',
+                    'keys' => ['desired_completion_date', 'cooperation_scope'],
                 ];
             }
         }
@@ -67,6 +70,7 @@ class BriefRiskDetector
                 'code' => 'R4',
                 'level' => 'missing',
                 'message' => 'Obmer planı yoxdur — planlaşdırmanın startından əvvəl sifariş edilməlidir.',
+                'keys' => ['has_measurement_plan'],
             ];
         }
 
@@ -76,6 +80,7 @@ class BriefRiskDetector
                 'code' => 'R5',
                 'level' => 'important',
                 'message' => '«Pərdəsiz» göstərilib və eyni zamanda qaranlıqlaşdırma tələbi var — müştəridən dəqiqləşdirin.',
+                'keys' => ['curtains_type', 'curtains_blackout_location'],
             ];
         }
 
@@ -88,6 +93,7 @@ class BriefRiskDetector
                     'code' => 'R6',
                     'level' => 'critical',
                     'message' => $label.' materialları blokunda məlumat konflikti aşkarlandı — «Dizaynerin ixtiyarına» konkret seçimlərlə birlikdə işarələnib.',
+                    'keys' => [$key],
                 ];
             }
         }
@@ -98,6 +104,7 @@ class BriefRiskDetector
                 'code' => 'R8',
                 'level' => 'important',
                 'message' => 'Müştəriyə demontaj üzrə podratçı köməyi lazım ola bilər — seçilmiş əməkdaşlıq formatı bunu əhatə etmir.',
+                'keys' => ['demolition_needed', 'cooperation_scope'],
             ];
         }
 

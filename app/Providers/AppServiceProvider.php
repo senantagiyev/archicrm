@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Models\Approval;
 use App\Models\AutomationRule;
+use App\Models\BriefComment;
+use App\Models\BriefVersion;
 use App\Models\BudgetLine;
 use App\Models\ChangeRequest;
 use App\Models\Client;
@@ -92,6 +94,8 @@ class AppServiceProvider extends ServiceProvider
             'project_decision' => ProjectDecision::class,
             'punch_list_issue' => PunchListIssue::class,
             'automation_rule' => AutomationRule::class,
+            'brief_version' => BriefVersion::class,
+            'brief_comment' => BriefComment::class,
         ]);
 
         Task::observe(TaskObserver::class);

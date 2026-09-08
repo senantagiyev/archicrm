@@ -2,15 +2,25 @@
 
 namespace App\Services\Brief;
 
+use App\Enums\BriefStatus;
 use App\Enums\DocumentType;
+use App\Enums\TaskPriority;
+use App\Enums\TaskStatus;
 use App\Models\Brief;
 use App\Models\BriefAnswer;
+use App\Models\BriefComment;
 use App\Models\BriefQuestion;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
 use App\Models\BriefTemplate;
+use App\Models\BriefVersion;
+use App\Models\ClientUser;
 use App\Models\Document;
 use App\Models\Project;
+use App\Models\Stage;
+use App\Models\Task;
+use App\Models\User;
+use App\Notifications\AutomationAlert;
 use App\Notifications\BriefCompleted;
 use App\Notifications\BriefSectionSubmitted;
 use App\Services\Automation\AutomationEngine;
@@ -210,10 +220,13 @@ class BriefService
 
         $progress = $total > 0 ? (int) round($answered / $total * 100) : 0;
 
-        $brief->forceFill([
-            'progress' => $progress,
-            'status' => $brief->isCompleted() ? 'completed' : ($answered > 0 ? 'in_progress' : 'draft'),
-        ])->save();
+        // Locked briefs keep their lifecycle status; `sent` stays until the first answer.
+        $status = $brief->statusEnum();
+        $next = $status->isLocked()
+            ? $status->value
+            : ($answered > 0 ? BriefStatus::InProgress->value : ($status === BriefStatus::Sent ? BriefStatus::Sent->value : BriefStatus::Draft->value));
+
+        $brief->forceFill(['progress' => $progress, 'status' => $next])->save();
     }
 
     /**
@@ -239,17 +252,32 @@ class BriefService
         $map = $this->sectionMap($brief->fresh(['rooms']));
 
         if ($map->isNotEmpty() && $map->every(fn ($entry) => $entry['status'] === 'submitted')) {
-            $this->complete($brief);
+            $this->submit($brief);
         }
     }
 
+    /** Backward-compatible alias — the lifecycle verb is submit(). */
     public function complete(Brief $brief): void
     {
-        if ($brief->isCompleted()) {
+        $this->submit($brief);
+    }
+
+    /**
+     * Screen 11 → 12 (spec 13.2 №1): status → submitted, immutable BriefVersion v1,
+     * CRM field sync (13.3), post-submit automations (13.2 №2), PDF + team notice.
+     */
+    public function submit(Brief $brief, ?ClientUser $by = null): void
+    {
+        if ($brief->isLocked()) {
             return;
         }
 
-        $brief->forceFill(['status' => 'completed', 'completed_at' => now(), 'progress' => 100])->save();
+        $brief->forceFill([
+            'status' => BriefStatus::Submitted->value,
+            'submitted_at' => now(),
+            'completed_at' => $brief->completed_at ?? now(),
+            'progress' => 100,
+        ])->save();
 
         // Every section counts as submitted once the brief itself is sent.
         $this->sectionMap($brief->fresh(['rooms']))->each(function (array $entry) use ($brief) {
@@ -259,6 +287,10 @@ class BriefService
             );
         });
 
+        $this->createVersion($brief, $by, 'İlkin göndəriş');
+        $this->syncToCrm($brief);
+        $this->afterSubmitAutomations($brief);
+
         $document = $this->exportPdf($brief);
 
         $project = $brief->project;
@@ -267,6 +299,263 @@ class BriefService
         if ($project->manager && app(AutomationEngine::class)->isEnabled('rule-13')) {
             $project->manager->notify(new BriefCompleted($brief, $document));
         }
+    }
+
+    /** Spec 13.2 №5 / Screen 13: designer flags one question; the client may edit only that. */
+    public function requestClarification(Brief $brief, BriefQuestion $question, ?BriefRoom $room, User $designer, string $body): BriefComment
+    {
+        $comment = $brief->comments()->create([
+            'brief_question_id' => $question->id,
+            'brief_room_id' => $room?->id,
+            'user_id' => $designer->id,
+            'body' => $body,
+            'status' => 'open',
+        ]);
+
+        $brief->forceFill(['status' => BriefStatus::NeedsClarification->value])->save();
+
+        $project = $brief->project()->with('client.clientUsers')->first();
+        foreach ($project?->client?->clientUsers ?? [] as $clientUser) {
+            $clientUser->notify(new AutomationAlert(
+                'Brif üzrə dəqiqləşdirmə lazımdır',
+                '«'.$question->getTranslation('label', 'az').'» sualı üzrə dizaynerin dəqiqləşdirmə sorğusu var.',
+                route('portal.brief.clarifications', $project),
+                ['brief_id' => $brief->id, 'project_id' => $brief->project_id, 'comment_id' => $comment->id],
+                'brief-clarification',
+            ));
+        }
+
+        return $comment;
+    }
+
+    /** Spec 13.2 №6: client answered → v(n+1), comments resolved, back to submitted. */
+    public function answerClarifications(Brief $brief, ?ClientUser $by = null): void
+    {
+        if (! $brief->needsClarification()) {
+            return;
+        }
+
+        $brief->openComments()->update(['status' => 'resolved', 'resolved_at' => now()]);
+        $brief->forceFill(['status' => BriefStatus::Submitted->value])->save();
+
+        $this->createVersion($brief, $by, 'Dəqiqləşdirmələr');
+
+        $project = $brief->project;
+        $project->manager?->notify(new AutomationAlert(
+            'Brif dəqiqləşdirmələri cavablandı',
+            $project->name.' — müştəri dəqiqləşdirmələri göndərdi, yeni versiya yaradıldı.',
+            null,
+            ['brief_id' => $brief->id, 'project_id' => $brief->project_id],
+            'brief-clarified',
+        ));
+    }
+
+    /** Spec 13.2 №7: baseline for design work; answers become read-only for the client. */
+    public function approve(Brief $brief, User $designer): void
+    {
+        $brief->forceFill(['status' => BriefStatus::Approved->value, 'approved_at' => now()])->save();
+
+        $project = $brief->project()->with('client.clientUsers')->first();
+        foreach ($project?->client?->clientUsers ?? [] as $clientUser) {
+            $clientUser->notify(new AutomationAlert(
+                'Brif təsdiqləndi',
+                '«'.$project->name.'» layihəsi üzrə brifiniz dizayner tərəfindən təsdiqləndi — layihələndirmə başlayır.',
+                route('portal.brief.sent', $project),
+                ['brief_id' => $brief->id, 'project_id' => $brief->project_id],
+                'brief-approved',
+            ));
+        }
+    }
+
+    /** Immutable snapshot of every answer (general + per room). */
+    public function createVersion(Brief $brief, ClientUser|User|null $by, ?string $note = null): BriefVersion
+    {
+        $version = $brief->versions()->create([
+            'version' => (int) $brief->current_version + 1,
+            'snapshot' => $this->snapshot($brief),
+            'created_by_type' => $by ? $by->getMorphClass() : null,
+            'created_by_id' => $by?->getKey(),
+            'note' => $note,
+            'created_at' => now(),
+        ]);
+
+        $brief->forceFill(['current_version' => $version->version])->save();
+
+        return $version;
+    }
+
+    /** @return array{general: array<string, mixed>, rooms: array<int, array{label: string, answers: array<string, mixed>}>} */
+    public function snapshot(Brief $brief): array
+    {
+        $out = ['general' => [], 'rooms' => []];
+        $rooms = $brief->rooms()->get()->keyBy('id');
+
+        foreach ($brief->answers()->with('question')->get() as $answer) {
+            if (! $answer->question) {
+                continue;
+            }
+            $entry = ['value' => $answer->value, 'delegated' => (bool) $answer->delegated_to_designer];
+
+            if ($answer->brief_room_id) {
+                $out['rooms'][$answer->brief_room_id]['label'] ??= $rooms[$answer->brief_room_id]->label ?? 'Otaq';
+                $out['rooms'][$answer->brief_room_id]['answers'][$answer->question->key] = $entry;
+            } else {
+                $out['general'][$answer->question->key] = $entry;
+            }
+        }
+
+        return $out;
+    }
+
+    /** Spec 13.3: contacts → client card, budget → project plan (BriefAnswer is the source of truth). */
+    public function syncToCrm(Brief $brief): void
+    {
+        $v = $this->valuesByKey($brief);
+        $project = $brief->project()->with('client')->first();
+
+        if ($client = $project?->client) {
+            $client->forceFill(array_filter([
+                'phone' => blank($client->phone) ? ($v['contact_phone'] ?? null) : null,
+                'email' => blank($client->email) ? ($v['contact_email'] ?? null) : null,
+            ]))->save();
+        }
+
+        $max = (float) ($v['project_budget_range']['max'] ?? 0);
+        if ($project && $max > 0) {
+            $project->forceFill(['budget_plan' => $max])->save();
+        }
+    }
+
+    /** Spec 13.2 №2 / Part 10 №5: no measurement plan → task for the manager to order one. */
+    public function afterSubmitAutomations(Brief $brief): void
+    {
+        $v = $this->valuesByKey($brief);
+        $project = $brief->project()->with('manager')->first();
+
+        if (! $project?->manager || ($v['has_measurement_plan'] ?? null) !== 'no') {
+            return;
+        }
+
+        $stage = Stage::query()->where('project_id', $project->id)->orderBy('position')->first();
+
+        if ($stage) {
+            Task::create([
+                'stage_id' => $stage->id,
+                'project_id' => $project->id,
+                'title' => 'Obyektin obmerini sifariş et',
+                'description' => 'Brifdə obmer/BTİ planının olmadığı göstərilib — layihələndirmənin startından əvvəl obmer sifariş edilməlidir.',
+                'assignee_user_id' => $project->manager_user_id,
+                'author_user_id' => $project->manager_user_id,
+                'deadline' => now()->addDays(7),
+                'status' => TaskStatus::Todo->value,
+                'priority' => TaskPriority::High->value,
+            ]);
+
+            return;
+        }
+
+        $project->manager->notify(new AutomationAlert(
+            'Obmer sifariş edilməlidir',
+            $project->name.' — brifdə obmer planı yoxdur; obmer sifariş edin.',
+            null,
+            ['brief_id' => $brief->id, 'project_id' => $project->id],
+            'brief-measurement',
+        ));
+    }
+
+    /** Screen 02 cross-field rules that must hold before sending. @return list<string> */
+    public function validationErrors(Brief $brief): array
+    {
+        $v = $this->valuesByKey($brief);
+        $errors = [];
+
+        $total = (float) ($v['total_area_sqm'] ?? 0);
+        $design = (float) ($v['design_area_sqm'] ?? 0);
+        if ($total > 0 && $design > $total) {
+            $errors[] = t('portal.brief_area_error');
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Screen 14 §6 — answer-level priority: critical / important / normal / missing.
+     *
+     * @return Collection<int, array{section: BriefSection, room: ?BriefRoom, question: BriefQuestion, answer: ?BriefAnswer, priority: string, note: ?string}>
+     */
+    public function answerPriorities(Brief $brief): Collection
+    {
+        $riskByKey = [];
+        foreach (app(BriefRiskDetector::class)->detect($brief) as $risk) {
+            foreach ($risk['keys'] ?? [] as $key) {
+                $riskByKey[$key] = $risk;
+            }
+        }
+
+        $concrete = ['project_budget_range', 'cooperation_scope', 'room_inventory', 'property_readiness', 'desired_completion_date', 'total_area_sqm', 'design_area_sqm'];
+        $answers = $brief->answers()->get()->groupBy(fn (BriefAnswer $a) => $a->brief_question_id.':'.($a->brief_room_id ?? 0));
+
+        return $this->sectionMap($brief)->flatMap(function (array $entry) use ($answers, $riskByKey, $concrete) {
+            $roomId = $entry['room']?->id ?? 0;
+
+            return $entry['section']->questions
+                ->filter(fn (BriefQuestion $q) => $q->shouldShow($entry['values']))
+                ->map(function (BriefQuestion $q) use ($answers, $riskByKey, $concrete, $entry, $roomId) {
+                    $answer = $answers->get($q->id.':'.$roomId)?->first();
+                    $answered = $answer?->isAnswered() ?? false;
+                    $delegated = (bool) ($answer?->delegated_to_designer ?? false);
+
+                    [$priority, $note] = match (true) {
+                        $q->is_required && ! $answered => ['critical', 'Məcburi sahə doldurulmayıb'],
+                        isset($riskByKey[$q->key]) => [$riskByKey[$q->key]['level'] === 'missing' ? 'missing' : $riskByKey[$q->key]['level'], $riskByKey[$q->key]['code'].' — '.$riskByKey[$q->key]['message']],
+                        $delegated && (in_array($q->key, $concrete, true) || $q->is_required) => ['important', 'Dizaynerin ixtiyarına buraxılıb — burada konkret cavab gözlənilir'],
+                        $answered => ['normal', null],
+                        default => ['missing', 'Doldurulmayıb (məcburi deyil)'],
+                    };
+
+                    return ['section' => $entry['section'], 'room' => $entry['room'], 'question' => $q, 'answer' => $answer, 'priority' => $priority, 'note' => $note];
+                });
+        })->values();
+    }
+
+    /** Screen 14 §7 — every uploaded file with the question it came from. */
+    public function attachments(Brief $brief): Collection
+    {
+        return $brief->answers()->with(['question', 'room'])->get()
+            ->filter(fn (BriefAnswer $a) => $a->question?->type === 'file' && is_array($a->value) && ! empty($a->value['path']))
+            ->map(fn (BriefAnswer $a) => [
+                'question' => $a->question->getTranslation('label', 'az'),
+                'room' => $a->room?->label,
+                'name' => $a->value['name'] ?? basename($a->value['path']),
+                'url' => asset('storage/'.ltrim($a->value['path'], '/')),
+                'answered_at' => $a->answered_at,
+            ])->values();
+    }
+
+    /** Screen 14 §2 — sticky summary panel. @return array<string, mixed> */
+    public function summaryPanel(Brief $brief): array
+    {
+        $v = $this->valuesByKey($brief);
+        $label = function (string $key, mixed $value) {
+            $q = BriefQuestion::where('key', $key)->first();
+
+            return $q ? $q->displayValue($value) : (string) $value;
+        };
+        $budget = $v['project_budget_range'] ?? null;
+
+        return [
+            'address' => $v['object_address'] ?? null,
+            'type' => isset($v['object_type']) ? $label('object_type', $v['object_type']) : null,
+            'total_area' => $v['total_area_sqm'] ?? null,
+            'design_area' => $v['design_area_sqm'] ?? null,
+            'budget' => is_array($budget) && (($budget['min'] ?? null) || ($budget['max'] ?? null))
+                ? trim(($budget['min'] ?? '').' – '.($budget['max'] ?? '').' '.($budget['currency'] ?? ''))
+                : null,
+            'timeline' => trim(($v['desired_start_date'] ?? '').' → '.($v['desired_completion_date'] ?? ''), ' →'),
+            'scope' => isset($v['cooperation_scope']) ? $label('cooperation_scope', $v['cooperation_scope']) : null,
+            'styles' => isset($v['style_preferences']) ? array_slice((array) $v['style_preferences'], 0, 3) : [],
+            'rooms' => $brief->rooms()->pluck('label')->all(),
+        ];
     }
 
     /** Render the whole brief to PDF and attach it to the project documents. */

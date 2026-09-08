@@ -4,7 +4,8 @@
     $answers = $brief->answers->keyBy(fn ($a) => $a->brief_question_id.':'.($a->brief_room_id ?? 0));
     // Part 10 №12 / Risk R5 — the one conflict the client is asked to resolve here.
     $curtainsConflict = ($values['curtains_type'] ?? null) === 'none' && filled($values['curtains_blackout_location'] ?? null);
-    $canSend = $missing->isEmpty() && $consented && ! $completed;
+    $validationErrors = $validationErrors ?? [];
+    $canSend = $missing->isEmpty() && $consented && ! $completed && $validationErrors === [];
 @endphp
 
 <x-portal.shell :title="t('portal.brief_summary')" :project="$project" active="brief">
@@ -40,6 +41,14 @@
         @if ($curtainsConflict)
             <div class="mt-4 rounded-ds-md border border-warn/40 bg-warn-soft px-4 py-3 text-[13px] font-medium text-warn">
                 {{ t('portal.brief_conflict_curtains') }}
+            </div>
+        @endif
+
+        @if ($validationErrors !== [])
+            <div class="mb-6 rounded-ds-md border border-error/30 bg-error-soft px-5 py-4">
+                @foreach ($validationErrors as $error)
+                    <p class="text-sm font-medium text-error">{{ $error }}</p>
+                @endforeach
             </div>
         @endif
 
