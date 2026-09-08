@@ -1,3 +1,9 @@
+@php
+    $locale = app()->getLocale();
+    $totalMinutes = $map->sum(fn ($e) => $e['section']->estimated_minutes ?? 0);
+    $roomsHub = $map->firstWhere(fn ($e) => $e['section']->key === 'rooms_hub');
+@endphp
+
 <x-portal.shell :title="t('portal.nav_brief')" :project="$project" active="brief">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -15,9 +21,31 @@
         </div>
     </div>
 
-    @if ($brief->isCompleted())
+    @if (session('status'))
         <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft px-4 py-3 text-sm font-medium text-ok">
-            {{ t('portal.brief_completed_note') }}
+            {{ session('status') }}
+        </div>
+    @endif
+
+    @if ($brief->isCompleted())
+        {{-- Screen 12 — göndərmənin təsdiqi --}}
+        <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft p-6">
+            <p class="text-lg font-bold text-ok">✓ {{ t('portal.brief_sent_title') }}</p>
+            <p class="mt-1.5 text-sm text-ok/90">{{ t('portal.brief_sent_body') }}</p>
+            <p class="mt-1 text-sm text-ok/90">{{ t('portal.brief_completed_note') }}</p>
+        </div>
+    @else
+        {{-- Screen 00 — welcome: dəyər + vaxt qiymətləndirməsi + override ipucu --}}
+        <div class="mb-6 rounded-ds-md border border-black/10 bg-white p-5">
+            <p class="text-sm font-semibold">{{ t('portal.brief_welcome_title', ['minutes' => $totalMinutes]) }}</p>
+            <ul class="mt-2 space-y-1 text-[13px] text-black/60">
+                <li>• {{ t('portal.brief_welcome_hint_delegate') }}</li>
+                <li>• {{ t('portal.brief_welcome_hint_resume') }}</li>
+            </ul>
+            @if ($roomsHub && $roomsHub['answered_count'] === 0)
+                <a href="{{ route('portal.brief.section', [$project->id, $roomsHub['section']->id]) }}"
+                    class="mt-3 inline-block text-[13px] font-semibold underline">{{ t('portal.brief_pick_rooms') }} →</a>
+            @endif
         </div>
     @endif
 
@@ -27,7 +55,7 @@
                 class="group rounded-ds-md border border-black/10 bg-white p-5 transition-colors hover:border-black/30">
                 <div class="mb-3 flex items-start justify-between gap-2">
                     <h2 class="text-[15px] font-bold group-hover:underline">
-                        {{ $entry['room']?->label ?? $entry['section']->getTranslation('name', app()->getLocale()) }}
+                        {{ $entry['room']?->label ?? $entry['section']->getTranslation('name', $locale) }}
                     </h2>
                     @if ($entry['status'] === 'submitted')
                         <span class="rounded-pill bg-ok-soft px-2.5 py-0.5 text-[11px] font-semibold text-ok">{{ t('portal.brief_submitted') }}</span>
@@ -49,28 +77,9 @@
         @endforeach
     </div>
 
-    @unless ($brief->isCompleted())
-        <div class="mt-8 rounded-ds-md border border-black/10 bg-white p-5">
-            <h3 class="mb-3 text-sm font-bold">{{ t('portal.brief_add_room') }}</h3>
-            <form method="post" action="{{ route('portal.brief.rooms.add', $project) }}" class="flex flex-wrap items-end gap-3">
-                @csrf
-                <div>
-                    <label class="mb-1.5 block text-[12px] font-semibold text-black/60">{{ t('portal.brief_room_type') }}</label>
-                    <select name="room_type" required class="h-10 rounded-ds border border-black/20 px-3 text-sm">
-                        @foreach ($roomSections as $rs)
-                            <option value="{{ $rs->room_type }}">{{ $rs->getTranslation('name', app()->getLocale()) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1.5 block text-[12px] font-semibold text-black/60">{{ t('portal.brief_room_label') }}</label>
-                    <input name="label" placeholder="{{ t('portal.brief_room_label_ph') }}"
-                        class="h-10 rounded-ds border border-black/20 px-3 text-sm">
-                </div>
-                <button class="ui-btn ui-btn-dark h-10 px-4 text-[13px] font-semibold" data-hover="true">
-                    {{ t('portal.brief_add') }}
-                </button>
-            </form>
-        </div>
-    @endunless
+    <div class="mt-8 flex justify-end">
+        <a href="{{ route('portal.brief.summary', $project) }}" class="ui-btn ui-btn-dark h-11 px-6 text-sm font-bold" data-hover="true">
+            {{ $brief->isCompleted() ? t('portal.brief_summary') : t('portal.brief_go_summary') }} →
+        </a>
+    </div>
 </x-portal.shell>

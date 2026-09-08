@@ -26,11 +26,14 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
         Route::get('/projects/{project}/brief', [BriefController::class, 'index'])->name('brief');
+        // Screen 11 — must be declared before the {section} catch-all below.
+        Route::get('/projects/{project}/brief/summary', [BriefController::class, 'summary'])->name('brief.summary');
         Route::get('/projects/{project}/brief/{section}/{room?}', [BriefController::class, 'section'])->name('brief.section');
 
         Route::middleware('throttle:portal-write')->group(function () {
-            Route::post('/projects/{project}/brief/rooms', [BriefController::class, 'addRoom'])->name('brief.rooms.add');
             Route::post('/projects/{project}/brief-submit/{section}', [BriefController::class, 'submit'])->name('brief.submit');
+            Route::post('/projects/{project}/brief-upload/{section}', [BriefController::class, 'upload'])->name('brief.upload');
+            Route::post('/projects/{project}/brief-send', [BriefController::class, 'submitBrief'])->name('brief.send');
             Route::post('/projects/{project}/chat', [ChatController::class, 'send'])->name('chat.send');
             Route::post('/approvals/{approval}/decide', [ApprovalController::class, 'decide'])->name('approvals.decide');
         });

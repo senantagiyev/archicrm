@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBriefRoomKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BriefAnswer extends Model
 {
+    use HasBriefRoomKey;
+
     protected $fillable = [
         'brief_id', 'brief_question_id', 'brief_room_id',
         'value', 'delegated_to_designer', 'answered_at',
@@ -38,6 +41,16 @@ class BriefAnswer extends Model
 
     public function isAnswered(): bool
     {
-        return $this->delegated_to_designer || filled($this->value);
+        if ($this->delegated_to_designer) {
+            return true;
+        }
+
+        // Composite types (matrix, room_inventory, color_swatch, budget_range)
+        // store an array that can be present but entirely empty.
+        if (is_array($this->value)) {
+            return collect($this->value)->flatten()->filter(fn ($v) => filled($v))->isNotEmpty();
+        }
+
+        return filled($this->value);
     }
 }

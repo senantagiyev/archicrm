@@ -17,7 +17,12 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 - Razılaşdırmalar polimorfdur (`approvals`): BudgetLine/ProcurementItem/Stage/Document. Rədd → şərh MƏCBURİDİR (`ApprovalService::decide`).
 - Razılaşdırılmış + ödənilmiş komplektasiya pozisiyası silinmir — yalnız şərhlə "Ləğv edilib".
 - Çat: polling (8s), `ChatService::send()` tək giriş nöqtəsi — Faza 2-də Reverb broadcast bura əlavə olunur.
-- Brif sual bankı: `database/seeders/brief/bank.php` (git-də) → `BriefQuestionBankSeeder` key üzrə idempotent upsert. Cavablar question id-yə FK — label dəyişməsi köhnə cavabları pozmur.
+- Brif sual bankı: `database/seeders/brief/bank.php` (git-də) → `BriefQuestionBankSeeder` key üzrə idempotent upsert. Cavablar question id-yə FK — label dəyişməsi köhnə cavabları pozmur. Bankdan çıxarılan bölmə/sual silinmir, `active=false` olur.
+- **Brif spesifikasiyası v1.0** (`Archi_Brief_Final_Spec_AZ.md`) tətbiq olunub: 10 bölmə Part 8.2 sırası ilə (§3 «Format və büdcə» yeni, §7 «Mühəndislik» otaqlardan əvvəl, §9 «Komplektasiya» sondan əvvəlki). Yeni sual tipləri: `matrix` (podratçı + brend matrisləri, 14 təkrarı əvəz edir), `room_inventory` (dinamik otaq tərkibi — `BriefService::syncRooms()` accordion-ları yaradır), `color_swatch`, `budget_range`, `date`, `consent`, `file`.
+- Conditional logic (Part 10) bölmələr arasıdır: `BriefService::valuesByKey()` bütün brif cavablarını key üzrə verir, `BriefQuestion::shouldShow()` operatorları — equals/not_equals/in/gte/lte/filled/has_room/matrix_row_filled. Blade və JS eyni məntiqi tətbiq edir (`section.blade.php` `matches()`).
+- Göndərmə axını: Screen 11 `portal.brief.summary` (boş məcburi sahələr + konfliktlər) → `portal.brief.send`. `pdpa_consent` göndərməni bloklayır — həm düymədə, həm serverdə.
+- `BriefRiskDetector` (Part 14): R1, R2, R4, R5, R6, R8. PDF ixracında və Filament «Risklər və boşluqlar» modalında göstərilir.
+- `brief_answers` / `brief_section_states` unikallığı `room_key` sütunu üzrədir (NULL `brief_room_id` unique index-də toqquşmur) — `HasBriefRoomKey` trait onu avtomatik doldurur. Paralel avtosaxlamalar dublikat sətir yaratmır.
 
 ## Təhlükəsizlik (audit sonrası)
 - **CAPTCHA**: Google reCAPTCHA **v3** (görünməz, bal-əsaslı) hər iki giriş formunda. `config/services.php` recaptcha.{site_key,secret_key,min_score} (`.env` RECAPTCHA_*, default min_score 0.5). `RecaptchaService::verify()` server tərəfli siteverify + bal astanası — açar YOXDURSA skip (dev/test), açar VARSA fail-closed; token boşdursa/absent-dirsə rədd (controller-də unconditional yoxlama, validasiya qaydası deyil — absent field qaydanı skip edərdi). Portal: `AuthController::sendLoginLink` submit-də `grecaptcha.execute` ilə token alır. Filament: custom `App\Filament\Auth\Login` (token 90s-də bir yenilənib Livewire state-ə yazılır, `authenticate()`-də yoxlanır). Filament View komponenti `Filament\Schemas\Components\View` (Forms deyil).
@@ -37,7 +42,7 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 - `--env=testing` ilə `migrate:fresh` İŞLƏTMƏ — phpunit.xml onsuz sqlite :memory: istifadə edir.
 
 ## Əmrlər
-- `php artisan test` — 12 test (readiness, borc, approval, portal scoping)
+- `php artisan test` — 93 test (readiness, borc, approval, portal scoping, brif spesifikasiyası)
 - `vendor\bin\pint --dirty`
 - Scheduler: `stages:mark-overdue`, `tasks:notify-deadlines`, `payments:mark-overdue` (gündəlik), `activitylog:clean` (aylıq)
 - Seed: `php artisan db:seed` (şablonlar + brif bankı + tərcümələr, hamısı idempotent)
@@ -46,3 +51,9 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 Faza 2: təqvim, fayl versiyaları, genişləndirilmiş filtrlər, ixraclar, avto status keçidləri, Reverb, mobil paritet.
 Faza 3: satış/yüklənmə analitikası, rentabellik.
 Brif bankının məzmunu Roomix PDF skrinşotlarından (C:\Users\User\Downloads\Roomix_merged.pdf, 327 səh.) genişləndirilməlidir — struktur hazırdır, `bank.php`-yə bölmə/sual əlavə etmək kifayətdir.
+
+Brif spesifikasiyası v1.0-dan qalan işlər (Part 15 üzrə V2/Future kimi qeyd olunanlar + iki MVP bəndi):
+- `BriefVersion` snapshot-ları və `needs_clarification` dövrü (Part 13.2 qayda 5–7, Screen 13) — hazırda brif göndəriləndə tək versiya (PDF) yaranır.
+- Ayrıca `/projects/{id}/brief/review` Designer View səhifəsi (Part 12) — hazırda Filament RM + «Risklər və boşluqlar» modalı.
+- Otaqlar üzrə checkbox dəstlərinin UX komandası ilə dəqiqləşdirilməsi (spesifikasiyanın Əlavə A) — struktur pattern `bank.php`-də hazırdır.
+- Risk R3/R7 (studiya sorğu kitabları tələb edir), `budget_includes` → smeta inteqrasiyası, brif analitikası.

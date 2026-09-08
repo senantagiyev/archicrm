@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 use App\Models\BriefAnswer;
 use App\Models\BriefSection;
 use App\Models\BriefTemplate;
+use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
 use Filament\Actions;
 use Filament\Forms;
@@ -37,24 +38,17 @@ class BriefAnswersRelationManager extends RelationManager
                     ->label('Sual')
                     ->state(fn (BriefAnswer $r) => $r->question?->getTranslation('label', 'az'))
                     ->wrap(),
+                // Spec Part 12 §6: cavab səviyyəsində prioritet.
+                Tables\Columns\TextColumn::make('priority')
+                    ->label('Prioritet')
+                    ->state(fn (BriefAnswer $r) => $r->delegated_to_designer ? 'Dizaynerə etibar edilib' : 'Normal')
+                    ->badge()
+                    ->color(fn (BriefAnswer $r) => $r->delegated_to_designer ? 'warning' : 'gray'),
                 Tables\Columns\TextColumn::make('value')
                     ->label('Cavab')
-                    ->state(function (BriefAnswer $r) {
-                        if ($r->delegated_to_designer) {
-                            return '💡 Dizaynerin tövsiyəsi lazımdır';
-                        }
-                        if (is_array($r->value)) {
-                            return collect($r->value)->map(fn ($v) => $r->question?->optionLabel((string) $v) ?? $v)->implode(', ');
-                        }
-                        if ($r->question?->type === 'boolean') {
-                            return $r->value === '1' || $r->value === true ? 'Bəli' : 'Xeyr';
-                        }
-                        if ($r->question?->type === 'select' && $r->value !== null) {
-                            return $r->question->optionLabel((string) $r->value);
-                        }
-
-                        return $r->value;
-                    })
+                    ->state(fn (BriefAnswer $r) => $r->delegated_to_designer
+                        ? '💡 Dizaynerin tövsiyəsi lazımdır'
+                        : ($r->question?->displayValue($r->value) ?: '—'))
                     ->wrap(),
                 Tables\Columns\TextColumn::make('answered_at')
                     ->label('Tarix')
@@ -74,6 +68,21 @@ class BriefAnswersRelationManager extends RelationManager
                     }),
             ])
             ->headerActions([
+                // Spec Part 12 §3–4: risklər + doldurulmamış məcburi sahələr.
+                Actions\Action::make('briefReview')
+                    ->label('Risklər və boşluqlar')
+                    ->icon('heroicon-o-exclamation-triangle')
+                    ->color('warning')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Bağla')
+                    ->modalContent(function () {
+                        $brief = app(BriefService::class)->forProject($this->getOwnerRecord());
+
+                        return view('filament.brief-review', [
+                            'risks' => app(BriefRiskDetector::class)->detect($brief),
+                            'missing' => app(BriefService::class)->missingRequired($brief),
+                        ]);
+                    }),
                 Actions\Action::make('briefTemplate')
                     ->label('Brif şablonu')
                     ->icon('heroicon-o-rectangle-stack')

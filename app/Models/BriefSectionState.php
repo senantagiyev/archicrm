@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasBriefRoomKey;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BriefSectionState extends Model
 {
+    use HasBriefRoomKey;
+
     protected $fillable = ['brief_id', 'brief_section_id', 'brief_room_id', 'status', 'submitted_at'];
 
     protected function casts(): array

@@ -44,10 +44,27 @@ class BriefQuestionBankSeeder extends Seeder
         foreach ($bank as $position => $sectionData) {
             $this->upsertSection($residential->id, $position, $sectionData);
         }
+        $this->deactivateStaleSections($residential->id, array_column($bank, 'key'));
 
-        foreach ($this->commercialBank() as $position => $sectionData) {
+        $commercialBank = $this->commercialBank();
+        foreach ($commercialBank as $position => $sectionData) {
             $this->upsertSection($commercial->id, $position, $sectionData);
         }
+        $this->deactivateStaleSections($commercial->id, array_column($commercialBank, 'key'));
+    }
+
+    /**
+     * Sections dropped from the bank stay in the table (answers FK to their
+     * questions) but leave the wizard — otherwise an old and a new revision of
+     * the same brief would be shown side by side.
+     *
+     * @param  array<int, string>  $keys
+     */
+    private function deactivateStaleSections(int $templateId, array $keys): void
+    {
+        BriefSection::where('brief_template_id', $templateId)
+            ->whereNotIn('key', $keys)
+            ->update(['active' => false]);
     }
 
     private function upsertSection(int $templateId, int $position, array $sectionData): void
@@ -68,25 +85,40 @@ class BriefQuestionBankSeeder extends Seeder
             ],
         );
 
+        $keys = [];
+
         foreach ($sectionData['questions'] as $qPosition => $q) {
-            // Backward-compatible: [key,label,type,options,required,delegatable, skip_logic?]
-            [$key, $label, $type, $options, $required, $delegatable] = $q;
-            $skipLogic = $q[6] ?? null;
+            // Two accepted shapes: the assoc bank format, and the legacy
+            // positional [key,label,type,options,required,delegatable,skip?].
+            $q = isset($q['key']) ? $q : [
+                'key' => $q[0], 'label' => $q[1], 'type' => $q[2], 'options' => $q[3],
+                'required' => $q[4], 'delegatable' => $q[5], 'skip' => $q[6] ?? null,
+            ];
+
+            $label = $q['label'];
+            $help = $q['help'] ?? null;
+            $keys[] = $q['key'];
 
             BriefQuestion::updateOrCreate(
-                ['brief_section_id' => $section->id, 'key' => $key],
+                ['brief_section_id' => $section->id, 'key' => $q['key']],
                 [
                     'label' => is_array($label) ? $label : ['az' => $label],
-                    'type' => $type,
-                    'options' => $options,
-                    'skip_logic' => $skipLogic,
-                    'is_required' => $required,
-                    'allows_designer_choice' => $delegatable,
+                    'help' => $help === null ? null : (is_array($help) ? $help : ['az' => $help]),
+                    'type' => $q['type'],
+                    'options' => $q['options'] ?? null,
+                    'skip_logic' => $q['skip'] ?? null,
+                    'is_required' => (bool) $q['required'],
+                    'allows_designer_choice' => (bool) $q['delegatable'],
                     'position' => $qPosition,
                     'active' => true,
                 ],
             );
         }
+
+        // Questions removed from the bank keep their answers but leave the form.
+        BriefQuestion::where('brief_section_id', $section->id)
+            ->whereNotIn('key', $keys)
+            ->update(['active' => false]);
     }
 
     /** Focused commercial question-set (distinct keys so it lives beside the residential bank). */

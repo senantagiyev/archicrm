@@ -7,6 +7,7 @@ use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use App\Models\Brief;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
+use App\Rules\SafeUpload;
 use App\Services\Brief\BriefService;
 use Illuminate\Http\Request;
 
@@ -24,37 +25,8 @@ class BriefController extends Controller
         $brief->load('rooms');
 
         $map = $this->briefs->sectionMap($brief);
-        $roomSections = BriefSection::where('active', true)
-            ->whereNotNull('room_type')
-            ->when($brief->brief_template_id, fn ($q, $id) => $q->where('brief_template_id', $id))
-            ->orderBy('position')
-            ->get();
 
-        return view('portal.brief.index', compact('project', 'brief', 'map', 'roomSections'));
-    }
-
-    public function addRoom(Request $request, int $project)
-    {
-        $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
-
-        $validated = $request->validate([
-            'room_type' => ['required', 'exists:brief_sections,room_type'],
-            'label' => ['nullable', 'string', 'max:100'],
-        ]);
-
-        $section = BriefSection::where('room_type', $validated['room_type'])
-            ->when($brief->brief_template_id, fn ($q, $id) => $q->where('brief_template_id', $id))
-            ->firstOrFail();
-        $count = $brief->rooms()->where('room_type', $validated['room_type'])->count();
-
-        $brief->rooms()->create([
-            'room_type' => $validated['room_type'],
-            'label' => $validated['label'] ?: $section->getTranslation('name', app()->getLocale()).($count ? ' '.($count + 1) : ''),
-            'position' => ($brief->rooms()->max('position') ?? 0) + 1,
-        ]);
-
-        return back();
+        return view('portal.brief.index', compact('project', 'brief', 'map'));
     }
 
     public function section(int $project, BriefSection $section, ?BriefRoom $room = null)
@@ -75,7 +47,11 @@ class BriefController extends Controller
 
         $map = $this->briefs->sectionMap($brief->load('rooms'));
 
-        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map'));
+        // Conditional logic (spec Part 10) crosses section boundaries, so the
+        // wizard is seeded with the whole brief's answers, not just this page's.
+        $values = $this->briefs->valuesByKey($brief, $room);
+
+        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map', 'values'));
     }
 
     /** Debounced autosave from the wizard (one field per request). */
@@ -107,6 +83,12 @@ class BriefController extends Controller
             ],
         );
 
+        // Dynamic Room Setup (spec Ə11): the inventory answer materialises the
+        // per-room accordions immediately, so the client sees them on return.
+        if ($question->type === 'room_inventory') {
+            $this->briefs->syncRooms($brief, (array) ($validated['value'] ?? []));
+        }
+
         // Mark the section in progress (unless already submitted).
         $brief->sectionStates()->firstOrCreate(
             ['brief_section_id' => $section->id, 'brief_room_id' => $room?->id],
@@ -116,6 +98,40 @@ class BriefController extends Controller
         $this->briefs->recalculateProgress($brief);
 
         return response()->json(['ok' => true, 'saved_at' => now()->format('H:i')]);
+    }
+
+    /** File answers (spec Ə2: obmer/BTİ planı) — stored, then referenced by value. */
+    public function upload(Request $request, int $project, BriefSection $section)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+        $room = $this->resolveRoom($request, $brief);
+
+        abort_if($brief->isCompleted(), 403);
+
+        $validated = $request->validate([
+            'question_id' => ['required', 'integer'],
+            'file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png', SafeUpload::document()],
+        ]);
+
+        $question = $section->questions()->findOrFail($validated['question_id']);
+        abort_unless($question->type === 'file', 422);
+
+        $file = $request->file('file');
+        $path = $file->store('brief/'.$brief->id, 'public');
+
+        $brief->answers()->updateOrCreate(
+            ['brief_question_id' => $question->id, 'brief_room_id' => $room?->id],
+            [
+                'value' => ['path' => $path, 'name' => $file->getClientOriginalName()],
+                'delegated_to_designer' => false,
+                'answered_at' => now(),
+            ],
+        );
+
+        $this->briefs->recalculateProgress($brief);
+
+        return back()->with('status', t('portal.brief_file_uploaded'));
     }
 
     /** Per-section submit with required-question validation. */
@@ -132,16 +148,13 @@ class BriefController extends Controller
             ->get()
             ->keyBy('brief_question_id');
 
-        // Values keyed by question key, for skip-logic evaluation.
-        $valuesByKey = $section->questions
-            ->mapWithKeys(fn ($q) => [$q->key => $answers->get($q->id)?->value])
-            ->all();
+        $values = $this->briefs->valuesByKey($brief, $room);
 
         // A required question is only "missing" when it is actually shown (skip
         // logic satisfied) and neither answered nor delegated.
         $missing = $section->questions
             ->filter(fn ($q) => $q->is_required
-                && $q->shouldShow($valuesByKey)
+                && $q->shouldShow($values)
                 && ! ($answers->get($q->id)?->isAnswered() ?? false));
 
         if ($missing->isNotEmpty()) {
@@ -155,6 +168,52 @@ class BriefController extends Controller
         return redirect()
             ->route('portal.brief', $project)
             ->with('status', t('portal.brief_section_submitted'));
+    }
+
+    /** Screen 11 — pre-submit review: key answers, missing required, conflicts. */
+    public function summary(int $project)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+        $brief->load('rooms');
+
+        $map = $this->briefs->sectionMap($brief);
+        $missing = $this->briefs->missingRequired($brief);
+        $values = $this->briefs->valuesByKey($brief);
+
+        // Consent is what gates the button (spec Part 10 №20) — it is also a
+        // required question, so it is listed in $missing; the view needs it flagged.
+        $consented = ($values['pdpa_consent'] ?? null) === '1';
+
+        return view('portal.brief.summary', compact('project', 'brief', 'map', 'missing', 'values', 'consented'));
+    }
+
+    /** Screen 11 → 12: whole-brief submit, blocked until Required + consent are in. */
+    public function submitBrief(int $project)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+
+        if ($brief->isCompleted()) {
+            return redirect()->route('portal.brief', $project);
+        }
+
+        $missing = $this->briefs->missingRequired($brief);
+        $consented = ($this->briefs->valuesByKey($brief)['pdpa_consent'] ?? null) === '1';
+
+        if ($missing->isNotEmpty() || ! $consented) {
+            return back()->withErrors([
+                'brief' => $consented
+                    ? t('portal.brief_required_missing', ['count' => $missing->count()])
+                    : t('portal.brief_consent_required'),
+            ]);
+        }
+
+        $this->briefs->complete($brief);
+
+        return redirect()
+            ->route('portal.brief', $project)
+            ->with('status', t('portal.brief_sent_success'));
     }
 
     private function resolveRoom(Request $request, Brief $brief): ?BriefRoom
