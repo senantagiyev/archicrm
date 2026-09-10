@@ -31,7 +31,8 @@ class AutomationRuleResource extends Resource
     /** Governance surface — Owner only (TZ §8.21 Admin zone). */
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === StaffRole::Owner;
+        return config('automations.enabled')
+            && auth()->user()?->role === StaffRole::Owner;
     }
 
     public static function table(Table $table): Table

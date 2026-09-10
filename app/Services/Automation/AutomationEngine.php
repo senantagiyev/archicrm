@@ -23,6 +23,10 @@ class AutomationEngine
 
     public function isEnabled(string $code): bool
     {
+        if (! config('automations.enabled')) {
+            return false;
+        }
+
         if ($this->enabledMap === null) {
             $this->enabledMap = AutomationRule::query()->pluck('enabled', 'code')
                 ->map(fn ($v) => (bool) $v)

@@ -24,6 +24,14 @@ class AutomationEngineTest extends TestCase
         $this->assertFalse($engine->isEnabled('rule-unknown'));
     }
 
+    public function test_global_feature_flag_disables_every_rule(): void
+    {
+        AutomationRule::create(['code' => 'rule-x', 'name' => 'On', 'trigger' => 't', 'priority' => 'high', 'enabled' => true]);
+        config()->set('automations.enabled', false);
+
+        $this->assertFalse(app(AutomationEngine::class)->isEnabled('rule-x'));
+    }
+
     public function test_once_runs_the_effect_exactly_once_per_key(): void
     {
         $engine = app(AutomationEngine::class);

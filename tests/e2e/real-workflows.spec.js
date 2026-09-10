@@ -164,6 +164,11 @@ test.describe('real CRM workflows', () => {
             const response = await page.goto(path, { waitUntil: 'domcontentloaded' });
             expect(response?.status(), path).toBe(200);
             await expect(page.locator('main'), path).toBeVisible();
+
+            if (path === '/idaresistem229/profitability') {
+                await expect(page.getByText('Yığılmış gəlir', { exact: true })).toHaveCount(1);
+                await expect(page.getByText('Layihələr üzrə rentabellik', { exact: true })).toHaveCount(1);
+            }
         }
 
         expect(browserErrors).toEqual([]);
