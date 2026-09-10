@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\StaffRole;
 use App\Filament\Resources\TranslationResource\Pages;
 use App\Models\Translation;
 use Filament\Actions;
@@ -33,7 +34,10 @@ class TranslationResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isPlatformAdmin() === true;
+        $user = auth()->user();
+
+        return $user?->role === StaffRole::Owner
+            && (bool) $user->getAttribute('is_platform_admin');
     }
 
     public static function form(Schema $form): Schema

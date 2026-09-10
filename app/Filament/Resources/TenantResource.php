@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\StaffRole;
 use App\Filament\Resources\TenantResource\Pages;
 use App\Models\Tenant;
 use Filament\Actions;
@@ -35,7 +36,10 @@ class TenantResource extends Resource
     /** Platform-level surface — Owner only. */
     public static function canAccess(): bool
     {
-        return auth()->user()?->isPlatformAdmin() === true;
+        $user = auth()->user();
+
+        return $user?->role === StaffRole::Owner
+            && (bool) $user->getAttribute('is_platform_admin');
     }
 
     public static function form(Schema $form): Schema
