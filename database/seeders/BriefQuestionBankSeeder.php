@@ -18,9 +18,25 @@ class BriefQuestionBankSeeder extends Seeder
      */
     public function run(): void
     {
+        // Spec Part 8.1 — level 1: the ~3 min starter questionnaire used before /
+        // right after the contract. Its question keys deliberately mirror the
+        // Premium bank so BriefService::switchTemplate() carries the answers over.
+        $quick = BriefTemplate::updateOrCreate(
+            ['key' => 'quick'],
+            [
+                'level' => BriefTemplate::LEVEL_QUICK,
+                'name' => ['az' => 'Quick Brief', 'ru' => 'Quick Brief', 'en' => 'Quick Brief'],
+                'description' => ['az' => 'Layihənin sürətli yaradılması üçün ~3 dəqiqəlik başlanğıc anket.'],
+                'is_default' => false,
+                'active' => true,
+                'position' => 0,
+            ],
+        );
+
         $residential = BriefTemplate::updateOrCreate(
             ['key' => 'residential'],
             [
+                'level' => BriefTemplate::LEVEL_PREMIUM,
                 'name' => ['az' => 'Yaşayış obyekti', 'ru' => 'Жилой объект', 'en' => 'Residential'],
                 'description' => ['az' => 'Mənzil və evlər üçün tam brif.'],
                 'is_default' => true,
@@ -32,6 +48,7 @@ class BriefQuestionBankSeeder extends Seeder
         $commercial = BriefTemplate::updateOrCreate(
             ['key' => 'commercial'],
             [
+                'level' => BriefTemplate::LEVEL_PREMIUM,
                 'name' => ['az' => 'Kommersiya obyekti', 'ru' => 'Коммерческий объект', 'en' => 'Commercial'],
                 'description' => ['az' => 'Ofis, mağaza, restoran kimi obyektlər üçün qısaldılmış brif.'],
                 'is_default' => false,
@@ -51,6 +68,82 @@ class BriefQuestionBankSeeder extends Seeder
             $this->upsertSection($commercial->id, $position, $sectionData);
         }
         $this->deactivateStaleSections($commercial->id, array_column($commercialBank, 'key'));
+
+        $quickBank = $this->quickBank();
+        foreach ($quickBank as $position => $sectionData) {
+            $this->upsertSection($quick->id, $position, $sectionData);
+        }
+        $this->deactivateStaleSections($quick->id, array_column($quickBank, 'key'));
+    }
+
+    /**
+     * Spec Part 8.1, level 1 — «Quick Brief», ~3 min. Every key here also exists
+     * in the Premium bank (Part 9), which is what makes the Quick → Premium
+     * upgrade lossless: switchTemplate() re-points the answers by key.
+     */
+    private function quickBank(): array
+    {
+        $opt = fn (array $pairs) => collect($pairs)
+            ->map(fn ($label, $value) => ['value' => (string) $value, 'label' => ['az' => $label]])
+            ->values()
+            ->all();
+
+        return [
+            [
+                'key' => 'quick_start',
+                'name' => ['az' => 'Layihə haqqında qısa', 'ru' => 'Коротко о проекте', 'en' => 'Project in brief'],
+                'icon' => 'bolt',
+                'estimated_minutes' => 3,
+                'questions' => [
+                    ['key' => 'object_type', 'label' => 'Obyektin tipi', 'type' => 'select',
+                        'options' => $opt(['apartment' => 'Mənzil', 'house' => 'Fərdi ev']),
+                        'required' => true, 'delegatable' => false],
+                    ['key' => 'object_address', 'label' => 'Obyektin ünvanı', 'type' => 'text',
+                        'options' => null, 'required' => true, 'delegatable' => false],
+                    ['key' => 'total_area_sqm', 'label' => 'Ümumi sahə, m²', 'type' => 'number',
+                        'options' => null, 'required' => true, 'delegatable' => false],
+                    ['key' => 'property_readiness', 'label' => 'Obyektin hazırlığı', 'type' => 'select',
+                        'options' => $opt([
+                            'new_shell' => 'Təmirsiz yeni tikili', 'resale_repaired' => 'Cari təmirlə ikinci əl',
+                            'resale_raw' => 'Təmirsiz ikinci əl', 'other' => 'Digər',
+                        ]),
+                        'required' => false, 'delegatable' => false],
+                    ['key' => 'cooperation_scope', 'label' => 'Əməkdaşlıq formatı', 'type' => 'select',
+                        'options' => $opt([
+                            'design_only' => 'Yalnız dizayn-layihə',
+                            'design_procurement' => 'Dizayn + komplektasiya',
+                            'design_supervision' => 'Dizayn + müəllif nəzarəti',
+                            'turnkey' => 'Açar təhvili (təmirlə birlikdə)',
+                            'rooms_only' => 'Yalnız ayrı otaqlar',
+                        ]),
+                        'required' => true, 'delegatable' => false],
+                    // The AS-IS quick brief already asked for budget outright — the
+                    // audit's point was that the detailed one did not (Part 2.2).
+                    ['key' => 'project_budget_range', 'label' => 'Layihənin büdcəsi', 'type' => 'budget_range',
+                        'options' => null, 'required' => true, 'delegatable' => false,
+                        'help' => 'Təxmini diapazon kifayətdir.'],
+                    ['key' => 'desired_completion_date', 'label' => 'İstənilən bitmə / köçmə tarixi', 'type' => 'date',
+                        'options' => null, 'required' => false, 'delegatable' => false],
+                    ['key' => 'style_preferences', 'label' => 'Sizə yaxın olan üslublar', 'type' => 'multiselect',
+                        'options' => $opt([
+                            'neoclassic' => 'Neoklassika', 'artdeco' => 'Ar-deko', 'eclectic' => 'Eklektika',
+                            'minimalism' => 'Minimalizm', 'eco' => 'Eko-üslub', 'japandi' => 'Japandi',
+                            'scandi' => 'Skandinav', 'industrial' => 'Sənaye', 'ethnic' => 'Etnik', 'chalet' => 'Şale',
+                        ]),
+                        'required' => false, 'delegatable' => true],
+                    ['key' => 'special_requests', 'label' => 'Ən vacib istəyiniz', 'type' => 'textarea',
+                        'options' => null, 'required' => false, 'delegatable' => false],
+                    ['key' => 'contact_full_name', 'label' => 'Ad və soyad', 'type' => 'text',
+                        'options' => null, 'required' => true, 'delegatable' => false],
+                    ['key' => 'contact_phone', 'label' => 'Telefon', 'type' => 'text',
+                        'options' => null, 'required' => true, 'delegatable' => false,
+                        'help' => 'Ölkə kodu ilə, məsələn +994 50 123 45 67.'],
+                    ['key' => 'pdpa_consent', 'label' => 'Şəxsi məlumatlarımın emalına razılıq verirəm', 'type' => 'consent',
+                        'options' => null, 'required' => true, 'delegatable' => false,
+                        'help' => 'Razılıq olmadan brif göndərilə bilməz.'],
+                ],
+            ],
+        ];
     }
 
     /**

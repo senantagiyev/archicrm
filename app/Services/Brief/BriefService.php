@@ -53,6 +53,63 @@ class BriefService
      *
      * @return array<string, mixed>
      */
+    /** @var array<int, Collection<int, int>> question ids per template, memoised per request */
+    private array $templateQuestionIds = [];
+
+    /** @return Collection<int, int> question ids of one template, keyed for has() lookups */
+    private function templateQuestionIds(int $templateId): Collection
+    {
+        return $this->templateQuestionIds[$templateId] ??= BriefQuestion::whereIn(
+            'brief_section_id',
+            BriefSection::where('brief_template_id', $templateId)->select('id')
+        )->pluck('id')->flip();
+    }
+
+    /**
+     * Spec Part 8.1 — moving a brief between the two levels (typically Quick →
+     * Premium once the contract is signed). Answers are re-pointed by question
+     * key, so everything the client already typed survives the upgrade; the old
+     * rows are kept, because switching back must not lose anything either.
+     */
+    public function switchTemplate(Brief $brief, BriefTemplate $template): void
+    {
+        if ($brief->brief_template_id === $template->id) {
+            return;
+        }
+
+        $targetQuestions = BriefQuestion::whereIn(
+            'brief_section_id',
+            BriefSection::where('brief_template_id', $template->id)->select('id')
+        )->get()->keyBy('key');
+
+        $brief->load('answers.question');
+
+        foreach ($brief->answers as $answer) {
+            $target = $answer->question ? $targetQuestions->get($answer->question->key) : null;
+
+            if (! $target || $target->id === $answer->brief_question_id) {
+                continue;
+            }
+
+            $brief->answers()->updateOrCreate(
+                ['brief_question_id' => $target->id, 'brief_room_id' => $answer->brief_room_id],
+                [
+                    'value' => $answer->value,
+                    'delegated_to_designer' => $answer->delegated_to_designer,
+                    'answered_at' => $answer->answered_at ?? now(),
+                ],
+            );
+        }
+
+        $brief->forceFill(['brief_template_id' => $template->id])->save();
+
+        // The room set belongs to the new template's room sections.
+        $inventory = $this->valuesByKey($brief->fresh(['answers.question']))['room_inventory'] ?? [];
+        $this->syncRooms($brief->fresh(), (array) $inventory);
+
+        $this->recalculateProgress($brief->fresh());
+    }
+
     public function valuesByKey(Brief $brief, ?BriefRoom $room = null): array
     {
         // Reuse the eager-loaded relation when the caller already primed it
@@ -60,6 +117,15 @@ class BriefService
         $answers = $brief->relationLoaded('answers')
             ? $brief->answers
             : $brief->answers()->with('question')->get();
+
+        // A brief that has moved between templates (Quick → Premium) still holds
+        // the old template's rows. They share question keys with the new ones, so
+        // without this filter a stale answer could shadow the current one.
+        if ($brief->brief_template_id) {
+            $current = $this->templateQuestionIds($brief->brief_template_id);
+
+            $answers = $answers->filter(fn (BriefAnswer $a) => $current->has($a->brief_question_id));
+        }
 
         $values = [];
 

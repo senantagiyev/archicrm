@@ -26,11 +26,13 @@ class BriefTemplateTest extends TestCase
         ]);
     }
 
-    public function test_seeder_creates_two_templates(): void
+    public function test_seeder_creates_both_brief_levels(): void
     {
         $this->seed(BriefQuestionBankSeeder::class);
 
-        $this->assertSame(2, BriefTemplate::count());
+        // Spec Part 8.1: one Quick Brief + two Premium question-sets (TZ §8.8 wants ≥2).
+        $this->assertSame(2, BriefTemplate::where('level', BriefTemplate::LEVEL_PREMIUM)->count());
+        $this->assertSame(1, BriefTemplate::where('level', BriefTemplate::LEVEL_QUICK)->count());
         $this->assertSame('residential', BriefTemplate::default()->key);
     }
 

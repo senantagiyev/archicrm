@@ -34,12 +34,12 @@ class LeadObserver
         }
 
         $lead->loadMissing('responsible');
-        $lead->responsible?->notify(new AutomationAlert(
+        $lead->responsible?->notify((new AutomationAlert(
             'Yeni lid təyin edildi',
             trim("\"{$lead->first_name} {$lead->last_name}\"").' lidi sizə təyin olundu. İlk əlaqəni planlaşdırın.',
             null,
             ['lead_id' => $lead->id],
             'rule-1',
-        ));
+        ))->afterCommit());
     }
 }

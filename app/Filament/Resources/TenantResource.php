@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources;
 
-use App\Enums\StaffRole;
 use App\Filament\Resources\TenantResource\Pages;
 use App\Models\Tenant;
 use Filament\Actions;
@@ -36,7 +35,7 @@ class TenantResource extends Resource
     /** Platform-level surface — Owner only. */
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === StaffRole::Owner;
+        return auth()->user()?->isPlatformAdmin() === true;
     }
 
     public static function form(Schema $form): Schema
@@ -58,6 +57,25 @@ class TenantResource extends Resource
                 Forms\Components\Toggle::make('active')
                     ->label('Aktiv')
                     ->default(true),
+            ]),
+            Section::make('Ä°lk studiya sahibi')->columns(2)->visible(fn (string $operation): bool => $operation === 'create')->schema([
+                Forms\Components\TextInput::make('owner_name')
+                    ->label('Sahibin adÄ±, soyadÄ±')
+                    ->required()
+                    ->maxLength(191),
+                Forms\Components\TextInput::make('owner_email')
+                    ->label('Sahibin e-poÃ§tu')
+                    ->email()
+                    ->required()
+                    ->unique('users', 'email')
+                    ->maxLength(191),
+                Forms\Components\TextInput::make('owner_password')
+                    ->label('Ä°lkin ÅŸifrÉ™')
+                    ->password()
+                    ->revealable()
+                    ->required()
+                    ->minLength(8)
+                    ->maxLength(191),
             ]),
         ]);
     }

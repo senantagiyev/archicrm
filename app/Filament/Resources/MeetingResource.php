@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MeetingResource\Pages;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -12,6 +13,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MeetingResource extends Resource
 {
@@ -115,5 +117,19 @@ class MeetingResource extends Resource
             'create' => Pages\CreateMeeting::route('/create'),
             'edit' => Pages\EditMeeting::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
     }
 }

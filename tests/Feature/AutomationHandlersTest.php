@@ -16,6 +16,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AutomationAlert;
 use App\Services\Approvals\ApprovalService;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
@@ -54,7 +55,7 @@ class AutomationHandlersTest extends TestCase
 
         $this->assertSame($owner->id, $lead->fresh()->responsible_user_id);
         Notification::assertSentTo($owner, AutomationAlert::class,
-            fn (AutomationAlert $n) => $n->ruleCode === 'rule-1');
+            fn (AutomationAlert $n) => $n->ruleCode === 'rule-1' && $n instanceof ShouldQueue);
     }
 
     public function test_rule_1_off_by_default_leaves_lead_unassigned(): void

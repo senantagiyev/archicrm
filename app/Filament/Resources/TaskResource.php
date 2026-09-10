@@ -48,11 +48,7 @@ class TaskResource extends Resource
         $user = auth()->user();
 
         if ($user && AccessMatrix::requiresOwnProject($user)) {
-            $query->where(fn (Builder $q) => $q
-                ->where('assignee_user_id', $user->id)
-                ->orWhereHas('project', fn (Builder $p) => $p
-                    ->where('manager_user_id', $user->id)
-                    ->orWhereHas('members', fn (Builder $m) => $m->whereKey($user->id))));
+            $query->where('assignee_user_id', $user->id);
         }
 
         return $query;

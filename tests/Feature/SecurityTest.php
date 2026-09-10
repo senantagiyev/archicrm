@@ -4,12 +4,22 @@ namespace Tests\Feature;
 
 use App\Enums\ApprovalStatus;
 use App\Models\Client;
+use App\Models\Expense;
+use App\Models\Invoice;
+use App\Models\Lead;
+use App\Models\Meeting;
 use App\Models\Payment;
 use App\Models\ProcurementItem;
 use App\Models\Project;
+use App\Models\PurchaseOrder;
+use App\Models\Supplier;
+use App\Models\Tenant;
+use App\Models\TimeEntry;
+use App\Models\Translation;
 use App\Models\User;
 use App\Rules\SafeUpload;
 use App\Services\Portal\InvitationService;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -175,5 +185,68 @@ class SecurityTest extends TestCase
 
         $png = UploadedFile::fake()->image('real.png', 10, 10);
         $this->assertFalse($fails($png), 'a real PNG must pass');
+    }
+
+    public function test_unprivileged_business_modules_follow_the_access_matrix(): void
+    {
+        $designer = User::create(['name' => 'Designer', 'email' => 'designer@test.az', 'password' => 'secret123', 'role' => 'designer']);
+        $accountant = User::create(['name' => 'Accountant', 'email' => 'accountant@test.az', 'password' => 'secret123', 'role' => 'accountant']);
+
+        $this->assertFalse($designer->can('create', Lead::class));
+        $this->assertFalse($designer->can('create', Supplier::class));
+        $this->assertFalse($designer->can('create', PurchaseOrder::class));
+        $this->assertFalse($designer->can('viewAny', Invoice::class));
+        $this->assertFalse($designer->can('viewAny', Expense::class));
+        $this->assertTrue($designer->can('create', Meeting::class));
+        $this->assertTrue($designer->can('create', TimeEntry::class));
+
+        $this->assertFalse($accountant->can('create', Supplier::class));
+        $this->assertFalse($accountant->can('create', PurchaseOrder::class));
+        $this->assertTrue($accountant->can('create', Invoice::class));
+        $this->assertTrue($accountant->can('create', Expense::class));
+        $this->assertFalse($accountant->can('create', Meeting::class));
+        $this->assertFalse($accountant->can('create', TimeEntry::class));
+    }
+
+    public function test_only_platform_admin_can_manage_studios(): void
+    {
+        $tenant = Tenant::create(['name' => 'Studio', 'slug' => 'studio', 'active' => true]);
+        $studioOwner = app(TenantContext::class)->actingAs($tenant->id, fn () => User::create([
+            'name' => 'Studio owner', 'email' => 'studio-owner@test.az', 'password' => 'secret123', 'role' => 'owner',
+        ]));
+        $platformAdmin = User::create([
+            'name' => 'Platform admin', 'email' => 'platform@test.az', 'password' => 'secret123', 'role' => 'owner',
+            'is_platform_admin' => true,
+        ]);
+
+        $this->assertFalse($studioOwner->can('viewAny', Tenant::class));
+        $this->assertFalse($studioOwner->can('update', $tenant));
+        $this->assertTrue($platformAdmin->can('viewAny', Tenant::class));
+        $this->assertTrue($platformAdmin->can('update', $tenant));
+    }
+
+    public function test_active_user_from_inactive_studio_cannot_access_panel(): void
+    {
+        $tenant = Tenant::create(['name' => 'Suspended', 'slug' => 'suspended', 'active' => false]);
+        $user = app(TenantContext::class)->actingAs($tenant->id, fn () => User::create([
+            'name' => 'Owner', 'email' => 'suspended@test.az', 'password' => 'secret123', 'role' => 'owner', 'is_active' => true,
+        ]));
+
+        $this->assertFalse($user->canAccessPanel(filament()->getPanel('app')));
+    }
+
+    public function test_only_platform_admin_can_manage_global_translations(): void
+    {
+        $designer = User::create(['name' => 'Designer', 'email' => 'translation-designer@test.az', 'password' => 'secret123', 'role' => 'designer']);
+        $studioOwner = User::create(['name' => 'Owner', 'email' => 'translation-owner@test.az', 'password' => 'secret123', 'role' => 'owner']);
+        $platformAdmin = User::create([
+            'name' => 'Platform admin', 'email' => 'translation-admin@test.az', 'password' => 'secret123',
+            'role' => 'owner', 'is_platform_admin' => true,
+        ]);
+
+        $this->assertFalse($designer->can('viewAny', Translation::class));
+        $this->assertFalse($studioOwner->can('create', Translation::class));
+        $this->assertTrue($platformAdmin->can('viewAny', Translation::class));
+        $this->assertTrue($platformAdmin->can('create', Translation::class));
     }
 }

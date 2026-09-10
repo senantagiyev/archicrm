@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -11,7 +12,7 @@ use Illuminate\Notifications\Notification;
  * (TZ Əlavə B reminders/escalations). Each rule supplies its own title/body/link
  * and a data bag for the database payload, so one class covers every reminder.
  */
-class AutomationAlert extends Notification
+class AutomationAlert extends Notification implements ShouldQueue
 {
     use Queueable;
 

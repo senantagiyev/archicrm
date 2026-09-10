@@ -7,6 +7,7 @@ use App\Filament\Resources\PurchaseOrderResource\Pages;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Forms\Components\Repeater;
@@ -15,6 +16,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class PurchaseOrderResource extends Resource
 {
@@ -168,5 +170,19 @@ class PurchaseOrderResource extends Resource
             'create' => Pages\CreatePurchaseOrder::route('/create'),
             'edit' => Pages\EditPurchaseOrder::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
     }
 }

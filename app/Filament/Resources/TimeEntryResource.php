@@ -9,6 +9,7 @@ use App\Models\Stage;
 use App\Models\Task;
 use App\Models\TimeEntry;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -17,6 +18,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class TimeEntryResource extends Resource
 {
@@ -109,5 +111,17 @@ class TimeEntryResource extends Resource
             'create' => Pages\CreateTimeEntry::route('/create'),
             'edit' => Pages\EditTimeEntry::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query;
     }
 }

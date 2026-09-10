@@ -8,6 +8,7 @@ use App\Filament\Resources\ExpenseResource\Pages;
 use App\Models\Expense;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class ExpenseResource extends Resource
 {
@@ -162,5 +164,19 @@ class ExpenseResource extends Resource
             'create' => Pages\CreateExpense::route('/create'),
             'edit' => Pages\EditExpense::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
     }
 }

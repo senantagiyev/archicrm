@@ -22,7 +22,7 @@ class User extends Authenticatable implements FilamentUser
 
     protected $fillable = [
         'name', 'email', 'password', 'phone', 'role', 'role_id', 'is_active', 'locale', 'avatar_path',
-        'hourly_internal_cost', 'weekly_capacity_hours',
+        'hourly_internal_cost', 'weekly_capacity_hours', 'is_platform_admin',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -34,17 +34,24 @@ class User extends Authenticatable implements FilamentUser
             'password' => 'hashed',
             'role' => StaffRole::class,
             'is_active' => 'boolean',
+            'is_platform_admin' => 'boolean',
         ];
     }
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->is_active;
+        return $this->is_active
+            && ($this->tenant_id === null || $this->tenant?->active === true);
     }
 
     public function isOwner(): bool
     {
         return $this->role === StaffRole::Owner;
+    }
+
+    public function isPlatformAdmin(): bool
+    {
+        return $this->isOwner() && $this->is_platform_admin;
     }
 
     /** Custom (DB) role that overrides the StaffRole enum matrix when assigned. */

@@ -77,20 +77,25 @@ class BriefAnswersRelationManager extends RelationManager
                 Actions\Action::make('briefTemplate')
                     ->label('Brif şablonu')
                     ->icon('heroicon-o-rectangle-stack')
-                    ->modalDescription('Layihənin brif şablonunu seçin. Müştəri brifi doldurmağa başladıqdan sonra şablonu dəyişmək tövsiyə olunmur.')
+                    ->modalDescription('Brifin səviyyəsini/şablonunu seçin. Quick Brief-dən Premium-a keçəndə müştərinin verdiyi cavablar avtomatik köçürülür (eyni suallar üzrə).')
                     ->schema([
                         Forms\Components\Select::make('brief_template_id')
                             ->label('Şablon')
                             ->options(fn () => BriefTemplate::where('active', true)->orderBy('position')->get()
-                                ->mapWithKeys(fn ($t) => [$t->id => $t->getTranslation('name', 'az')]))
+                                ->groupBy(fn ($t) => $t->levelLabel())
+                                ->map(fn ($group) => $group->mapWithKeys(fn ($t) => [$t->id => $t->getTranslation('name', 'az')]))
+                                ->all())
                             ->default(fn () => optional($this->getOwnerRecord()->brief)->brief_template_id
                                 ?? optional(BriefTemplate::default())->id)
                             ->required()
                             ->native(false),
                     ])
                     ->action(function (array $data) {
-                        $brief = app(BriefService::class)->forProject($this->getOwnerRecord());
-                        $brief->update(['brief_template_id' => $data['brief_template_id']]);
+                        $service = app(BriefService::class);
+                        $service->switchTemplate(
+                            $service->forProject($this->getOwnerRecord()),
+                            BriefTemplate::findOrFail($data['brief_template_id']),
+                        );
                     }),
             ])
             ->actions([]);

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Brief;
 use App\Models\BriefQuestion;
 use App\Models\BriefSection;
+use App\Models\BriefTemplate;
 use App\Models\Client;
 use App\Models\Project;
 use App\Models\User;
@@ -164,6 +165,67 @@ class BriefSpecTest extends TestCase
         $this->answer($brief->fresh(), 'pdpa_consent', '1');
 
         $this->assertTrue($service->missingRequired($brief->fresh())->isEmpty());
+    }
+
+    public function test_quick_brief_exists_beside_premium_and_is_never_the_default(): void
+    {
+        $brief = $this->brief();
+
+        $quick = BriefTemplate::where('key', 'quick')->firstOrFail();
+
+        $this->assertTrue($quick->isQuick());
+        $this->assertNotSame($quick->id, BriefTemplate::default()->id);
+        $this->assertNotSame($quick->id, $brief->brief_template_id);
+
+        // Spec Part 8.1: ~3 min, one short section.
+        $sections = BriefSection::where('brief_template_id', $quick->id)->where('active', true)->get();
+        $this->assertCount(1, $sections);
+        $this->assertSame(3, $sections->first()->estimated_minutes);
+    }
+
+    public function test_switching_quick_to_premium_carries_the_answers_over(): void
+    {
+        $this->seed(BriefQuestionBankSeeder::class);
+
+        $user = User::create(['name' => 'M', 'email' => 'q@test.az', 'password' => 'secret123', 'role' => 'owner']);
+        $client = Client::create(['name' => 'Müştəri', 'status' => 'client']);
+        $project = Project::create([
+            'client_id' => $client->id, 'name' => 'Q', 'type' => 'apartment',
+            'status' => 'active', 'manager_user_id' => $user->id,
+        ]);
+
+        $service = app(BriefService::class);
+        $quick = BriefTemplate::where('key', 'quick')->firstOrFail();
+        $premium = BriefTemplate::where('key', 'residential')->firstOrFail();
+
+        $brief = $service->forProject($project);
+        $service->switchTemplate($brief, $quick);
+
+        foreach ([
+            'object_address' => 'Bakı, Nizami 1',
+            'total_area_sqm' => '90',
+            'project_budget_range' => ['min' => '40000', 'max' => '60000', 'currency' => 'AZN'],
+        ] as $key => $value) {
+            $this->answer($brief->fresh(), $key, $value);
+        }
+
+        $service->switchTemplate($brief->fresh(), $premium);
+
+        $values = $service->valuesByKey($brief->fresh());
+
+        $this->assertSame('Bakı, Nizami 1', $values['object_address']);
+        $this->assertSame('90', $values['total_area_sqm']);
+        $this->assertSame('60000', $values['project_budget_range']['max']);
+
+        // The answers now belong to the premium template's own questions.
+        $premiumQuestionIds = BriefQuestion::whereIn(
+            'brief_section_id',
+            BriefSection::where('brief_template_id', $premium->id)->pluck('id')
+        )->pluck('id');
+
+        $this->assertTrue(
+            $brief->fresh()->answers()->whereIn('brief_question_id', $premiumQuestionIds)->count() >= 3,
+        );
     }
 
     public function test_general_section_rows_cannot_be_duplicated(): void

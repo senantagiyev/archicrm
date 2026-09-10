@@ -78,6 +78,7 @@ class TranslationSeeder extends Seeder
                 'brief_welcome_hint_delegate' => 'Mürəkkəb görünən sualı «Dizaynerin tövsiyəsi lazımdır» kimi işarələyə bilərsiniz.|Сложный вопрос можно отметить как «Нужна рекомендация дизайнера».|You can mark any tricky question as “Designer’s recommendation needed”.',
                 'brief_welcome_hint_resume' => 'Cavablar avtomatik saxlanılır — istənilən vaxt, istənilən cihazdan davam edin.|Ответы сохраняются автоматически — продолжайте когда и где удобно.|Answers save automatically — continue any time, from any device.',
                 'brief_pick_rooms' => 'Otaqların tərkibini seçin|Выберите состав помещений|Choose your rooms',
+                'brief_rooms_scope_only' => 'Əməkdaşlıq formatı «yalnız ayrı otaqlar» seçilib — burada yalnız layihənin əhatəsinə daxil olan otaqları işarələyin.|Выбран формат «только отдельные помещения» — отметьте здесь только те комнаты, которые входят в проект.|Your scope is “selected rooms only” — mark here just the rooms included in the project.',
                 'brief_summary' => 'Yekun baxış|Итоговая проверка|Summary',
                 'brief_go_summary' => 'Yekun baxışa keç|Перейти к итоговой проверке|Go to summary',
                 'brief_summary_intro' => 'Göndərməzdən əvvəl cavablarınızı yoxlayın. İstənilən bölməni «Dəyiş» ilə düzəldə bilərsiniz.|Проверьте ответы перед отправкой. Любой раздел можно поправить через «Изменить».|Check your answers before sending. Use “Edit” to fix any section.',

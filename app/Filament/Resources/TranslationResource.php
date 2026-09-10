@@ -31,6 +31,11 @@ class TranslationResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'key';
 
+    public static function canAccess(): bool
+    {
+        return auth()->user()?->isPlatformAdmin() === true;
+    }
+
     public static function form(Schema $form): Schema
     {
         return $form->schema([

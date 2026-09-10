@@ -7,6 +7,7 @@ use App\Filament\Resources\InvoiceResource\Pages;
 use App\Models\Client;
 use App\Models\Invoice;
 use App\Models\Project;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -16,6 +17,7 @@ use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class InvoiceResource extends Resource
 {
@@ -199,5 +201,19 @@ class InvoiceResource extends Resource
             'create' => Pages\CreateInvoice::route('/create'),
             'edit' => Pages\EditInvoice::route('/{record}/edit'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        $query = parent::getEloquentQuery();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
     }
 }

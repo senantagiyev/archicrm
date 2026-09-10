@@ -43,9 +43,7 @@ class TaskPolicy
         }
 
         if (AccessMatrix::requiresOwnProject($user)) {
-            $task->loadMissing('project');
-
-            return $user->id === $task->assignee_user_id || $task->project->hasMember($user);
+            return $user->id === $task->assignee_user_id;
         }
 
         return true;

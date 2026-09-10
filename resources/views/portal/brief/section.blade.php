@@ -173,32 +173,37 @@
                                         $columns = $question->options['columns'] ?? [];
                                         $matrix = is_array($value) ? $value : [];
                                     @endphp
-                                    <div class="overflow-x-auto" data-matrix>
-                                        <table class="w-full min-w-[520px] border-collapse text-[13px]">
-                                            <thead>
-                                                <tr>
-                                                    <th class="w-1/3 border-b border-black/10 px-2 py-2 text-left font-semibold text-black/50"></th>
+                                    {{-- Screen 09: desktop-da cədvəl, mobildə sətir-kart siyahısı.
+                                         Tək DOM, `sm:contents` ilə reflow — kliklənən düymələr eyni
+                                         qalır, ona görə seçimin oxunması iki görünüşdə də eynidir. --}}
+                                    @php $grid = 'grid-template-columns: minmax(0,1.3fr) repeat('.count($columns).', minmax(0,1fr));'; @endphp
+                                    <div data-matrix class="space-y-2 sm:space-y-0">
+                                        <div class="hidden sm:grid sm:items-end sm:gap-2 sm:border-b sm:border-black/10 sm:pb-2" style="{{ $grid }}">
+                                            <span></span>
+                                            @foreach ($columns as $col)
+                                                <span class="text-center text-[12px] font-semibold leading-tight text-black/50">{{ $optLabel($col) }}</span>
+                                            @endforeach
+                                        </div>
+
+                                        @foreach ($rows as $rowOpt)
+                                            <div data-matrix-row="{{ $rowOpt['value'] }}"
+                                                class="rounded-ds border border-black/15 p-3 sm:grid sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:border-b sm:border-black/5 sm:p-0 sm:py-2.5"
+                                                style="{{ $grid }}">
+                                                <span class="text-[13px] font-semibold">{{ $optLabel($rowOpt) }}</span>
+                                                <div class="mt-2.5 flex flex-wrap gap-2 sm:contents">
                                                     @foreach ($columns as $col)
-                                                        <th class="border-b border-black/10 px-2 py-2 text-center text-[12px] font-semibold text-black/50">{{ $optLabel($col) }}</th>
+                                                        @php $picked = ($matrix[$rowOpt['value']] ?? null) === $col['value']; @endphp
+                                                        <button type="button" data-matrix-cell value="{{ $col['value'] }}" {{ $completed ? 'disabled' : '' }}
+                                                            aria-label="{{ $optLabel($rowOpt) }} — {{ $optLabel($col) }}"
+                                                            class="rounded-pill border px-3.5 py-1.5 text-[12px] font-semibold transition-colors
+                                                                sm:mx-auto sm:h-5 sm:w-5 sm:rounded-full sm:border-2 sm:p-0
+                                                                {{ $picked ? 'border-ink bg-ink text-white' : 'border-black/25 bg-white hover:border-black/50' }}">
+                                                            <span class="sm:hidden">{{ $optLabel($col) }}</span>
+                                                        </button>
                                                     @endforeach
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                @foreach ($rows as $rowOpt)
-                                                    <tr data-matrix-row="{{ $rowOpt['value'] }}">
-                                                        <td class="border-b border-black/5 px-2 py-2.5 font-semibold">{{ $optLabel($rowOpt) }}</td>
-                                                        @foreach ($columns as $col)
-                                                            <td class="border-b border-black/5 px-2 py-2.5 text-center">
-                                                                <button type="button" data-matrix-cell value="{{ $col['value'] }}" {{ $completed ? 'disabled' : '' }}
-                                                                    aria-label="{{ $optLabel($rowOpt) }} — {{ $optLabel($col) }}"
-                                                                    class="h-5 w-5 rounded-full border-2 transition-colors
-                                                                        {{ ($matrix[$rowOpt['value']] ?? null) === $col['value'] ? 'border-ink bg-ink' : 'border-black/25 bg-white hover:border-black/50' }}"></button>
-                                                            </td>
-                                                        @endforeach
-                                                    </tr>
-                                                @endforeach
-                                            </tbody>
-                                        </table>
+                                                </div>
+                                            </div>
+                                        @endforeach
                                     </div>
                                     @break
 
@@ -234,7 +239,17 @@
 
                                 {{-- Spec Ə11 / Part 8.3: dinamik otaq tərkibi --}}
                                 @case('room_inventory')
-                                    @php $inventory = is_array($value) ? $value : []; @endphp
+                                    @php
+                                        $inventory = is_array($value) ? $value : [];
+                                        // Part 10 №6: «yalnız ayrı otaqlar» formatında otaq dəsti
+                                        // əhatəyə daxil olanlarla məhdudlaşır.
+                                        $roomsOnly = ($values['cooperation_scope'] ?? null) === 'rooms_only';
+                                    @endphp
+                                    @if ($roomsOnly)
+                                        <p class="mb-3 rounded-ds border border-yellow-line bg-sel-bg px-3.5 py-2.5 text-[12px] font-semibold">
+                                            {{ t('portal.brief_rooms_scope_only') }}
+                                        </p>
+                                    @endif
                                     <div class="grid gap-2 sm:grid-cols-2" data-inventory>
                                         @foreach ($question->options ?? [] as $option)
                                             @php $count = (int) ($inventory[$option['value']] ?? 0); @endphp
@@ -471,11 +486,11 @@
                     cell.addEventListener('click', () => {
                         const row = cell.closest('[data-matrix-row]');
                         row.querySelectorAll('[data-matrix-cell]').forEach(c => {
-                            c.classList.remove('border-ink', 'bg-ink');
+                            c.classList.remove('border-ink', 'bg-ink', 'text-white');
                             c.classList.add('border-black/25', 'bg-white');
                         });
                         cell.classList.remove('border-black/25', 'bg-white');
-                        cell.classList.add('border-ink', 'bg-ink');
+                        cell.classList.add('border-ink', 'bg-ink', 'text-white');
                         save(block, delegate);
                     });
                 });
