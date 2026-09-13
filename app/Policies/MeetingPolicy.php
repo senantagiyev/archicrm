@@ -24,7 +24,7 @@ class MeetingPolicy
 
     public function view(User $user, Meeting $meeting): bool
     {
-        return $this->allowsOn($user, $meeting->project, AccessLevel::View);
+        return $this->allowsOn($user, $meeting->project, AccessLevel::View, $meeting->project_id);
     }
 
     public function create(User $user): bool
@@ -34,12 +34,12 @@ class MeetingPolicy
 
     public function update(User $user, Meeting $meeting): bool
     {
-        return $this->allowsOn($user, $meeting->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $meeting->project, AccessLevel::Edit, $meeting->project_id);
     }
 
     public function delete(User $user, Meeting $meeting): bool
     {
-        return $this->allowsOn($user, $meeting->project, AccessLevel::Full);
+        return $this->allowsOn($user, $meeting->project, AccessLevel::Full, $meeting->project_id);
     }
 
     public function restore(User $user, Meeting $meeting): bool

@@ -25,7 +25,7 @@ class PurchaseOrderPolicy
 
     public function view(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::View);
+        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::View, $purchaseOrder->project_id);
     }
 
     public function create(User $user): bool
@@ -35,12 +35,12 @@ class PurchaseOrderPolicy
 
     public function update(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::Edit, $purchaseOrder->project_id);
     }
 
     public function delete(User $user, PurchaseOrder $purchaseOrder): bool
     {
-        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::Full);
+        return $this->allowsOn($user, $purchaseOrder->project, AccessLevel::Full, $purchaseOrder->project_id);
     }
 
     public function restore(User $user, PurchaseOrder $purchaseOrder): bool

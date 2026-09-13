@@ -2,19 +2,22 @@
 
 namespace App\Policies;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Models\AutomationRule;
 use App\Models\User;
+use App\Support\AccessMatrix;
 
 class AutomationRulePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->isOwner();
+        return AccessMatrix::allows($user, Domain::OwnerDashboard, AccessLevel::Full);
     }
 
     public function view(User $user, AutomationRule $automationRule): bool
     {
-        return $user->isOwner();
+        return AccessMatrix::allows($user, Domain::OwnerDashboard, AccessLevel::Full);
     }
 
     public function create(User $user): bool
@@ -24,7 +27,7 @@ class AutomationRulePolicy
 
     public function update(User $user, AutomationRule $automationRule): bool
     {
-        return $user->isOwner();
+        return AccessMatrix::allows($user, Domain::OwnerDashboard, AccessLevel::Full);
     }
 
     public function delete(User $user, AutomationRule $automationRule): bool

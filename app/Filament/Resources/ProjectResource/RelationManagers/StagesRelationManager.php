@@ -98,6 +98,9 @@ class StagesRelationManager extends RelationManager
                 Actions\Action::make('applyTemplate')
                     ->label('Şablon tətbiq et')
                     ->icon('heroicon-o-document-duplicate')
+                    // Rewrites the project's whole stage plan — it needs the same
+                    // rights as editing the project itself.
+                    ->visible(fn () => auth()->user()?->can('update', $this->getOwnerRecord()))
                     ->form([
                         Forms\Components\Select::make('template_id')
                             ->label('Şablon')

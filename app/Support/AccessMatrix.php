@@ -159,18 +159,36 @@ class AccessMatrix
      */
     private static function resolve(User $user): array
     {
-        $key = $user->role_id ? 'id:'.$user->role_id : 'enum:'.($user->role?->value ?? 'none');
+        // The tenant is part of the key: roles resolve per studio (a studio's own
+        // copy shadows the platform-wide row), so caching on the role alone would
+        // serve studio A's matrix to studio B inside one process — which the
+        // automation tick does routinely, looping every studio in a single run.
+        $key = 't:'.($user->tenant_id ?? 0).'|'
+            .($user->role_id ? 'id:'.$user->role_id : 'enum:'.($user->role?->value ?? 'none'));
 
         if (isset(self::$cache[$key])) {
             return self::$cache[$key];
         }
 
+        // `active` is honoured: the RoleResource toggle used to change nothing,
+        // so deactivating a role left every grant it carried fully live.
+        // The custom role must belong to this user's studio (or be a platform-wide
+        // row). A role_id pointing at ANOTHER studio's custom role used to grant
+        // its levels outright — the shortest path to cross-studio privileges.
         $role = null;
         if ($user->role_id) {
-            $role = Role::find($user->role_id);
+            $role = Role::forTenant($user->tenant_id)->where('id', $user->role_id)->first();
         }
         if (! $role && $user->role) {
-            $role = Role::where('key', $user->role->value)->first();
+            $role = Role::forTenant($user->tenant_id)->where('key', $user->role->value)->first();
+        }
+
+        // Deactivating a role REVOKES it. Filtering `active` inside the lookup
+        // instead let resolution fall through to the platform default (or the
+        // const matrix), so the "Aktiv" switch looked like an off button and
+        // silently meant "revert to default" — the user kept working.
+        if ($role && ! $role->active) {
+            return self::$cache[$key] = ['levels' => [], 'own' => true];
         }
 
         if ($role) {

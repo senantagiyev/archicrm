@@ -50,6 +50,11 @@ class CashForecastWidget extends StatsOverviewWidget
             Stat::make('Sonra', $fmt($f['later']))
                 ->description('90 gündən sonra')
                 ->color('gray'),
+            // Without this card the buckets did not add up to the money owed:
+            // undated payments were dropped from the forecast entirely.
+            Stat::make('Tarixsiz', $fmt($f['undated']))
+                ->description('Plan tarixi təyin olunmayıb')
+                ->color($f['undated'] > 0 ? 'warning' : 'gray'),
         ];
     }
 }

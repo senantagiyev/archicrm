@@ -24,7 +24,7 @@ class PaymentPolicy
 
     public function view(User $user, Payment $payment): bool
     {
-        return $this->allowsOn($user, $payment->project, AccessLevel::View);
+        return $this->allowsOn($user, $payment->project, AccessLevel::View, $payment->project_id);
     }
 
     public function create(User $user): bool
@@ -34,11 +34,11 @@ class PaymentPolicy
 
     public function update(User $user, Payment $payment): bool
     {
-        return $this->allowsOn($user, $payment->project, AccessLevel::Full);
+        return $this->allowsOn($user, $payment->project, AccessLevel::Full, $payment->project_id);
     }
 
     public function delete(User $user, Payment $payment): bool
     {
-        return $this->allowsOn($user, $payment->project, AccessLevel::Full);
+        return $this->allowsOn($user, $payment->project, AccessLevel::Full, $payment->project_id);
     }
 }

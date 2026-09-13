@@ -56,7 +56,17 @@ class UserResource extends Resource
                     ->native(false),
                 Forms\Components\Select::make('role_id')
                     ->label('Xüsusi rol (istəyə görə)')
-                    ->relationship('customRole', 'name', fn ($query) => $query->where('active', true)->where('is_system', false))
+                    // Scoped to this studio: `Role` has no global scope, so the
+                    // dropdown listed every other studio's custom roles by name,
+                    // and assigning one persisted a role_id that grants nothing.
+                    ->relationship(
+                        'customRole',
+                        'name',
+                        fn ($query) => $query
+                            ->where('active', true)
+                            ->where('is_system', false)
+                            ->where('tenant_id', auth()->user()?->tenant_id),
+                    )
                     ->searchable()
                     ->preload()
                     ->native(false)

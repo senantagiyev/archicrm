@@ -23,16 +23,33 @@ trait ScopesProjectDomain
         return AccessMatrix::allows($user, $this->domain(), $minimum);
     }
 
-    protected function allowsOn(User $user, ?Project $project, AccessLevel $minimum): bool
+    /**
+     * @param  Project|null  $project  the resolved project, null when missing
+     * @param  int|null  $projectId  the record's raw project_id — tells "this
+     *                               record has no project" (studio-level data,
+     *                               e.g. office overhead or a lump-sum purchase
+     *                               order) apart from "its project is archived",
+     *                               which must fail closed
+     */
+    protected function allowsOn(User $user, ?Project $project, AccessLevel $minimum, ?int $projectId = null): bool
     {
         if (! AccessMatrix::allows($user, $this->domain(), $minimum)) {
             return false;
         }
 
-        if ($project && AccessMatrix::requiresOwnProject($user)) {
-            return $project->hasMember($user);
+        if (! AccessMatrix::requiresOwnProject($user)) {
+            return true;
         }
 
-        return true;
+        // Deliberately unassigned: there is no membership to check, so the domain
+        // level alone governs. Treating this as a denial locked the procurement
+        // role out of every project-less purchase order — its own module.
+        if ($project === null && $projectId === null) {
+            return true;
+        }
+
+        // Assigned but unreachable (archived project): fail closed rather than
+        // silently widening a scoped role.
+        return $project !== null && $project->hasMember($user);
     }
 }

@@ -44,6 +44,41 @@ class User extends Authenticatable implements FilamentUser
             && ($this->tenant_id === null || $this->tenant?->active === true);
     }
 
+    protected static function booted(): void
+    {
+        static::updating(function (self $user): void {
+            // The last active owner keeps the lights on: deactivating them leaves
+            // a studio with nobody who can reach Komanda or Rollar, so nobody can
+            // reactivate anyone. There is no way back without database access.
+            $losingAccess = ($user->isDirty('is_active') && ! $user->is_active)
+                || ($user->isDirty('role') && $user->getRawOriginal('role') === StaffRole::Owner->value);
+
+            if ($losingAccess && $user->isLastActiveOwner()) {
+                throw new \RuntimeException('Studiyanın son aktiv sahibkarını deaktiv etmək və ya rolunu dəyişmək olmaz.');
+            }
+        });
+
+        static::deleting(function (self $user): void {
+            if ($user->isLastActiveOwner()) {
+                throw new \RuntimeException('Studiyanın son aktiv sahibkarını silmək olmaz.');
+            }
+        });
+    }
+
+    public function isLastActiveOwner(): bool
+    {
+        if ($this->getRawOriginal('role') !== StaffRole::Owner->value || ! $this->getRawOriginal('is_active')) {
+            return false;
+        }
+
+        return static::query()
+            ->where('tenant_id', $this->tenant_id)
+            ->where('role', StaffRole::Owner->value)
+            ->where('is_active', true)
+            ->whereKeyNot($this->getKey())
+            ->doesntExist();
+    }
+
     public function isOwner(): bool
     {
         return $this->role === StaffRole::Owner;

@@ -6,10 +6,11 @@ use App\Filament\Resources\ProjectResource;
 use App\Models\Brief;
 use App\Models\Document;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class BriefCompleted extends Notification
+class BriefCompleted extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -23,16 +24,16 @@ class BriefCompleted extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Brif tamamlandı — '.$this->brief->project->name)
-            ->line('Sifarişçi brifi tam doldurdu. PDF ixracı layihənin sənədlərinə əlavə edildi.')
-            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->brief->project_id]));
+            ->subject('Brif tamamlandÄ± â€” '.$this->brief->project?->name)
+            ->line('SifariÅŸÃ§i brifi tam doldurdu. PDF ixracÄ± layihÉ™nin sÉ™nÉ™dlÉ™rinÉ™ É™lavÉ™ edildi.')
+            ->action('LayihÉ™yÉ™ bax', ProjectResource::getUrl('edit', ['record' => $this->brief->project_id]));
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
-            'title' => 'Brif tamamlandı',
-            'body' => $this->brief->project->name.' — PDF sənədlərə əlavə edildi',
+            'title' => 'Brif tamamlandÄ±',
+            'body' => $this->brief->project?->name.' â€” PDF sÉ™nÉ™dlÉ™rÉ™ É™lavÉ™ edildi',
             'project_id' => $this->brief->project_id,
             'document_id' => $this->document->id,
         ];

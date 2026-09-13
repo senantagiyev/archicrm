@@ -3,10 +3,11 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class PortalLoginLink extends Notification
+class PortalLoginLink extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -20,8 +21,8 @@ class PortalLoginLink extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Archi CRM — giriş linki')
-            ->line('Portala daxil olmaq üçün linkə klikləyin. Link 30 dəqiqə etibarlıdır.')
+            ->subject('Archi CRM â€” giriÅŸ linki')
+            ->line('Portala daxil olmaq Ã¼Ã§Ã¼n linkÉ™ kliklÉ™yin. Link 30 dÉ™qiqÉ™ etibarlÄ±dÄ±r.')
             ->action('Daxil ol', $this->link);
     }
 }

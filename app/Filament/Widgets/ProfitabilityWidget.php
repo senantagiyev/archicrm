@@ -57,8 +57,36 @@ class ProfitabilityWidget extends TableWidget
                     ->weight('bold'),
                 Tables\Columns\TextColumn::make('margin')
                     ->label('Marja')
-                    ->state(fn (Project $r) => $svc->forProject($r)['margin'].'%')
-                    ->color(fn (Project $r) => $svc->forProject($r)['margin'] >= 0 ? 'success' : 'danger'),
+                    // The asterisk is the visible half of the tooltip: a tooltip
+                    // nobody hovers is not a warning.
+                    ->state(function (Project $r) use ($svc) {
+                        $row = $svc->forProject($r);
+                        $value = $row['margin'] === null ? '—' : $row['margin'].'%';
+
+                        $incomplete = $row['uncosted_minutes'] > 0 || $row['uncosted_procurement'] > 0;
+
+                        return $incomplete ? $value.' *' : $value;
+                    })
+                    ->tooltip(function (Project $r) use ($svc) {
+                        $row = $svc->forProject($r);
+                        $notes = [];
+
+                        if ($row['uncosted_minutes'] > 0) {
+                            $notes[] = round($row['uncosted_minutes'] / 60, 1).' saat tarifsiz işçi tərəfindən qeyd olunub.';
+                        }
+
+                        if ($row['uncosted_procurement'] > 0) {
+                            $notes[] = number_format($row['uncosted_procurement'], 2).' ₼ komplektasiya müştəriyə fakturalanıb, '
+                                .'amma nə satınalma sifarişi, nə xərc kimi maya dəyəri yazılmayıb.';
+                        }
+
+                        return $notes === [] ? null : 'Diqqət: '.implode(' ', $notes);
+                    })
+                    ->color(fn (Project $r) => match (true) {
+                        $svc->forProject($r)['margin'] === null => 'gray',
+                        $svc->forProject($r)['margin'] >= 0 => 'success',
+                        default => 'danger',
+                    }),
             ])
             ->recordUrl(fn (Project $record) => ProjectResource::getUrl('edit', ['record' => $record]))
             ->paginated([5, 10, 25])

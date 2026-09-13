@@ -65,15 +65,18 @@ class ExpenseResource extends Resource
                     ->required()
                     ->minValue(0.01)
                     ->suffix('₼'),
+                // AZN only, on purpose: nothing converts currencies, so every
+                // report summed USD and AZN as if they were the same unit. Offering
+                // the choice made the totals quietly wrong; re-enable it together
+                // with a conversion rate, not before.
                 Forms\Components\Select::make('currency')
                     ->label('Valyuta')
-                    ->options([
-                        'AZN' => 'AZN',
-                        'USD' => 'USD',
-                        'EUR' => 'EUR',
-                    ])
+                    ->options(['AZN' => 'AZN'])
                     ->default('AZN')
                     ->required()
+                    ->disabled()
+                    ->dehydrated()
+                    ->helperText('Hazırda yalnız AZN dəstəklənir — məzənnə çevrilməsi yoxdur.')
                     ->native(false),
                 Forms\Components\Select::make('status')
                     ->label('Status')

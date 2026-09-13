@@ -28,16 +28,27 @@ trait HasOptimisticLock
         static::updating(function ($model): void {
             $mine = (int) $model->getOriginal('row_version');
 
-            $current = (int) static::query()
+            // Atomic claim: bump the version only if it is still the one we read.
+            // A separate SELECT-then-UPDATE let two requests that both read
+            // version N pass the check and both write N+1, so the second silently
+            // clobbered the first — exactly what the lock exists to prevent.
+            $claimed = static::query()
                 ->withoutGlobalScopes()
                 ->whereKey($model->getKey())
-                ->value('row_version');
+                ->where('row_version', $mine)
+                ->update(['row_version' => $mine + 1]);
 
-            if ($current !== $mine) {
+            if ($claimed === 0) {
+                $current = (int) static::query()
+                    ->withoutGlobalScopes()
+                    ->whereKey($model->getKey())
+                    ->value('row_version');
+
                 throw new RowVersionConflictException($current, $mine);
             }
 
             $model->row_version = $mine + 1;
+            $model->syncOriginalAttribute('row_version');
         });
     }
 

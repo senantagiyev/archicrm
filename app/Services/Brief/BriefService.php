@@ -26,10 +26,15 @@ use App\Notifications\BriefSectionSubmitted;
 use App\Services\Automation\AutomationEngine;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class BriefService
 {
+    /** Matches the wizard's client-side cap (section.blade.php). */
+    public const MAX_ROOMS_PER_TYPE = 9;
+
     public function forProject(Project $project): Brief
     {
         $brief = Brief::firstOrCreate(
@@ -84,24 +89,29 @@ class BriefService
 
         $brief->load('answers.question');
 
-        foreach ($brief->answers as $answer) {
-            $target = $answer->question ? $targetQuestions->get($answer->question->key) : null;
+        // Copying answers and repointing the template must be one unit: a failure
+        // between them left the brief on the new template with only some of the
+        // client's answers carried across.
+        DB::transaction(function () use ($brief, $template, $targetQuestions): void {
+            foreach ($brief->answers as $answer) {
+                $target = $answer->question ? $targetQuestions->get($answer->question->key) : null;
 
-            if (! $target || $target->id === $answer->brief_question_id) {
-                continue;
+                if (! $target || $target->id === $answer->brief_question_id) {
+                    continue;
+                }
+
+                $brief->answers()->updateOrCreate(
+                    ['brief_question_id' => $target->id, 'brief_room_id' => $answer->brief_room_id],
+                    [
+                        'value' => $answer->value,
+                        'delegated_to_designer' => $answer->delegated_to_designer,
+                        'answered_at' => $answer->answered_at ?? now(),
+                    ],
+                );
             }
 
-            $brief->answers()->updateOrCreate(
-                ['brief_question_id' => $target->id, 'brief_room_id' => $answer->brief_room_id],
-                [
-                    'value' => $answer->value,
-                    'delegated_to_designer' => $answer->delegated_to_designer,
-                    'answered_at' => $answer->answered_at ?? now(),
-                ],
-            );
-        }
-
-        $brief->forceFill(['brief_template_id' => $template->id])->save();
+            $brief->forceFill(['brief_template_id' => $template->id])->save();
+        });
 
         // The room set belongs to the new template's room sections.
         $inventory = $this->valuesByKey($brief->fresh(['answers.question']))['room_inventory'] ?? [];
@@ -165,7 +175,11 @@ class BriefService
         $brief->load('rooms');
 
         foreach ($sections as $roomType => $section) {
-            $wanted = max(0, (int) ($inventory[$roomType] ?? 0));
+            // Capped server-side. The wizard caps at 9 in JS, but the autosave
+            // endpoint takes a raw value, and {"bedroom": 50000} would insert
+            // 50 000 rooms — after which every brief screen, the PDF export and
+            // the studio's review page iterate them all, permanently.
+            $wanted = min(self::MAX_ROOMS_PER_TYPE, max(0, (int) ($inventory[$roomType] ?? 0)));
             $existing = $brief->rooms->where('room_type', $roomType)->values();
             $name = $section->getTranslation('name', app()->getLocale());
 
@@ -338,25 +352,34 @@ class BriefService
             return;
         }
 
-        $brief->forceFill([
-            'status' => BriefStatus::Submitted->value,
-            'submitted_at' => now(),
-            'completed_at' => $brief->completed_at ?? now(),
-            'progress' => 100,
-        ])->save();
+        // The lock is set in the same transaction as the version snapshot and CRM
+        // sync. Previously the lock landed first and a later failure (most often
+        // the PDF render) left a brief that was permanently "submitted" with no
+        // version, no PDF and no notice to the studio — and every retry returned
+        // early at the isLocked() guard above.
+        DB::transaction(function () use ($brief, $by): void {
+            $brief->forceFill([
+                'status' => BriefStatus::Submitted->value,
+                'submitted_at' => now(),
+                'completed_at' => $brief->completed_at ?? now(),
+                'progress' => 100,
+            ])->save();
 
-        // Every section counts as submitted once the brief itself is sent.
-        $this->sectionMap($brief->fresh(['rooms']))->each(function (array $entry) use ($brief) {
-            $brief->sectionStates()->updateOrCreate(
-                ['brief_section_id' => $entry['section']->id, 'brief_room_id' => $entry['room']?->id],
-                ['status' => 'submitted', 'submitted_at' => now()],
-            );
+            // Every section counts as submitted once the brief itself is sent.
+            $this->sectionMap($brief->fresh(['rooms']))->each(function (array $entry) use ($brief) {
+                $brief->sectionStates()->updateOrCreate(
+                    ['brief_section_id' => $entry['section']->id, 'brief_room_id' => $entry['room']?->id],
+                    ['status' => 'submitted', 'submitted_at' => now()],
+                );
+            });
+
+            $this->createVersion($brief, $by, 'İlkin göndəriş');
+            $this->syncToCrm($brief);
+            $this->afterSubmitAutomations($brief);
         });
 
-        $this->createVersion($brief, $by, 'İlkin göndəriş');
-        $this->syncToCrm($brief);
-        $this->afterSubmitAutomations($brief);
-
+        // Outside the transaction: a PDF or mail failure must not roll back a
+        // submission the client has already been told went through.
         $document = $this->exportPdf($brief);
 
         $project = $brief->project;
@@ -638,12 +661,16 @@ class BriefService
             'risks' => app(BriefRiskDetector::class)->detect($brief),
         ]);
 
-        $path = 'documents/brief-'.$brief->project_id.'-'.now()->format('YmdHis').'.pdf';
+        // Random suffix: the old name was project id + a second-resolution
+        // timestamp, which made the PDF — address, phone, budget, room list —
+        // guessable in ~86 400 tries on the public storage URL. Downloads go
+        // through DocumentController, which checks ownership and visibility.
+        $path = 'documents/brief-'.$brief->project_id.'-'.now()->format('YmdHis').'-'.Str::random(24).'.pdf';
         Storage::disk('public')->put($path, $pdf->output());
 
         return $brief->project->documents()->create([
             'type' => DocumentType::BriefExport,
-            'title' => 'Brif — '.$brief->project->name,
+            'title' => 'Brif — '.$brief->project?->name,
             'file_path' => $path,
             'mime' => 'application/pdf',
             'visible_to_client' => true,

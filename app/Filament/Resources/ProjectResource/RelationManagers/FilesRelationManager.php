@@ -94,7 +94,12 @@ class FilesRelationManager extends RelationManager
                     ->label('Müştəriyə dərc et')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('info')
-                    ->visible(fn ($record) => $record->visibility === FileVisibility::Internal)
+                    // Publishing a file to the client is a write. Gating only on
+                    // the current visibility let a View-only role (Procurement
+                    // has FilesDocuments = Baxış) push internal drawings to the
+                    // customer portal — or pull a published one back.
+                    ->visible(fn ($record) => $record->visibility === FileVisibility::Internal
+                        && auth()->user()?->can('update', $record))
                     ->requiresConfirmation()
                     ->modalHeading('Faylı müştəriyə dərc et')
                     ->modalDescription(fn ($record) => ($record->title ?: basename($record->file_path)).' — müştəri portalında görünəcək. Görünürlük: Müştəri ilə paylaşılıb.')
@@ -103,13 +108,17 @@ class FilesRelationManager extends RelationManager
                     ->label('Dərcdən çıxar')
                     ->icon('heroicon-o-eye-slash')
                     ->color('gray')
-                    ->visible(fn ($record) => $record->visibility === FileVisibility::ClientShared)
+                    ->visible(fn ($record) => $record->visibility === FileVisibility::ClientShared
+                        && auth()->user()?->can('update', $record))
                     ->requiresConfirmation()
                     ->action(fn ($record) => $record->update(['visibility' => FileVisibility::Internal])),
                 Actions\Action::make('download')
                     ->label('Yüklə')
                     ->icon('heroicon-o-arrow-down-tray')
-                    ->url(fn ($record) => Storage::disk('public')->url($record->file_path))
+                    // Through an authorizing route, not a public-disk URL: the
+                    // storage symlink served internal drawings to anyone with the
+                    // link, with no session and no visibility check.
+                    ->url(fn ($record) => route('files.download', $record))
                     ->openUrlInNewTab(),
                 Actions\EditAction::make(),
                 Actions\DeleteAction::make()->requiresConfirmation(),

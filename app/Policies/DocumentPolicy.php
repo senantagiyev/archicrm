@@ -24,7 +24,7 @@ class DocumentPolicy
 
     public function view(User $user, Document $document): bool
     {
-        return $this->allowsOn($user, $document->project, AccessLevel::View);
+        return $this->allowsOn($user, $document->project, AccessLevel::View, $document->project_id);
     }
 
     public function create(User $user): bool
@@ -34,11 +34,11 @@ class DocumentPolicy
 
     public function update(User $user, Document $document): bool
     {
-        return $this->allowsOn($user, $document->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $document->project, AccessLevel::Edit, $document->project_id);
     }
 
     public function delete(User $user, Document $document): bool
     {
-        return $this->allowsOn($user, $document->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $document->project, AccessLevel::Edit, $document->project_id);
     }
 }

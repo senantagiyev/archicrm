@@ -158,6 +158,9 @@ class ProcurementItemsRelationManager extends RelationManager
                 Actions\Action::make('exportExcel')
                     ->label('Excel-ə ixrac')
                     ->icon('heroicon-o-arrow-down-tray')
+                    // The export carries every purchase price; it is a read of the
+                    // Procurement domain and must be gated like one.
+                    ->visible(fn () => auth()->user()?->can('viewAny', ProcurementItem::class))
                     ->action(fn () => Excel::download(
                         new ProcurementExport($this->getOwnerRecord()),
                         'komplektasiya-'.$this->getOwnerRecord()->id.'.xlsx',

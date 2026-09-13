@@ -2,10 +2,11 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\AccessLevel;
 use App\Enums\Domain;
-use App\Enums\StaffRole;
 use App\Filament\Resources\RoleResource\Pages;
 use App\Models\Role;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
@@ -13,6 +14,8 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rules\Unique;
 
 class RoleResource extends Resource
 {
@@ -32,10 +35,27 @@ class RoleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    /** Governance surface — Owner only. */
+    /**
+     * Governance surface, gated on the matrix rather than the raw role column —
+     * otherwise the role constructor cannot govern access to itself. Only the
+     * owner holds OwnerDashboard = Tam in the built-in matrix, so the six
+     * standard roles behave exactly as before.
+     */
     public static function canAccess(): bool
     {
-        return auth()->user()?->role === StaffRole::Owner;
+        $user = auth()->user();
+
+        return $user !== null && AccessMatrix::allows($user, Domain::OwnerDashboard, AccessLevel::Full);
+    }
+
+    /**
+     * The studio sees the platform-wide catalogue plus its own roles. Editing a
+     * platform row from here copies it into the studio first (see EditRole), so
+     * one studio's governance decisions never reach another's.
+     */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->forTenant(auth()->user()?->tenant_id);
     }
 
     /** AZ labels for the access domains (TZ §5.4). */
@@ -75,7 +95,14 @@ class RoleResource extends Resource
                     ->label('Açar (key)')
                     ->required()
                     ->maxLength(50)
-                    ->unique(ignoreRecord: true)
+                    // Unique per studio, matching the (tenant_id, key) index. A
+                    // bare unique rule blocked a studio from using a key that
+                    // exists only in another studio — and refused to re-save a
+                    // global role once any studio had forked it.
+                    ->unique(
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule) => $rule->where('tenant_id', auth()->user()?->tenant_id),
+                    )
                     ->disabled(fn (?Role $record) => $record?->is_system)
                     ->helperText('Sistem rollarında dəyişdirilə bilməz.'),
                 Forms\Components\TextInput::make('name')
@@ -115,9 +142,10 @@ class RoleResource extends Resource
             ->defaultSort('id')
             ->actions([
                 Actions\EditAction::make(),
-                // System roles are the built-in matrix — they can be tuned but not removed.
+                // Platform-wide rows belong to every studio; a studio may only
+                // delete a role it created itself.
                 Actions\DeleteAction::make()
-                    ->visible(fn (Role $r) => ! $r->is_system),
+                    ->visible(fn (Role $r) => ! $r->is_system && $r->tenant_id !== null),
             ])
             ->bulkActions([]);
     }

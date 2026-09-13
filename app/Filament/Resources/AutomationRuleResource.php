@@ -2,13 +2,17 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\AccessLevel;
 use App\Enums\AutomationPriority;
-use App\Enums\StaffRole;
+use App\Enums\Domain;
 use App\Filament\Resources\AutomationRuleResource\Pages;
 use App\Models\AutomationRule;
+use App\Services\Automation\AutomationEngine;
+use App\Support\AccessMatrix;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class AutomationRuleResource extends Resource
 {
@@ -28,11 +32,20 @@ class AutomationRuleResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    /** Governance surface — Owner only (TZ §8.21 Admin zone). */
+    /** Governance surface (TZ §8.21 Admin zone) — read from the matrix, not the role column. */
     public static function canAccess(): bool
     {
+        $user = auth()->user();
+
         return config('automations.enabled')
-            && auth()->user()?->role === StaffRole::Owner;
+            && $user !== null
+            && AccessMatrix::allows($user, Domain::OwnerDashboard, AccessLevel::Full);
+    }
+
+    /** Platform-wide defaults plus this studio's own overrides — nothing else. */
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->forTenant(auth()->user()?->tenant_id);
     }
 
     public static function table(Table $table): Table
@@ -58,7 +71,24 @@ class AutomationRuleResource extends Resource
                     ->formatStateUsing(fn (AutomationPriority $state) => $state->label())
                     ->color(fn (AutomationPriority $state) => $state->color()),
                 Tables\Columns\ToggleColumn::make('enabled')
-                    ->label('Aktiv'),
+                    ->label('Aktiv')
+                    // Copy-on-write: toggling a platform-wide rule creates this
+                    // studio's own override instead of flipping the shared row
+                    // for every studio on the installation.
+                    ->updateStateUsing(function (AutomationRule $record, bool $state): void {
+                        $tenantId = auth()->user()?->tenant_id;
+
+                        if ($record->tenant_id === null && $tenantId !== null) {
+                            AutomationRule::updateOrCreate(
+                                ['tenant_id' => $tenantId, 'code' => $record->code],
+                                $record->only(['name', 'trigger', 'priority', 'conditions', 'actions']) + ['enabled' => $state],
+                            );
+                        } else {
+                            $record->update(['enabled' => $state]);
+                        }
+
+                        app(AutomationEngine::class)->flush();
+                    }),
             ])
             ->defaultSort('id')
             ->paginated([25, 50, 'all'])

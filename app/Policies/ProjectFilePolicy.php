@@ -24,7 +24,7 @@ class ProjectFilePolicy
 
     public function view(User $user, ProjectFile $file): bool
     {
-        return $this->allowsOn($user, $file->project, AccessLevel::View);
+        return $this->allowsOn($user, $file->project, AccessLevel::View, $file->project_id);
     }
 
     public function create(User $user): bool
@@ -34,11 +34,11 @@ class ProjectFilePolicy
 
     public function update(User $user, ProjectFile $file): bool
     {
-        return $this->allowsOn($user, $file->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $file->project, AccessLevel::Edit, $file->project_id);
     }
 
     public function delete(User $user, ProjectFile $file): bool
     {
-        return $this->allowsOn($user, $file->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $file->project, AccessLevel::Edit, $file->project_id);
     }
 }

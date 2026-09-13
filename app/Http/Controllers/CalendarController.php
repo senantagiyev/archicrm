@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Enums\PaymentStatus;
 use App\Enums\StageStatus;
 use App\Enums\TaskStatus;
@@ -86,11 +88,19 @@ class CalendarController extends Controller
             ];
         }
 
-        $payments = $scope(Payment::query())
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$start, $end])
-            ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Overdue->value])
-            ->get();
+        // The calendar was scoped by project but not by domain, so a designer —
+        // Payments = Yoxdur — read every amount and invoice number for the
+        // projects they work on.
+        $seesMoney = AccessMatrix::allows($user, Domain::Payments, AccessLevel::View);
+
+        $payments = $seesMoney
+            ? $scope(Payment::query())
+                ->whereNotNull('due_date')
+                ->whereBetween('due_date', [$start, $end])
+                ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Overdue->value])
+                ->get()
+            : collect();
+
         foreach ($payments as $p) {
             $events[] = [
                 'title' => '₼ '.rtrim(rtrim(number_format((float) $p->amount, 2), '0'), '.').' — '.$p->title,
@@ -101,11 +111,14 @@ class CalendarController extends Controller
             ];
         }
 
-        $invoices = $scope(Invoice::query())
-            ->whereNotNull('due_date')
-            ->whereBetween('due_date', [$start, $end])
-            ->whereNotIn('status', ['paid', 'cancelled', 'draft'])
-            ->get();
+        $invoices = $seesMoney
+            ? $scope(Invoice::query())
+                ->whereNotNull('due_date')
+                ->whereBetween('due_date', [$start, $end])
+                ->whereNotIn('status', ['paid', 'cancelled', 'draft'])
+                ->get()
+            : collect();
+
         foreach ($invoices as $i) {
             $events[] = [
                 'title' => '🧾 № '.$i->number,

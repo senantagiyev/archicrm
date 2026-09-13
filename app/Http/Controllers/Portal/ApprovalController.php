@@ -9,6 +9,7 @@ use App\Models\Approval;
 use App\Services\Approvals\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ApprovalController extends Controller
 {
@@ -21,7 +22,10 @@ class ApprovalController extends Controller
         $approvals = $project->approvals()
             ->whereIn('status', [ApprovalStatus::Pending->value, ApprovalStatus::Approved->value, ApprovalStatus::Rejected->value])
             ->with(['approvable'])
-            ->orderByRaw("field(status, 'pending') desc")
+            // Pending first. Plain SQL rather than MySQL's field(), which made this
+            // page — the one screen where the client commits to money — impossible
+            // to cover with a test.
+            ->orderByDesc(DB::raw("case when status = '".ApprovalStatus::Pending->value."' then 1 else 0 end"))
             ->latest()
             ->get();
 

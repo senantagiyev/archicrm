@@ -25,7 +25,7 @@ class ExpensePolicy
 
     public function view(User $user, Expense $expense): bool
     {
-        return $this->allowsOn($user, $expense->project, AccessLevel::View);
+        return $this->allowsOn($user, $expense->project, AccessLevel::View, $expense->project_id);
     }
 
     public function create(User $user): bool
@@ -35,12 +35,12 @@ class ExpensePolicy
 
     public function update(User $user, Expense $expense): bool
     {
-        return $this->allowsOn($user, $expense->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $expense->project, AccessLevel::Edit, $expense->project_id);
     }
 
     public function delete(User $user, Expense $expense): bool
     {
-        return $this->allowsOn($user, $expense->project, AccessLevel::Full);
+        return $this->allowsOn($user, $expense->project, AccessLevel::Full, $expense->project_id);
     }
 
     public function restore(User $user, Expense $expense): bool

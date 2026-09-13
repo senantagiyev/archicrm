@@ -80,7 +80,8 @@ class ChangeRequestsRelationManager extends RelationManager
                 Actions\Action::make('advance')
                     ->label('Növbəti mərhələ')
                     ->icon('heroicon-o-arrow-right-circle')
-                    ->visible(fn ($record) => ChangeRequestStatus::allowed()[$record->status->value] !== [])
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record)
+                        && ChangeRequestStatus::allowed()[$record->status->value] !== [])
                     ->form([
                         Forms\Components\Select::make('to')
                             ->label('Yeni status')

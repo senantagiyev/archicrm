@@ -37,7 +37,16 @@ class ChangeRequest extends Model
     {
         static::creating(function (self $cr): void {
             if (blank($cr->number)) {
-                $seq = static::where('project_id', $cr->project_id)->count() + 1;
+                // Derived from the highest number issued, not from count(): with
+                // count(), deleting CR-7-002 made the next create re-issue
+                // CR-7-003 on top of the live one.
+                $last = static::withoutGlobalScopes()
+                    ->where('project_id', $cr->project_id)
+                    ->orderByDesc('id')
+                    ->value('number');
+
+                $seq = $last && preg_match('/(\d+)$/', $last, $m) ? ((int) $m[1]) + 1 : 1;
+
                 $cr->number = 'CR-'.$cr->project_id.'-'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
             }
         });

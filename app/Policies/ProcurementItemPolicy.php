@@ -24,7 +24,7 @@ class ProcurementItemPolicy
 
     public function view(User $user, ProcurementItem $item): bool
     {
-        return $this->allowsOn($user, $item->project, AccessLevel::View);
+        return $this->allowsOn($user, $item->project, AccessLevel::View, $item->project_id);
     }
 
     public function create(User $user): bool
@@ -34,7 +34,7 @@ class ProcurementItemPolicy
 
     public function update(User $user, ProcurementItem $item): bool
     {
-        return $this->allowsOn($user, $item->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $item->project, AccessLevel::Edit, $item->project_id);
     }
 
     public function delete(User $user, ProcurementItem $item): bool
@@ -44,6 +44,6 @@ class ProcurementItemPolicy
             return false;
         }
 
-        return $this->allowsOn($user, $item->project, AccessLevel::Full);
+        return $this->allowsOn($user, $item->project, AccessLevel::Full, $item->project_id);
     }
 }

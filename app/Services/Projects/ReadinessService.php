@@ -31,8 +31,18 @@ class ReadinessService
         $this->recalculateProject($stage->project);
     }
 
-    public function recalculateProject(Project $project): void
+    /**
+     * Accepts null on purpose: stages and tasks are not soft-deleted, so every
+     * write path on a child of an ARCHIVED project arrives here with a null
+     * parent. Typing this non-nullable turned an ordinary archive into a fatal
+     * that also killed the nightly scanner mid-loop.
+     */
+    public function recalculateProject(?Project $project): void
     {
+        if (! $project) {
+            return;
+        }
+
         $stages = $project->stages()->get(['id', 'readiness', 'weight', 'status']);
 
         if ($stages->isEmpty()) {

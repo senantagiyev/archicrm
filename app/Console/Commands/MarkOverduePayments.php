@@ -21,17 +21,23 @@ class MarkOverduePayments extends Command
             ->where('status', PaymentStatus::Pending->value)
             ->whereNotNull('due_date')
             ->whereDate('due_date', '<', today())
+            ->whereHas('project')
             ->with('project')
             ->get();
 
-        $recipients = User::where('is_active', true)
+        // Recipients are resolved PER STUDIO. A single global role query emailed
+        // every studio's owner and accountant about every other studio's debts —
+        // the scheduler runs in CLI, where the tenant scope is inert.
+        $recipientsByTenant = User::query()
+            ->where('is_active', true)
             ->whereIn('role', [StaffRole::Owner->value, StaffRole::Accountant->value])
-            ->get();
+            ->get()
+            ->groupBy('tenant_id');
 
         foreach ($payments as $payment) {
             $payment->update(['status' => PaymentStatus::Overdue]);
 
-            foreach ($recipients as $user) {
+            foreach ($recipientsByTenant->get($payment->tenant_id, collect()) as $user) {
                 $user->notify(new PaymentOverdue($payment));
             }
         }

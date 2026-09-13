@@ -23,7 +23,10 @@ class ListExpenses extends ListRecords
 
     public function getTabs(): array
     {
-        $counts = Expense::query()
+        // Through the resource query, not Expense::query(): the raw model bypassed
+        // the resource's scoping, so a badge could read "Hamısı 2" over a table
+        // the user is not allowed to see a single row of.
+        $counts = static::getResource()::getEloquentQuery()
             ->selectRaw('status, count(*) as c')
             ->groupBy('status')
             ->pluck('c', 'status');

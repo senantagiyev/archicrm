@@ -67,7 +67,10 @@ return [
     |
     */
 
-    'timezone' => 'UTC',
+    // Baku (UTC+4). With UTC, `whereDate('due_date', '<', today())` rolled the day
+    // at 04:00 local, so a payment was flagged overdue on the morning it was
+    // actually due, and the 06:00 scheduler ran at 10:00.
+    'timezone' => env('APP_TIMEZONE', 'Asia/Baku'),
 
     /*
     |--------------------------------------------------------------------------

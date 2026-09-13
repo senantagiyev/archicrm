@@ -17,7 +17,11 @@ class RoleSeeder extends Seeder
     {
         foreach (AccessMatrix::systemRoles() as $key => $data) {
             Role::firstOrCreate(
-                ['key' => $key],
+                // Matched on the PLATFORM-WIDE row. Without `tenant_id`, the
+                // seeder adopts whichever studio happens to hold a copy of that
+                // key and stops recreating the global default — every other
+                // studio then silently falls back to the const matrix.
+                ['tenant_id' => null, 'key' => $key],
                 [
                     'name' => $data['name'],
                     'levels' => $data['levels'],

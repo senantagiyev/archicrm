@@ -13,7 +13,12 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 - Rollar: `StaffRole` enum + `app/Support/AccessMatrix.php` (TZ §5.4 matrisi) + policy-lər. Spatie Permission YOXDUR.
 - `Relation::enforceMorphMap()` `AppServiceProvider`-də — yeni polimorf model əlavə edəndə mütləq xəritəyə sal.
 - Cached aqreqatlar: `projects.readiness` (ReadinessService), `projects.debt` (ProjectFinanceService) — observer-lər yeniləyir, əl ilə yazma.
-- Borc düsturu (TZ §5.10): razılaşdırılmış smeta + razılaşdırılmış komplektasiya − ödənilmiş ödənişlər.
+- Borc düsturu (TZ §5.10): razılaşdırılmış smeta + razılaşdırılmış komplektasiya − ödənilmiş ödənişlər. `ProcurementItem::total` = mal + ehtiyat faizi + çatdırılma/yığılma (saving hook-da yenidən hesablanır).
+- **Rentabellik düsturları** (`ProfitabilityService`): gəlir = yalnız **ödənilmiş** ödənişlər; əmək = `SUM(dəqiqə × hourly_cost_snapshot)/60`, yuvarlaqlaşdırma **sonda bir dəfə**; xərc = `ExpenseStatus::costBearing()` (rədd edilən sayılmır). `margin` **nullable**-dır — gəlir 0 olduqda `null` qaytarır və «—» kimi göstərilir (0% «zərərsizlik» kimi oxunurdu). `portfolio()` yalnız **silinməmiş** layihələrin pulunu sayır, amma `project_id IS NULL` olan ofis xərclərini saxlayır — `whereHas('project')` tək başına ofis xərclərini də silir, bu tələyə düşmə. Stat kartları «bütün dövr», `projected` və cədvəl isə «aktiv layihələr» — etiketlər bunu açıq yazır.
+- **Satınalma sifarişi**: `subtotal` pozisiyalardan hesablanır (pozisiya varsa), `total = subtotal + tax` — hər ikisi `saving` hook-da. Status keçidləri `PurchaseOrderStatus::allowedTransitions()` ilə məhdudlaşır. Sifarişləri olan təchizatçı silinmir.
+- **Maya dəyərinin mənbəyi ikidir**: `ExpenseStatus::costBearing()` xərclər + `PurchaseOrderStatus::costBearing()` sifarişlər (`ordered`/`partially_received`/`received`). `ProcurementItem.total` **maya dəyəri deyil** — o, müştəriyə fakturalanan məbləğdir və `projects.debt`-ə gedir. Eyni alışı həm sifariş, həm xərc kimi yazsan, ikiqat sayılacaq — birini seç.
+- **`uncosted_procurement` / `uncosted_minutes`**: hesabat maya dəyərini uydurmur, amma onun əskik olduğunu gizlətmir də. Müştəriyə fakturalanmış komplektasiyanın nə sifarişi, nə xərci varsa — `ProfitabilityWidget` marja sütununda `*` və tooltip göstərir. Tarifi 0 olan işçinin saatları üçün də eyni.
+- **Xərc**: məbləğ > 0 və «dörd göz» (yazan ≠ təsdiqləyən) model səviyyəsində tətbiq olunur. Valyuta hazırda yalnız AZN — çevrilmə olmadığı üçün seçim bağlanıb.
 - Razılaşdırmalar polimorfdur (`approvals`): BudgetLine/ProcurementItem/Stage/Document. Rədd → şərh MƏCBURİDİR (`ApprovalService::decide`).
 - Razılaşdırılmış + ödənilmiş komplektasiya pozisiyası silinmir — yalnız şərhlə "Ləğv edilib".
 - Çat: polling (8s), `ChatService::send()` tək giriş nöqtəsi — Faza 2-də Reverb broadcast bura əlavə olunur.
@@ -34,8 +39,23 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 - **Mass-assignment**: `approval_status` BudgetLine/ProcurementItem fillable-də YOXDUR — yalnız `ApprovalService` forceFill ilə. `ProcurementItem::deleting` guard silmə kilidini model səviyyəsində tətbiq edir.
 - **Magic link tək-istifadəlik**: `client_users.magic_token` (sha256 hash) — istifadədə null olunur, replay 403. Yeni link köhnəni etibarsız edir.
 - **Deployment qeydi**: production-da `APP_DEBUG=false`, `APP_ENV=production` mütləqdir.
+- **Tenant izolyasiyası (QA auditi sonrası)**: `SetTenant` HƏM `web` qrupunda, HƏM DƏ `AdminPanelProvider`-in middleware massivində olmalıdır — Filament paneli `web` qrupunu miras almır. Hər iki yerdə `SubstituteBindings`-dən **əvvəl** gəlməlidir, əks halda route-model binding qeydi scope-dan kənar bağlayır. `bootstrap/app.php` bunun üçün `remove:` + `append:` işlədir. `SetTenant` fail-closed-dur: 2+ studiya varsa tenant-siz hesab 403 alır (istisna: `is_platform_admin`).
+- **Ümumi kataloqlar copy-on-write**: `roles` və `automation_rules` sətirlərində `tenant_id` var. `NULL` = platforma səviyyəli default; studiya redaktə edəndə öz nüsxəsi yaranır (`Role::scopeForTenant`, `AutomationRule::scopeForTenant`, `EditRole::handleRecordUpdate`, ToggleColumn `updateStateUsing`). Qlobal sətri birbaşa redaktə etmək BÜTÜN studiyaları dəyişir — etmə.
+- **`Role` BelongsToTenant İŞLƏTMİR** (qlobal sətirlərin `tenant_id`-si NULL-dur), ona görə **heç nə avtomatik ştamp etmir**: `CreateRole::mutateFormDataBeforeCreate` `tenant_id`-ni əl ilə qoyur və `is_system = false` edir. Bu unudulsa, studiyada yaradılan hər xüsusi rol platforma səviyyəsində yaranır və bütün studiyalara verilir. `RoleSeeder` `['tenant_id' => null, 'key' => ...]` üzrə match edir — `tenant_id` olmadan seeder studiyanın nüsxəsini «mənimsəyir».
+- **`Role::active = false` HÜQUQU LƏĞV EDİR**, defolta qaytarmır. `AccessMatrix::resolve()` rolu `active` filtri OLMADAN tapır, sonra deaktivdirsə boş matris qaytarır — əks halda platforma defoltuna düşür və istifadəçi işləməyə davam edir.
+- **`Tenant::active` hər iki qapıda yoxlanılır**: heyət üçün `User::canAccessPanel()`, müştəri portalı üçün `SetTenant` (403). Yalnız birində yoxlamaq studiyanı yarımçıq bağlayır.
+- **Son aktiv sahibkar qorunur**: `User::isLastActiveOwner()` — deaktiv, rol dəyişikliyi və silmə bloklanır, əks halda studiyada Komanda/Rollara girə bilən heç kim qalmır.
+- **İdarəetmə səhifələri matrisdən oxuyur**: Komanda (`UserPolicy`), Rollar və Avtomatlaşdırmalar `Domain::OwnerDashboard = Tam` tələb edir, `role === Owner` yox — əks halda rol konstruktoru məhz ən vacib üç ekranda heç nə edə bilmir. Daxili matrisdə bu səviyyə yalnız sahibkarda var, ona görə altı standart rolun davranışı dəyişmir. Studiyalar reyestri isə həmişə `is_platform_admin`-dir.
+- **CLI-da tenant**: scheduler və observer-lər kontekstsiz işləyir, ona görə alıcılar həmişə subyektin `tenant_id`-sinə görə süzülməlidir (`MarkOverduePayments`, `RunAutomationTick::staffFor`, `FinanceObserver`, `LeadObserver`). `automation:tick` 2+ studiya olduqda hər studiya üçün ayrıca `TenantContext::actingAs` ilə işləyir.
+- **Fayllar**: `ProjectFile` yükləməsi `route('files.download')` üzərindəndir (policy + `FileVisibility`), public disk URL-i ilə yox. Brif PDF adında `Str::random(24)` var — köhnə ad təxmin edilə bilirdi.
+- **Mail (Google Workspace)**: `smtp.gmail.com:587`, `MAIL_SCHEME=smtp` (STARTTLS), istifadəçi `crm@archi.az`. `MAIL_PASSWORD` **App Password**-dur (16 simvol, boşluqsuz) — Google hesabının öz parolu SMTP-də işləmir, hər zaman `535-5.7.8 BadCredentials` verir. Hesabın parolu dəyişdikdə bütün App Password-lar ləğv olunur, yenisi yaradılmalıdır. Limit: 2 000 mesaj/gün; daha çoxu üçün Admin Console-da SMTP relay (`smtp-relay.gmail.com`, 10 000/gün). Yoxlama: `php artisan mail:test {email}` — aktiv ayarları göstərir (parol maskalanır) və test mesajı göndərir.
 
 ## Kritik bilinən tələlər
+- **Filament panelində policy yoxdursa = icazə var**: panel `strictAuthorization()` rejimində deyil, ona görə policy-si olmayan model üçün Filament `Response::allow()` qaytarır. Yeni model + RelationManager əlavə edəndə policy də yaz (`app/Policies/`), əks halda hər rol ona tam çıxış alır.
+- **Filament custom action-ları**: `CreateAction`/`EditAction`/`DeleteAction` avtomatik policy yoxlayır, `Action::make(...)` isə YOX. Yazan hər custom action-a `->visible(fn ($record) => auth()->user()?->can('update', $record))` əlavə et.
+- **`getOriginal()` cast tətbiq edir**: enum sütunu ilə müqayisədə `getRawOriginal()` işlət, əks halda `getOriginal('status') === 'approved'` heç vaxt doğru olmur.
+- **NULL unikal indeksdə toqquşmur**: tenant/room kimi sütunlar unikal indeksin hissəsidirsə `NULL` yox, `0` işlət (`automation_runs.tenant_id`, `brief_answers.room_key`).
+- **PowerShell `StartsWith`**: mədəni müqayisə U+FEFF-i boş simvol sayır, `"<?php".StartsWith("`u{FEFF}")` TRUE qaytarır. Fayl manipulyasiyasında `[StringComparison]::Ordinal` işlət; `Set-Content -Encoding utf8` isə BOM yazır.
 - **Filament closure parametr adları**: `->modifyQueryUsing(fn (Builder $query) => ...)` — parametr MÜTLƏQ `$query` adlanmalıdır. Filament evaluate() adla inject edir; yanlış ad konteynerdən modelsiz Builder yaradır → "newQueryWithoutRelationships() on null".
 - Filament 4 API: form = `Filament\Schemas\Schema`, Section = `Filament\Schemas\Components\Section`, Get/Set = `Filament\Schemas\Components\Utilities\{Get,Set}`, list tabları = `Filament\Schemas\Components\Tabs\Tab`, actions = `Filament\Actions`.
 - RelationManager-lərdə `protected static bool $isLazy = false;` — lazy yükləmə brauzer test panelində işləmir.
@@ -44,7 +64,8 @@ Memarlıq-dizayn büroları üçün CRM/PM sistemi (Roomix 2.0 TZ əsasında, Ar
 - `--env=testing` ilə `migrate:fresh` İŞLƏTMƏ — phpunit.xml onsuz sqlite :memory: istifadə edir.
 
 ## Əmrlər
-- `php artisan test` — 93 test (readiness, borc, approval, portal scoping, brif spesifikasiyası)
+- `php artisan test` — 245 test. `tests/Feature/Scenarios/` ssenari əsaslı QA dəstidir: `tests/Support/StudioWorld.php` iki tam studiya (6 rol, 2 müştəri, 2 layihə, portal hesabları, maliyyə qeydləri) qurur, testlər real HTTP üzərindən gedir. Tenant/icazə/portal ilə bağlı hər dəyişiklikdən sonra bunları işlət.
+- `php artisan mail:test {email}` — mail konfiqurasiyasının yoxlanması
 - `vendor\bin\pint --dirty`
 - Scheduler: `stages:mark-overdue`, `tasks:notify-deadlines`, `payments:mark-overdue` (gündəlik), `activitylog:clean` (aylıq)
 - Seed: `php artisan db:seed` (şablonlar + brif bankı + tərcümələr, hamısı idempotent)

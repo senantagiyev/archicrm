@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AccessLevel;
 use App\Enums\ApprovalStatus;
 use App\Enums\ClientStatus;
+use App\Enums\Domain;
 use App\Enums\PaymentStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\TaskStatus;
@@ -12,6 +14,7 @@ use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Project;
 use App\Models\Task;
+use App\Support\AccessMatrix;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -62,28 +65,58 @@ class Dashboard extends BaseDashboard
         return $now->day.' '.$months[$now->month].' '.$now->year.', '.$days[$now->dayOfWeek];
     }
 
-    /** @return array<int, array{label:string, value:string, hint:string, tone:string}> */
+    /**
+     * The panel home stays open to everyone — it is where login lands — but each
+     * tile is gated by its own domain. Revenue used to greet a visualizer whose
+     * matrix says Payments = None.
+     *
+     * @return array<int, array{label:string, value:string, hint:string, tone:string}>
+     */
     public function stats(): array
     {
-        $activeProjects = Project::where('status', ProjectStatus::Active->value)->count();
-        $newProjectsWeek = Project::where('created_at', '>=', now()->subWeek())->count();
+        $user = auth()->user();
+        $tiles = [];
 
-        $activeClients = Client::where('status', ClientStatus::Client->value)->count();
-        $newLeadsWeek = Client::where('status', ClientStatus::Lead->value)->where('created_at', '>=', now()->subWeek())->count();
-
-        $pendingApprovals = Approval::where('status', ApprovalStatus::Pending->value)->count();
         $overdueTasks = Task::whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
             ->whereDate('deadline', '<', today())->count();
 
-        $monthRevenue = (float) Payment::where('status', PaymentStatus::Paid->value)
-            ->where('paid_at', '>=', now()->startOfMonth())->sum('amount');
+        if ($this->mayRead(Domain::Projects)) {
+            $activeProjects = Project::where('status', ProjectStatus::Active->value)->count();
+            $newProjectsWeek = Project::where('created_at', '>=', now()->subWeek())->count();
 
-        return [
-            ['label' => 'Aktiv layihələr', 'value' => (string) $activeProjects, 'hint' => "+{$newProjectsWeek} bu həftə", 'tone' => 'ink'],
-            ['label' => 'Aktiv müştərilər', 'value' => (string) $activeClients, 'hint' => "+{$newLeadsWeek} yeni lid", 'tone' => 'ink'],
-            ['label' => 'Gözləyən razılaşdırmalar', 'value' => (string) $pendingApprovals, 'hint' => $pendingApprovals > 0 ? 'cavab gözləyir' : 'hamısı təmiz', 'tone' => $pendingApprovals > 0 ? 'warn' : 'ok'],
-            ['label' => 'Bu ay gəlir', 'value' => number_format($monthRevenue, 0, '.', ' ').' ₼', 'hint' => $overdueTasks > 0 ? "{$overdueTasks} gecikmiş tapşırıq" : 'gecikmə yoxdur', 'tone' => 'ink'],
-        ];
+            $tiles[] = ['label' => 'Aktiv layihələr', 'value' => (string) $activeProjects, 'hint' => "+{$newProjectsWeek} bu həftə", 'tone' => 'ink'];
+        }
+
+        if ($this->mayRead(Domain::Clients)) {
+            $activeClients = Client::where('status', ClientStatus::Client->value)->count();
+            $newLeadsWeek = Client::where('status', ClientStatus::Lead->value)->where('created_at', '>=', now()->subWeek())->count();
+
+            $tiles[] = ['label' => 'Aktiv müştərilər', 'value' => (string) $activeClients, 'hint' => "+{$newLeadsWeek} yeni lid", 'tone' => 'ink'];
+        }
+
+        if ($user?->can('viewAny', Approval::class)) {
+            $pendingApprovals = Approval::where('status', ApprovalStatus::Pending->value)->count();
+
+            $tiles[] = ['label' => 'Gözləyən razılaşdırmalar', 'value' => (string) $pendingApprovals, 'hint' => $pendingApprovals > 0 ? 'cavab gözləyir' : 'hamısı təmiz', 'tone' => $pendingApprovals > 0 ? 'warn' : 'ok'];
+        }
+
+        if ($this->mayRead(Domain::Payments)) {
+            $monthRevenue = (float) Payment::where('status', PaymentStatus::Paid->value)
+                ->where('paid_at', '>=', now()->startOfMonth())->sum('amount');
+
+            $tiles[] = ['label' => 'Bu ay gəlir', 'value' => number_format($monthRevenue, 0, '.', ' ').' ₼', 'hint' => $overdueTasks > 0 ? "{$overdueTasks} gecikmiş tapşırıq" : 'gecikmə yoxdur', 'tone' => 'ink'];
+        }
+
+        $tiles[] = ['label' => 'Gecikmiş tapşırıqlar', 'value' => (string) $overdueTasks, 'hint' => $overdueTasks > 0 ? 'diqqət tələb edir' : 'hamısı vaxtında', 'tone' => $overdueTasks > 0 ? 'warn' : 'ok'];
+
+        return $tiles;
+    }
+
+    public function mayRead(Domain $domain): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && AccessMatrix::allows($user, $domain, AccessLevel::View);
     }
 
     /** Projects created per month, last 6 months → bar chart. @return array<int, array{label:string, value:int}> */

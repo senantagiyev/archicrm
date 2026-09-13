@@ -23,7 +23,9 @@ class ListPurchaseOrders extends ListRecords
 
     public function getTabs(): array
     {
-        $counts = PurchaseOrder::query()
+        // Through the resource query, not PurchaseOrder::query(): the raw model
+        // bypassed scoping, so the badge counted rows the user cannot open.
+        $counts = static::getResource()::getEloquentQuery()
             ->selectRaw('status, count(*) as c')
             ->groupBy('status')
             ->pluck('c', 'status');

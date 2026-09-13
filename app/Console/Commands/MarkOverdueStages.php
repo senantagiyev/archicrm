@@ -20,10 +20,17 @@ class MarkOverdueStages extends Command
             ->whereNotIn('status', [StageStatus::Done->value, StageStatus::Overdue->value])
             ->whereNotNull('date_plan_end')
             ->whereDate('date_plan_end', '<', today())
+            // Stages are not soft-deleted, so an archived project's stages still
+            // match; nobody wants "overdue" alerts about work that was shelved.
+            ->whereHas('project')
             ->with('project')
-            ->each(function (Stage $stage) use (&$count) {
-                $stage->update(['status' => StageStatus::Overdue]);
-                $count++;
+            // chunkById, not each(): each() pages by OFFSET while the loop mutates
+            // the very column the WHERE filters on, which silently skips rows.
+            ->chunkById(200, function ($stages) use (&$count) {
+                foreach ($stages as $stage) {
+                    $stage->update(['status' => StageStatus::Overdue]);
+                    $count++;
+                }
             });
 
         $this->info("{$count} mərhələ \"Gecikib\" statusuna keçirildi.");

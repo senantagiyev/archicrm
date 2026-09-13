@@ -23,11 +23,18 @@ class NotifyTaskDeadlines extends Command
             ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
             ->whereDate('deadline', today()->addDays($days))
             ->whereNotNull('assignee_user_id')
+            // A departed employee is soft-deleted, which does NOT clear
+            // assignee_user_id — so the row still matches while the relation
+            // resolves to null. Without this the whole command dies on it.
+            // Deactivated accounts are skipped too: they cannot act on the task
+            // and the mail carries project and client names.
+            ->whereHas('assignee', fn ($query) => $query->where('is_active', true))
+            ->whereHas('project')
             ->with(['assignee', 'project'])
             ->get();
 
         foreach ($soon as $task) {
-            $task->assignee->notify(new TaskDeadlineSoon($task, $days));
+            $task->assignee?->notify(new TaskDeadlineSoon($task, $days));
         }
 
         // Newly overdue (deadline was yesterday) — assignee + project manager (TZ §5.13).
@@ -38,13 +45,14 @@ class NotifyTaskDeadlines extends Command
             $overdue = Task::query()
                 ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
                 ->whereDate('deadline', today()->subDay())
+                ->whereHas('project')
                 ->with(['assignee', 'project.manager'])
                 ->get();
 
             foreach ($overdue as $task) {
                 $task->assignee?->notify(new TaskOverdue($task));
 
-                if ($task->project->manager && ! $task->project->manager->is($task->assignee)) {
+                if ($task->project?->manager && ! $task->project->manager->is($task->assignee)) {
                     $task->project->manager->notify(new TaskOverdue($task));
                 }
             }

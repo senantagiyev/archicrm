@@ -21,9 +21,12 @@ class LeadObserver
         }
 
         if (! $lead->responsible_user_id) {
+            // The lead's own studio, not "whichever owner has the lowest id":
+            // unscoped, this permanently assigned another studio's owner to it.
             $owner = User::query()
                 ->where('is_active', true)
                 ->where('role', StaffRole::Owner->value)
+                ->when($lead->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
                 ->first();
 
             if ($owner) {

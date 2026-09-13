@@ -25,7 +25,7 @@ class InvoicePolicy
 
     public function view(User $user, Invoice $invoice): bool
     {
-        return $this->allowsOn($user, $invoice->project, AccessLevel::View);
+        return $this->allowsOn($user, $invoice->project, AccessLevel::View, $invoice->project_id);
     }
 
     public function create(User $user): bool
@@ -35,12 +35,12 @@ class InvoicePolicy
 
     public function update(User $user, Invoice $invoice): bool
     {
-        return $this->allowsOn($user, $invoice->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $invoice->project, AccessLevel::Edit, $invoice->project_id);
     }
 
     public function delete(User $user, Invoice $invoice): bool
     {
-        return $this->allowsOn($user, $invoice->project, AccessLevel::Full);
+        return $this->allowsOn($user, $invoice->project, AccessLevel::Full, $invoice->project_id);
     }
 
     public function restore(User $user, Invoice $invoice): bool

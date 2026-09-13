@@ -20,6 +20,7 @@ use App\Services\Automation\AutomationEngine;
 use App\Services\Design\DeliverableService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class ApprovalService
@@ -30,6 +31,15 @@ class ApprovalService
      */
     public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null): Approval
     {
+        // `visible_to_client = false` means the studio marked this line internal.
+        // The portal prints the approval's subject label and total verbatim, so
+        // the flag has to stop the request, not just hide a column in the panel.
+        if ($approvable instanceof BudgetLine && ! $approvable->visible_to_client) {
+            throw new InvalidArgumentException(
+                'Müştəriyə gizli işarələnmiş smeta sətri razılaşdırmaya göndərilə bilməz.'
+            );
+        }
+
         $project = $approvable->project;
 
         // Supersede a previous pending request for the same row.
@@ -66,21 +76,33 @@ class ApprovalService
             throw new InvalidArgumentException('Rədd edərkən şərh məcburidir.');
         }
 
-        $approval->update([
-            'status' => $approved ? ApprovalStatus::Approved : ApprovalStatus::Rejected,
-            'comment' => $comment,
-            'client_user_id' => $decidedBy?->id ?? $approval->client_user_id,
-            'decided_at' => now(),
-        ]);
+        // One transaction: the decision and the subject's status have to move
+        // together. Without it a failure in setSubjectStatus left the approval
+        // reading "approved" while the budget line still read "pending", so the
+        // amount never reached projects.debt and staff saw a request the client
+        // had already answered.
+        DB::transaction(function () use ($approval, $approved, $comment, $decidedBy): void {
+            $approval->update([
+                'status' => $approved ? ApprovalStatus::Approved : ApprovalStatus::Rejected,
+                'comment' => $comment,
+                'client_user_id' => $decidedBy?->id ?? $approval->client_user_id,
+                'decided_at' => now(),
+            ]);
 
-        $approval->loadMissing('approvable');
-        $this->setSubjectStatus($approval->approvable, $approval->status);
+            $approval->loadMissing('approvable');
+
+            // A subject deleted after the request went out is not a reason to 500
+            // on the client — the decision itself is still recorded.
+            if ($approval->approvable) {
+                $this->setSubjectStatus($approval->approvable, $approval->status);
+            }
+
+            if (! $approved) {
+                $this->createRevisionTask($approval, $comment);
+            }
+        });
 
         $approval->requestedBy?->notify(new ApprovalDecided($approval));
-
-        if (! $approved) {
-            $this->createRevisionTask($approval, $comment);
-        }
 
         return $approval;
     }

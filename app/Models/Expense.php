@@ -32,6 +32,26 @@ class Expense extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $expense): void {
+            // Enforced at the model, not only in the Filament form: any other
+            // write path (import, console, API) could store a negative expense,
+            // which flips the sign of the studio's cost.
+            if ((float) $expense->amount <= 0) {
+                throw new \RuntimeException('Xərcin məbləği sıfırdan böyük olmalıdır.');
+            }
+
+            // Four-eyes: the person who filed a claim cannot also approve it.
+            $approved = in_array($expense->status, [ExpenseStatus::Approved, ExpenseStatus::Paid], true);
+
+            if ($approved && $expense->approved_by_user_id
+                && $expense->approved_by_user_id === $expense->created_by_user_id) {
+                throw new \RuntimeException('Xərci yazan şəxs onu özü təsdiqləyə bilməz.');
+            }
+        });
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

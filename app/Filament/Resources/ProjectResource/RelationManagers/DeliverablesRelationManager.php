@@ -84,6 +84,7 @@ class DeliverablesRelationManager extends RelationManager
                 Actions\Action::make('newVersion')
                     ->label('Yeni versiya')
                     ->icon('heroicon-o-document-plus')
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record))
                     ->form([
                         Forms\Components\FileUpload::make('file_path')
                             ->label('Fayl')
@@ -106,7 +107,10 @@ class DeliverablesRelationManager extends RelationManager
                     ->label('Razılaşdırmaya göndər')
                     ->icon('heroicon-o-paper-airplane')
                     ->color('info')
-                    ->visible(fn ($record) => $record->current_version_id
+                    // Sending to approval sets client_visible and emails the
+                    // customer — a write on the deliverable, not a read.
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record)
+                        && $record->current_version_id
                         && $record->currentVersion?->status !== DeliverableVersionStatus::Approved
                         && $record->currentVersion?->status !== DeliverableVersionStatus::Locked)
                     ->requiresConfirmation()

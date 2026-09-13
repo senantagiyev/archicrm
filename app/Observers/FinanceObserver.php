@@ -26,9 +26,13 @@ class FinanceObserver
         if ($model instanceof Payment && app(AutomationEngine::class)->isEnabled('rule-28')) {
             $model->loadMissing('project');
 
+            // Scoped to the payment's studio: this observer also fires from CLI,
+            // seeders and imports, where the tenant scope is inert and a plain
+            // role query would page every studio's accountant.
             $recipients = User::query()
                 ->where('is_active', true)
                 ->whereIn('role', [StaffRole::Owner->value, StaffRole::Accountant->value])
+                ->when($model->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
                 ->get();
 
             foreach ($recipients as $user) {

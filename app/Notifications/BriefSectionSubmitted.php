@@ -29,7 +29,7 @@ class BriefSectionSubmitted extends Notification
 
         return [
             'title' => 'Brif bölməsi göndərildi',
-            'body' => $name.' · '.$this->brief->project->name,
+            'body' => $name.' · '.$this->brief->project?->name,
             'project_id' => $this->brief->project_id,
         ];
     }

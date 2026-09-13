@@ -13,10 +13,13 @@ use App\Models\Lead;
 use App\Models\Meeting;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
+use App\Models\Tenant;
 use App\Models\User;
 use App\Notifications\AutomationAlert;
 use App\Services\Automation\AutomationEngine;
+use App\Support\TenantContext;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 /**
@@ -31,7 +34,40 @@ class RunAutomationTick extends Command
 
     protected $description = 'Əlavə B üzrə vaxt-əsaslı avtomatlaşdırmaları icra edir (approval/invoice/meeting/brief/büdcə xatırlatmaları)';
 
-    public function handle(AutomationEngine $engine): int
+    public function handle(AutomationEngine $engine, TenantContext $tenants): int
+    {
+        // One pass PER STUDIO once there is more than one. The scheduler runs in
+        // CLI, where the tenant scope is inert: a single pass read every studio's
+        // records at once, applied studio A's automation toggles to studio B's
+        // data, and shared one de-duplication ledger between them.
+        //
+        // A single-studio install (including one that never created a second)
+        // keeps the unscoped pass, so rows predating tenancy are still processed.
+        $tenantIds = Tenant::query()->where('active', true)->pluck('id');
+
+        if ($tenantIds->count() < 2) {
+            $sent = $this->tickForCurrentTenant($engine);
+            $this->info("Avtomatlaşdırma tick: {$sent} bildiriş göndərildi.");
+
+            return self::SUCCESS;
+        }
+
+        $sent = 0;
+
+        foreach ($tenantIds as $tenantId) {
+            $sent += $tenants->actingAs($tenantId, function () use ($engine): int {
+                $engine->flush();
+
+                return $this->tickForCurrentTenant($engine);
+            });
+        }
+
+        $this->info("Avtomatlaşdırma tick: {$sent} bildiriş göndərildi.");
+
+        return self::SUCCESS;
+    }
+
+    private function tickForCurrentTenant(AutomationEngine $engine): int
     {
         $sent = 0;
         $sent += $this->approvalReminders($engine);       // rules 16, 17
@@ -42,9 +78,7 @@ class RunAutomationTick extends Command
         $sent += $this->leadSlaAlerts($engine);           // rule 2
         $sent += $this->deliveryLateAlerts($engine);      // rule 24
 
-        $this->info("Avtomatlaşdırma tick: {$sent} bildiriş göndərildi.");
-
-        return self::SUCCESS;
+        return $sent;
     }
 
     /** Rule 16: approval overdue ≥2 days → remind client. Rule 17: >5 days → escalate PM. */
@@ -87,7 +121,7 @@ class RunAutomationTick extends Command
                 $engine->once('rule-17', "approval:{$approval->id}:{$today}", function () use ($approval, &$count) {
                     $approval->project->manager->notify(new AutomationAlert(
                         'Razılaşdırma 5 gündən çox cavabsızdır',
-                        "Layihə: {$approval->project->name} — müştəri {$approval->respond_by->format('d.m.Y')} tarixindən cavab verməyib.",
+                        "Layihə: {$approval->project?->name} — müştəri {$approval->respond_by->format('d.m.Y')} tarixindən cavab verməyib.",
                         null,
                         ['approval_id' => $approval->id, 'project_id' => $approval->project_id],
                         'rule-17',
@@ -138,7 +172,7 @@ class RunAutomationTick extends Command
             }
 
             if ($r27 && $due->isPast() && ! $due->isToday()) {
-                foreach ($this->financeStaff() as $user) {
+                foreach ($this->financeStaff($invoice) as $user) {
                     $engine->once('rule-27', "invoice:{$invoice->id}:staff:{$user->id}:{$today}", function () use ($user, $invoice, &$count) {
                         $user->notify(new AutomationAlert(
                             'Hesab-faktura gecikib',
@@ -249,7 +283,7 @@ class RunAutomationTick extends Command
             ->get();
 
         foreach ($projects as $project) {
-            foreach ($this->owners() as $user) {
+            foreach ($this->owners($project) as $user) {
                 $engine->once('rule-30', "project:{$project->id}:user:{$user->id}:{$period}", function () use ($user, $project, &$count) {
                     $user->notify(new AutomationAlert(
                         'Büdcə aşımı',
@@ -285,7 +319,7 @@ class RunAutomationTick extends Command
             ->get();
 
         foreach ($leads as $lead) {
-            $recipients = $lead->responsible ? collect([$lead->responsible]) : $this->owners();
+            $recipients = $lead->responsible ? collect([$lead->responsible]) : $this->owners($lead);
 
             foreach ($recipients as $user) {
                 $engine->once('rule-2', "lead:{$lead->id}:user:{$user->id}:{$today}", function () use ($user, $lead, &$count) {
@@ -317,12 +351,17 @@ class RunAutomationTick extends Command
         $orders = PurchaseOrder::query()
             ->whereNotNull('expected_delivery')
             ->whereDate('expected_delivery', '<', today())
-            ->whereNotIn('status', [PurchaseOrderStatus::Received->value, PurchaseOrderStatus::Cancelled->value])
+            // Only orders that were actually placed. A draft past its expected
+            // date is not "late delivery" — nobody ever ordered it.
+            ->whereIn('status', [
+                PurchaseOrderStatus::Ordered->value,
+                PurchaseOrderStatus::PartiallyReceived->value,
+            ])
             ->with('supplier')
             ->get();
 
         foreach ($orders as $order) {
-            foreach ($this->procurementStaff() as $user) {
+            foreach ($this->procurementStaff($order) as $user) {
                 $engine->once('rule-24', "po:{$order->id}:user:{$user->id}:{$today}", function () use ($user, $order, &$count) {
                     $user->notify(new AutomationAlert(
                         'Çatdırılma gecikib',
@@ -339,30 +378,45 @@ class RunAutomationTick extends Command
         return $count;
     }
 
-    /** @return Collection<int,User> */
-    private function procurementStaff()
+    /**
+     * @param  Model|null  $subject  the record the alert is about; its tenant_id
+     *                               decides which studio's staff may hear about it
+     * @return Collection<int,User>
+     */
+    private function procurementStaff(?Model $subject = null)
     {
-        return User::query()
-            ->where('is_active', true)
-            ->whereIn('role', [StaffRole::Owner->value, StaffRole::Procurement->value])
-            ->get();
+        return $this->staffFor([StaffRole::Owner->value, StaffRole::Procurement->value], $subject);
     }
 
     /** @return Collection<int,User> */
-    private function financeStaff()
+    private function financeStaff(?Model $subject = null)
     {
-        return User::query()
-            ->where('is_active', true)
-            ->whereIn('role', [StaffRole::Owner->value, StaffRole::Accountant->value, StaffRole::ProjectManager->value])
-            ->get();
+        return $this->staffFor(
+            [StaffRole::Owner->value, StaffRole::Accountant->value, StaffRole::ProjectManager->value],
+            $subject,
+        );
     }
 
     /** @return Collection<int,User> */
-    private function owners()
+    private function owners(?Model $subject = null)
+    {
+        return $this->staffFor([StaffRole::Owner->value], $subject);
+    }
+
+    /**
+     * The tick runs in CLI, where the tenant scope is inert — so recipients are
+     * narrowed to the subject's studio explicitly. Without this every studio's
+     * owner was alerted about every other studio's invoices, leads and orders.
+     *
+     * @param  array<int,string>  $roles
+     * @return Collection<int,User>
+     */
+    private function staffFor(array $roles, ?Model $subject)
     {
         return User::query()
             ->where('is_active', true)
-            ->where('role', StaffRole::Owner->value)
+            ->whereIn('role', $roles)
+            ->when($subject?->tenant_id, fn ($query, $tenantId) => $query->where('tenant_id', $tenantId))
             ->get();
     }
 }

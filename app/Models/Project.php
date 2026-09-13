@@ -130,6 +130,12 @@ class Project extends Model
         return $this->hasMany(Expense::class);
     }
 
+    /** What the studio orders from suppliers for this project — its purchase cost. */
+    public function purchaseOrders(): HasMany
+    {
+        return $this->hasMany(PurchaseOrder::class);
+    }
+
     public function decisions(): HasMany
     {
         return $this->hasMany(ProjectDecision::class)->latest('decided_at');

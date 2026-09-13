@@ -42,13 +42,31 @@ class ProcurementItem extends Model
     protected static function booted(): void
     {
         static::saving(function (self $item): void {
-            $item->total = round($item->qty * (float) $item->price, 2);
+            // Everything the client is billed for: goods, the reserve markup on
+            // them, and delivery/assembly. Leaving the last two out understated
+            // projects.debt by exactly the amount the studio pays out.
+            $goods = round((float) $item->qty * (float) $item->price, 2);
+            $reserve = round($goods * ((float) $item->reserve_percent / 100), 2);
+
+            $item->total = round($goods + $reserve + (float) $item->delivery_assembly_price, 2);
         });
 
         // TZ §5.10: enforce the deletion lock at the model, not just the UI (audit MEDIUM-1).
         static::deleting(function (self $item): void {
             if ($item->isDeletionLocked()) {
                 throw new \RuntimeException('Razılaşdırılmış və ödənilmiş pozisiya silinə bilməz.');
+            }
+        });
+
+        // The lock reads `paid`, so clearing that checkbox used to unlock the row.
+        // An approved item's payment flag is not an ordinary editable field.
+        static::updating(function (self $item): void {
+            // getRawOriginal, not getOriginal: the latter applies the cast and
+            // hands back an ApprovalStatus instance, which never equals a string.
+            if ($item->isDirty('paid')
+                && $item->getRawOriginal('paid')
+                && $item->getRawOriginal('approval_status') === ApprovalStatus::Approved->value) {
+                throw new \RuntimeException('Razılaşdırılmış pozisiyanın "Ödənilib" işarəsi geri alına bilməz.');
             }
         });
     }

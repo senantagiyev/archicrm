@@ -2,10 +2,12 @@
 
 namespace App\Filament\Pages;
 
-use App\Enums\StaffRole;
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Filament\Widgets\CashForecastWidget;
 use App\Filament\Widgets\PortfolioFinanceStats;
 use App\Filament\Widgets\ProfitabilityWidget;
+use App\Support\AccessMatrix;
 use Filament\Pages\Page;
 
 /**
@@ -26,11 +28,21 @@ class Profitability extends Page
 
     protected string $view = 'filament.pages.profitability';
 
+    /**
+     * Read from the matrix, not from a hardcoded role name: an owner who builds a
+     * custom "finance analyst" role with Analytics = Full expects it to work, and
+     * a role name check silently ignores the whole role constructor.
+     */
     public static function canAccess(): bool
     {
-        $role = auth()->user()?->role;
+        $user = auth()->user();
 
-        return auth()->user()?->isOwner() || $role === StaffRole::Accountant;
+        // Portfolio-wide P&L belongs to whoever owns the money domain. A project
+        // manager's Analytics = View is scoped to their own projects, so Payments
+        // = Full is what separates them from the owner and the accountant.
+        return $user !== null
+            && AccessMatrix::allows($user, Domain::Analytics, AccessLevel::View)
+            && AccessMatrix::allows($user, Domain::Payments, AccessLevel::Full);
     }
 
     public function getHeaderWidgets(): array

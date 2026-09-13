@@ -24,7 +24,7 @@ class BudgetLinePolicy
 
     public function view(User $user, BudgetLine $line): bool
     {
-        return $this->allowsOn($user, $line->project, AccessLevel::View);
+        return $this->allowsOn($user, $line->project, AccessLevel::View, $line->project_id);
     }
 
     public function create(User $user): bool
@@ -34,11 +34,11 @@ class BudgetLinePolicy
 
     public function update(User $user, BudgetLine $line): bool
     {
-        return $this->allowsOn($user, $line->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $line->project, AccessLevel::Edit, $line->project_id);
     }
 
     public function delete(User $user, BudgetLine $line): bool
     {
-        return $this->allowsOn($user, $line->project, AccessLevel::Edit);
+        return $this->allowsOn($user, $line->project, AccessLevel::Edit, $line->project_id);
     }
 }

@@ -2,14 +2,17 @@
 
 namespace App\Filament\Resources\ProjectResource\Pages;
 
+use App\Enums\AccessLevel;
 use App\Enums\BriefStatus;
 use App\Enums\DocumentType;
+use App\Enums\Domain;
 use App\Filament\Resources\ProjectResource;
 use App\Models\Brief;
 use App\Models\BriefQuestion;
 use App\Models\BriefRoom;
 use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
+use App\Support\AccessMatrix;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -36,7 +39,21 @@ class BriefReview extends Page
     {
         $this->record = $this->resolveRecord($record);
 
-        abort_unless(auth()->user()?->can('view', $this->record), 403);
+        $user = auth()->user();
+
+        // Two separate gates: the project (membership) and the Brief domain.
+        // Checking only the project let an accountant — Brief = None, but
+        // Projects = View across every project — read the client's whole brief.
+        abort_unless($user?->can('view', $this->record), 403);
+        abort_unless($user && AccessMatrix::allows($user, Domain::Brief, AccessLevel::View), 403);
+    }
+
+    /** Approving locks the client out of further edits, so it takes Full. */
+    public function canManageBrief(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && AccessMatrix::allows($user, Domain::Brief, AccessLevel::Full);
     }
 
     public function brief(): Brief
@@ -111,8 +128,12 @@ class BriefReview extends Page
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalDescription('Brif layihələndirmə üçün baseline olacaq; müştəri üçün cavablar yalnız-oxu rejiminə keçir.')
-                ->visible(fn () => $this->brief()->statusEnum() === BriefStatus::Submitted && $this->brief()->openComments()->doesntExist())
+                ->visible(fn () => $this->canManageBrief()
+                    && $this->brief()->statusEnum() === BriefStatus::Submitted
+                    && $this->brief()->openComments()->doesntExist())
                 ->action(function () {
+                    abort_unless($this->canManageBrief(), 403);
+
                     $this->service()->approve($this->brief(), auth()->user());
                     Notification::make()->success()->title('Brif təsdiqləndi')->send();
                 }),
@@ -133,9 +154,18 @@ class BriefReview extends Page
                     ->required()
                     ->maxLength(2000),
             ])
+            ->visible(fn () => $this->canManageBrief())
             ->action(function (array $data, array $arguments) {
+                abort_unless($this->canManageBrief(), 403);
+
                 $question = BriefQuestion::findOrFail((int) ($arguments['question'] ?? 0));
-                $room = ! empty($arguments['room']) ? BriefRoom::find((int) $arguments['room']) : null;
+
+                // Scope the room to THIS brief: the id arrives straight from the
+                // Livewire action payload, so an arbitrary BriefRoom could be
+                // attached to someone else's clarification comment.
+                $room = ! empty($arguments['room'])
+                    ? $this->brief()->rooms()->find((int) $arguments['room'])
+                    : null;
 
                 $this->service()->requestClarification($this->brief(), $question, $room, auth()->user(), $data['body']);
 

@@ -82,13 +82,17 @@ class SpecificationsRelationManager extends RelationManager
                     ->label('Təsdiqlə')
                     ->icon('heroicon-o-check')
                     ->color('success')
-                    ->visible(fn ($record) => in_array($record->status, [SpecificationStatus::Draft, SpecificationStatus::Proposed, SpecificationStatus::ClientReview], true))
+                    // Approving a specification fixes a client price and opens the
+                    // door to procurement — a write, so it takes update rights.
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record)
+                        && in_array($record->status, [SpecificationStatus::Draft, SpecificationStatus::Proposed, SpecificationStatus::ClientReview], true))
                     ->action(fn ($record) => $record->forceFill(['status' => SpecificationStatus::Approved])->save()),
                 Actions\Action::make('sendToProcurement')
                     ->label('Satınalmaya göndər')
                     ->icon('heroicon-o-shopping-cart')
                     ->color('info')
-                    ->visible(fn ($record) => $record->status === SpecificationStatus::Approved && ! $record->procurement_item_id)
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record)
+                        && $record->status === SpecificationStatus::Approved && ! $record->procurement_item_id)
                     ->requiresConfirmation()
                     ->modalDescription('Bu spesifikasiya avtomatik olaraq komplektasiya pozisiyası yaradacaq.')
                     ->action(fn ($record, SpecificationService $service) => $service->sendToProcurement($record))

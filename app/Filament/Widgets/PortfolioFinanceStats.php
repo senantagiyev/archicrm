@@ -27,11 +27,17 @@ class PortfolioFinanceStats extends StatsOverviewWidget
     protected function getStats(): array
     {
         $p = app(ProfitabilityService::class)->portfolio();
-        $fmt = fn (float $v) => number_format($v, 0, '.', ' ').' ₼';
+
+        // Two decimals, like the table below. Rounding to whole manat here meant
+        // the cards never footed to the per-project rows an accountant checks.
+        $fmt = fn (float $v) => number_format($v, 2, '.', ' ').' ₼';
 
         return [
+            // The period is spelled out: these three are all-time (archive
+            // included), while "Proqnoz gəlir" and the table below are
+            // active-only. Unlabelled, the two never reconciled.
             Stat::make('Yığılmış gəlir', $fmt($p['collected']))
-                ->description('Faktiki ödənişlər')
+                ->description('Faktiki ödənişlər — bütün dövr')
                 ->color('success'),
             Stat::make('Debitor borc', $fmt($p['receivable']))
                 ->description('Ödənilməmiş hesab-fakturalar')
@@ -40,10 +46,12 @@ class PortfolioFinanceStats extends StatsOverviewWidget
                 ->description('Vaxtı keçmiş qalıq')
                 ->color($p['overdue'] > 0 ? 'danger' : 'gray'),
             Stat::make('Xərc', $fmt($p['cost']))
-                ->description('Əmək + xərclər')
+                ->description('Əmək + xərclər — bütün dövr')
                 ->color('gray'),
             Stat::make('Mənfəət', $fmt($p['gross_profit']))
-                ->description('Marja: '.$p['margin'].'%')
+                // null margin = no revenue to measure against; «0%» would read as
+                // breaking even on a portfolio that only spent money.
+                ->description($p['margin'] === null ? 'Marja: — (gəlir yoxdur)' : 'Marja: '.$p['margin'].'%')
                 ->color($p['gross_profit'] >= 0 ? 'success' : 'danger'),
             Stat::make('Proqnoz gəlir', $fmt($p['projected']))
                 ->description('Aktiv layihələrin plan büdcəsi')

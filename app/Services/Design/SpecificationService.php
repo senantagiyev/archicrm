@@ -16,15 +16,21 @@ class SpecificationService
 {
     public function sendToProcurement(SpecificationItem $item): ProcurementItem
     {
-        if ($item->status !== SpecificationStatus::Approved) {
-            throw new RuntimeException('Yalnız təsdiqlənmiş spesifikasiya satınalmaya göndərilə bilər.');
-        }
-
-        if ($item->procurement_item_id) {
-            throw new RuntimeException('Bu spesifikasiya artıq satınalmaya göndərilib.');
-        }
-
         return DB::transaction(function () use ($item) {
+            // Re-read inside the transaction with a row lock. Checking before
+            // opening it meant a double-click created TWO procurement items —
+            // the spec pointed at one, and the orphan still counted toward the
+            // client's debt as soon as anyone approved it.
+            $item = $item->newQuery()->lockForUpdate()->findOrFail($item->getKey());
+
+            if ($item->status !== SpecificationStatus::Approved) {
+                throw new RuntimeException('Yalnız təsdiqlənmiş spesifikasiya satınalmaya göndərilə bilər.');
+            }
+
+            if ($item->procurement_item_id) {
+                throw new RuntimeException('Bu spesifikasiya artıq satınalmaya göndərilib.');
+            }
+
             $procurement = ProcurementItem::create([
                 'project_id' => $item->project_id,
                 'name' => $item->product_name,

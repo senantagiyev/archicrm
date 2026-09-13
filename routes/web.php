@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Staff\ChatController;
+use App\Http\Controllers\Staff\FileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('landing'))->name('landing');
@@ -22,6 +23,12 @@ Route::middleware(['auth:web'])->prefix('staff-chat')->name('staff.chat.')->grou
     Route::get('/{project}/poll', [ChatController::class, 'poll'])->middleware('throttle:staff-write')->name('poll');
     Route::post('/{project}', [ChatController::class, 'send'])->middleware('throttle:staff-write')->name('send');
 });
+
+// Project files are authorized per record (policy + FileVisibility) instead of
+// being served straight off the public storage symlink.
+Route::middleware(['auth:web'])->get('/files/{file}/download', [FileController::class, 'download'])
+    ->middleware('throttle:staff-write')
+    ->name('files.download');
 
 // Unified staff calendar feed (TZ §8.7) — consumed by the Filament Calendar page.
 Route::middleware(['auth:web'])->get('/calendar/events', [CalendarController::class, 'events'])

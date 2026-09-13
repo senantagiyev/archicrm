@@ -34,6 +34,21 @@ class Supplier extends Model
             ->dontSubmitEmptyLogs();
     }
 
+    protected static function booted(): void
+    {
+        // A supplier with orders behind it cannot simply vanish: the FK is
+        // cascadeOnDelete but SoftDeletes means the cascade never fires, so the
+        // orders survived pointing at an invisible row — blank in the table,
+        // unfilterable, and unattributable in any audit.
+        static::deleting(function (self $supplier): void {
+            if ($supplier->purchaseOrders()->exists()) {
+                throw new \RuntimeException(
+                    'Bu təchizatçının satınalma sifarişləri var — əvvəlcə sifarişləri başqa təchizatçıya köçürün.'
+                );
+            }
+        });
+    }
+
     public function purchaseOrders(): HasMany
     {
         return $this->hasMany(PurchaseOrder::class);
