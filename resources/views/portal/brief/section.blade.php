@@ -23,7 +23,11 @@
 
 <x-portal.shell :title="$sectionTitle" :project="$project" active="brief">
     {{-- Addım naviqasiyası: harada olduğun və neçəsinin qaldığı həmişə görünür. --}}
-    <nav class="-mx-5 mb-6 overflow-x-auto border-b border-black/8 px-5 lg:-mx-8 lg:px-8" aria-label="{{ t('portal.nav_brief') }}">
+    {{-- Zolaq addım göstəricisidir, idarə paneli deyil: tamamlanmış addım
+         SAKİT fərqlənir — nömrə yerində qalır, rəng bir pillə tündləşir və
+         dairənin küncündə kiçik onay nişanı çıxır. Mətnin yanında ayrıca
+         böyük «✓» YOXDUR (əvvəlki yaşıl qlif ucuz görünürdü). --}}
+    <nav class="brief-steps -mx-5 mb-6 overflow-x-auto border-b border-black/8 px-5 lg:-mx-8 lg:px-8" aria-label="{{ t('portal.nav_brief') }}">
         <ol class="flex min-w-max items-stretch gap-1">
             @foreach ($steps as $i => $entry)
                 @php
@@ -33,34 +37,61 @@
                 <li>
                     <a href="{{ route('portal.brief.section', [$project->id, $entry['section']->id]) }}"
                        @if ($isCurrent) aria-current="step" @endif
-                       class="flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[13px] font-semibold transition-colors
-                              {{ $isCurrent ? 'border-yellow text-ink' : 'border-transparent text-black/45 hover:text-ink' }}">
-                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
-                                     {{ $isCurrent ? 'bg-ink text-white' : ($isDone ? 'bg-ok-soft text-ok' : 'bg-neutral-soft text-black/45') }}">
-                            @if ($isDone && ! $isCurrent) ✓ @else {{ $i + 1 }} @endif
+                       class="flex items-center gap-2.5 whitespace-nowrap border-b-2 px-3 py-3 text-[14px] transition-colors
+                              {{ $isCurrent
+                                  ? 'border-yellow font-semibold text-ink'
+                                  : ($isDone
+                                      ? 'border-transparent font-medium text-ink/70 hover:text-ink'
+                                      : 'border-transparent font-medium text-black/40 hover:text-ink') }}">
+                        <span class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold
+                                     {{ $isCurrent ? 'bg-ink text-white' : ($isDone ? 'bg-ink/12 text-ink/75' : 'bg-neutral-soft text-black/40') }}">
+                            {{ $i + 1 }}
+                            @if ($isDone && ! $isCurrent)
+                                <span aria-hidden="true"
+                                      class="absolute -bottom-px -right-px flex h-[11px] w-[11px] items-center justify-center rounded-full bg-ink/70 text-white ring-[1.5px] ring-gray-soft2">
+                                    <svg width="6" height="6" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3 4.6 8.9 10 3.2"/></svg>
+                                </span>
+                            @endif
                         </span>
                         {{ $entry['section']->getTranslation('name', $locale) }}
+                        @if ($isDone && ! $isCurrent)<span class="sr-only">— {{ t('portal.brief_submitted') }}</span>@endif
                     </a>
                 </li>
             @endforeach
         </ol>
     </nav>
 
+    {{-- Native üfüqi scrollbar zolağın bütün enini tutur və dizaynı pozur.
+         CSS faylına toxunmadan yalnız bu naviqasiya üçün nazik, səssiz zolaq. --}}
+    <style>
+        /* Chrome/Safari: `scrollbar-width` standart xassəsi qoyulsa, brauzer
+           ::-webkit-scrollbar üslublarını TAMAMİLƏ nəzərə almır (thin = 11px
+           qalır). Ona görə webkit-də yalnız pseudo-elementlə 4px veririk,
+           `scrollbar-width` isə yalnız onu dəstəkləməyən Firefox-a düşür. */
+        .brief-steps::-webkit-scrollbar { height: 4px; }
+        .brief-steps::-webkit-scrollbar-track { background: transparent; }
+        .brief-steps::-webkit-scrollbar-thumb { background: rgba(17, 17, 17, .16); border-radius: 100px; }
+        .brief-steps::-webkit-scrollbar-thumb:hover { background: rgba(17, 17, 17, .3); }
+        @supports not selector(::-webkit-scrollbar) {
+            .brief-steps { scrollbar-width: thin; scrollbar-color: rgba(17, 17, 17, .18) transparent; }
+        }
+    </style>
+
     <div class="min-w-0">
             <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
                 <div class="min-w-0">
                     <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
                     @if ($stepNumber)
-                        <p class="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-black/40">
+                        <p class="mt-2 text-[13px] font-semibold text-black/45">
                             {{ $stepNumber }} / {{ $steps->count() }}
                         </p>
                     @endif
                     <h1 class="mt-1 text-2xl font-bold">{{ $sectionTitle }}</h1>
                     @if ($intro = $section->getTranslation('intro', $locale))
-                        <p class="mt-1.5 max-w-2xl text-[13px] text-black/55">{{ $intro }}</p>
+                        <p class="mt-1.5 max-w-2xl text-[14px] leading-relaxed text-black/55">{{ $intro }}</p>
                     @endif
                 </div>
-                <span id="saveState" class="text-[12px] font-medium text-black/40"></span>
+                <span id="saveState" class="text-[13px] font-medium text-black/40"></span>
             </div>
 
             {{-- Otaq çipləri: otaq bölməsindəykən hansı otaqda olduğun görünsün. --}}
@@ -69,7 +100,7 @@
                     @foreach ($roomEntries as $entry)
                         @php $isCurrentRoom = $entry['room']->id === $room?->id; @endphp
                         <a href="{{ route('portal.brief.section', [$project->id, $entry['section']->id, $entry['room']->id]) }}"
-                           class="rounded-pill border px-3.5 py-1.5 text-[12px] font-semibold transition-colors
+                           class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
                                   {{ $isCurrentRoom ? 'border-ink bg-ink text-white' : 'border-black/15 bg-white text-black/60 hover:border-black/35' }}">
                             {{ $entry['room']->label }}
                             <span class="{{ $isCurrentRoom ? 'text-yellow' : 'text-black/35' }}">{{ $entry['progress'] }}%</span>
@@ -115,7 +146,7 @@
                     @endphp
 
                     @if ($groupChanged)
-                        <h2 class="{{ $loop->first ? '' : 'mt-8' }} border-l-2 border-yellow pl-3 text-[11px] font-bold uppercase tracking-[0.16em] text-black/45">
+                        <h2 class="{{ $loop->first ? '' : 'mt-8' }} border-l-2 border-yellow pl-3 text-[13px] font-semibold text-black/55">
                             {{ $question->group }}
                         </h2>
                     @endif
@@ -131,13 +162,16 @@
                                 <span class="ml-1 text-black/45">— {{ $comment->user?->name }}</span>
                             </div>
                         @endif
-                        <div class="mb-3 flex items-start justify-between gap-3">
-                            <label class="text-sm font-bold">
+                        {{-- Dar ekranda «dizaynerin ixtiyarına» qeydi sualın altına düşür:
+                             `shrink-0` ilə yan-yana saxlasaq, 375px-də etiket kartın
+                             sağ kənarından kənara çıxırdı. --}}
+                        <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
+                            <label class="text-[15px] font-semibold leading-snug">
                                 {{ $question->getTranslation('label', $locale) }}
                                 @if ($question->is_required)<span class="text-danger">*</span>@endif
                             </label>
                             @if ($question->allows_designer_choice && ! $completed)
-                                <label class="flex shrink-0 cursor-pointer items-center gap-2 text-[12px] font-semibold text-black/50">
+                                <label class="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-black/50 sm:shrink-0">
                                     <input type="checkbox" data-delegate {{ $delegated ? 'checked' : '' }} class="accent-ink">
                                     {{ t('portal.brief_delegate') }}
                                 </label>
@@ -145,7 +179,7 @@
                         </div>
 
                         @if ($question->getTranslation('help', $locale))
-                            <p class="mb-3 rounded-ds bg-sel-bg px-3 py-2 text-[12px] text-black/60">{{ $question->getTranslation('help', $locale) }}</p>
+                            <p class="mb-3 rounded-ds bg-sel-bg px-3 py-2 text-[13px] leading-relaxed text-black/60">{{ $question->getTranslation('help', $locale) }}</p>
                         @endif
 
                         <div data-input-zone class="{{ $delegated ? 'pointer-events-none opacity-40' : '' }}">
@@ -173,7 +207,7 @@
                                     @if ($question->key === 'light_temperature')
                                         <div class="mb-3 overflow-hidden rounded-ds" aria-hidden="true">
                                             <div class="h-9 w-full" style="background:linear-gradient(90deg,#f6c67a 0%,#ffe0b8 28%,#fff6e8 50%,#eef3ff 75%,#cfe0ff 100%)"></div>
-                                            <div class="flex justify-between px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-black/35">
+                                            <div class="flex justify-between px-1 pt-1 text-[13px] font-medium text-black/45">
                                                 <span>{{ t('portal.brief_warm') }}</span>
                                                 <span>{{ t('portal.brief_cold') }}</span>
                                             </div>
@@ -195,11 +229,11 @@
                                             <div class="{{ $asRows ? 'flex items-stretch' : '' }}">
                                                 <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
                                                     class="{{ $asRows
-                                                        ? 'flex flex-1 items-center gap-2.5 rounded-ds border px-3.5 py-2.5 text-left text-[13px] font-semibold transition-colors'
-                                                        : 'rounded-pill border px-4 py-2 text-[13px] font-semibold transition-colors' }}
+                                                        ? 'flex flex-1 items-center gap-2.5 rounded-ds border px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors'
+                                                        : 'rounded-pill border px-4 py-2 text-[14px] font-medium transition-colors' }}
                                                         {{ $isOn ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
                                                     @if ($asRows)
-                                                        <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] leading-none
+                                                        <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border text-[11px] leading-none
                                                                      {{ $isOn ? 'border-yellow bg-yellow text-ink' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
                                                     @endif
                                                     <span class="min-w-0">{{ $optLabel($option) }}</span>
@@ -251,7 +285,7 @@
                                                 </span>
                                                 <span data-card-check
                                                     class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-yellow text-[12px] font-bold text-ink {{ $isOn ? '' : 'hidden' }}">✓</span>
-                                                <span class="block bg-white px-3 py-2 text-[13px] font-bold">{{ $optLabel($option) }}</span>
+                                                <span class="block bg-white px-3 py-2.5 text-[14px] font-semibold">{{ $optLabel($option) }}</span>
                                             </button>
                                         @endforeach
                                     </div>
@@ -259,9 +293,9 @@
                                 @case('boolean')
                                     <div class="flex gap-2" data-single-choice>
                                         <button type="button" data-choice value="1" {{ $completed ? 'disabled' : '' }}
-                                            class="rounded-pill border px-5 py-2 text-[13px] font-semibold {{ $value === '1' || $value === true ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.yes') }}</button>
+                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '1' || $value === true ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.yes') }}</button>
                                         <button type="button" data-choice value="0" {{ $completed ? 'disabled' : '' }}
-                                            class="rounded-pill border px-5 py-2 text-[13px] font-semibold {{ $value === '0' || $value === false ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.no') }}</button>
+                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '0' || $value === false ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.no') }}</button>
                                     </div>
                                     @break
                                 @case('number')
@@ -277,17 +311,17 @@
                                 @case('budget_range')
                                     <div class="flex flex-wrap items-end gap-3" data-budget>
                                         <div>
-                                            <span class="mb-1 block text-[11px] font-semibold text-black/50">{{ t('portal.brief_budget_from') }}</span>
+                                            <span class="mb-1 block text-[13px] font-medium text-black/55">{{ t('portal.brief_budget_from') }}</span>
                                             <input data-budget-min type="number" min="0" value="{{ $value['min'] ?? '' }}" {{ $completed ? 'disabled' : '' }}
                                                 class="h-11 w-36 rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
                                         </div>
                                         <div>
-                                            <span class="mb-1 block text-[11px] font-semibold text-black/50">{{ t('portal.brief_budget_to') }}</span>
+                                            <span class="mb-1 block text-[13px] font-medium text-black/55">{{ t('portal.brief_budget_to') }}</span>
                                             <input data-budget-max type="number" min="0" value="{{ $value['max'] ?? '' }}" {{ $completed ? 'disabled' : '' }}
                                                 class="h-11 w-36 rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
                                         </div>
                                         <div>
-                                            <span class="mb-1 block text-[11px] font-semibold text-black/50">{{ t('portal.brief_currency') }}</span>
+                                            <span class="mb-1 block text-[13px] font-medium text-black/55">{{ t('portal.brief_currency') }}</span>
                                             <select data-budget-currency {{ $completed ? 'disabled' : '' }}
                                                 class="h-11 rounded-ds border border-black/20 px-3 text-sm outline-none focus:border-ink">
                                                 @foreach (['AZN', 'USD', 'EUR'] as $cur)
@@ -313,7 +347,7 @@
                                         <div class="hidden sm:grid sm:items-end sm:gap-2 sm:border-b sm:border-black/10 sm:pb-2" style="{{ $grid }}">
                                             <span></span>
                                             @foreach ($columns as $col)
-                                                <span class="text-center text-[12px] font-semibold leading-tight text-black/50">{{ $optLabel($col) }}</span>
+                                                <span class="text-center text-[13px] font-medium leading-tight text-black/55">{{ $optLabel($col) }}</span>
                                             @endforeach
                                         </div>
 
@@ -321,13 +355,13 @@
                                             <div data-matrix-row="{{ $rowOpt['value'] }}"
                                                 class="rounded-ds border border-black/15 p-3 sm:grid sm:items-center sm:gap-2 sm:rounded-none sm:border-0 sm:border-b sm:border-black/5 sm:p-0 sm:py-2.5"
                                                 style="{{ $grid }}">
-                                                <span class="text-[13px] font-semibold">{{ $optLabel($rowOpt) }}</span>
+                                                <span class="text-[14px] font-medium">{{ $optLabel($rowOpt) }}</span>
                                                 <div class="mt-2.5 flex flex-wrap gap-2 sm:contents">
                                                     @foreach ($columns as $col)
                                                         @php $picked = ($matrix[$rowOpt['value']] ?? null) === $col['value']; @endphp
                                                         <button type="button" data-matrix-cell value="{{ $col['value'] }}" {{ $completed ? 'disabled' : '' }}
                                                             aria-label="{{ $optLabel($rowOpt) }} — {{ $optLabel($col) }}"
-                                                            class="rounded-pill border px-3.5 py-1.5 text-[12px] font-semibold transition-colors
+                                                            class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
                                                                 sm:mx-auto sm:h-5 sm:w-5 sm:rounded-full sm:border-2 sm:p-0
                                                                 {{ $picked ? 'border-ink bg-ink text-white' : 'border-black/25 bg-white hover:border-black/50' }}">
                                                             <span class="sm:hidden">{{ $optLabel($col) }}</span>
@@ -351,9 +385,9 @@
                                     <div data-swatch data-base-max="{{ $baseMax }}" data-accent-max="{{ $accentMax }}">
                                         <div class="mb-3 flex gap-2">
                                             <button type="button" data-swatch-mode="base"
-                                                class="rounded-pill border border-ink bg-ink px-4 py-1.5 text-[12px] font-semibold text-white">{{ t('portal.brief_swatch_base') }} ({{ $baseMax }})</button>
+                                                class="rounded-pill border border-ink bg-ink px-4 py-1.5 text-[13px] font-semibold text-white">{{ t('portal.brief_swatch_base') }} ({{ $baseMax }})</button>
                                             <button type="button" data-swatch-mode="accent"
-                                                class="rounded-pill border border-black/20 bg-white px-4 py-1.5 text-[12px] font-semibold">{{ t('portal.brief_swatch_accent') }} ({{ $accentMax }})</button>
+                                                class="rounded-pill border border-black/20 bg-white px-4 py-1.5 text-[13px] font-semibold">{{ t('portal.brief_swatch_accent') }} ({{ $accentMax }})</button>
                                         </div>
                                         <div class="grid grid-cols-8 gap-2">
                                             @foreach ($swatches as $hex)
@@ -362,7 +396,7 @@
                                                     title="{{ $hex }}"
                                                     class="relative aspect-square rounded-ds border-2 {{ in_array($hex, $base, true) || in_array($hex, $accent, true) ? 'border-ink' : 'border-black/10' }}"
                                                     style="background-color: {{ $hex }}">
-                                                    <span data-swatch-tag class="absolute inset-x-0 bottom-0 bg-ink/80 text-[9px] font-bold uppercase text-white">{{ in_array($hex, $accent, true) ? 'A' : (in_array($hex, $base, true) ? 'F' : '') }}</span>
+                                                    <span data-swatch-tag class="absolute inset-x-0 bottom-0 bg-ink/80 text-[10px] font-bold text-white">{{ in_array($hex, $accent, true) ? 'A' : (in_array($hex, $base, true) ? 'F' : '') }}</span>
                                                 </button>
                                             @endforeach
                                         </div>
@@ -378,7 +412,7 @@
                                         $roomsOnly = ($values['cooperation_scope'] ?? null) === 'rooms_only';
                                     @endphp
                                     @if ($roomsOnly)
-                                        <p class="mb-3 rounded-ds border border-yellow-line bg-sel-bg px-3.5 py-2.5 text-[12px] font-semibold">
+                                        <p class="mb-3 rounded-ds border border-yellow-line bg-sel-bg px-3.5 py-2.5 text-[13px] font-semibold">
                                             {{ t('portal.brief_rooms_scope_only') }}
                                         </p>
                                     @endif
@@ -387,11 +421,11 @@
                                             @php $count = (int) ($inventory[$option['value']] ?? 0); @endphp
                                             <div data-inventory-row="{{ $option['value'] }}"
                                                 class="flex items-center justify-between gap-3 rounded-ds border px-3.5 py-2.5 {{ $count > 0 ? 'border-ink bg-sel-bg' : 'border-black/15 bg-white' }}">
-                                                <span class="text-[13px] font-semibold">{{ $optLabel($option) }}</span>
+                                                <span class="text-[14px] font-medium">{{ $optLabel($option) }}</span>
                                                 <span class="flex shrink-0 items-center gap-2">
                                                     <button type="button" data-inv-step="-1" {{ $completed ? 'disabled' : '' }}
                                                         class="h-7 w-7 rounded-full border border-black/20 text-sm font-bold leading-none hover:border-ink">−</button>
-                                                    <span data-inv-count class="w-5 text-center text-[13px] font-bold">{{ $count }}</span>
+                                                    <span data-inv-count class="w-5 text-center text-[14px] font-semibold">{{ $count }}</span>
                                                     <button type="button" data-inv-step="1" {{ $completed ? 'disabled' : '' }}
                                                         class="h-7 w-7 rounded-full border border-black/20 text-sm font-bold leading-none hover:border-ink">+</button>
                                                 </span>
@@ -402,7 +436,7 @@
 
                                 {{-- Spec Ə8 / Part 10 №20: göndərməni bloklayan razılıq --}}
                                 @case('consent')
-                                    <label class="flex cursor-pointer items-start gap-3 text-[13px] font-medium">
+                                    <label class="flex cursor-pointer items-start gap-3 text-[14px] font-medium leading-relaxed">
                                         <input type="checkbox" data-consent {{ $value === '1' ? 'checked' : '' }} {{ $completed ? 'disabled' : '' }} class="mt-0.5 h-4 w-4 accent-ink">
                                         <span>{{ t('portal.brief_consent_label') }}</span>
                                     </label>
@@ -451,7 +485,7 @@
             <div class="mb-4 flex items-start justify-between gap-4">
                 <div>
                     <h2 id="inspireTitle" class="text-[17px] font-bold"></h2>
-                    <p class="mt-0.5 text-[12px] text-black/45">{{ t('portal.brief_inspiration_hint') }}</p>
+                    <p class="mt-0.5 text-[13px] text-black/50">{{ t('portal.brief_inspiration_hint') }}</p>
                 </div>
                 <button type="button" data-inspire-close aria-label="{{ t('portal.close') }}"
                         class="flex h-9 w-9 shrink-0 items-center justify-center rounded-ds text-black/45 transition-colors hover:bg-neutral-soft hover:text-ink">

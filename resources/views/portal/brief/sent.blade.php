@@ -30,7 +30,7 @@
                 </a>
             </div>
 
-            <p class="mt-6 text-[12px] text-black/40">
+            <p class="mt-6 text-[13px] text-black/45">
                 {{ t('portal.brief_status_label') }}: <span class="font-semibold text-ink">{{ $status->label() }}</span>
                 @if ($brief->current_version) · v{{ $brief->current_version }} @endif
             </p>

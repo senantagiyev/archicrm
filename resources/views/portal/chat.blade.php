@@ -1,18 +1,18 @@
 <x-portal.shell :title="t('portal.nav_chat')" :project="$project" active="chat">
-    <h1 class="mb-6 text-2xl font-bold">{{ t('portal.nav_chat') }}</h1>
+    <h1 class="mb-6 text-heading font-semibold">{{ t('portal.nav_chat') }}</h1>
 
-    <div class="flex h-[60vh] flex-col overflow-hidden rounded-ds-md border border-black/10 bg-white">
+    <div class="flex h-[60vh] flex-col overflow-hidden rounded-ds-xl border border-black/8 bg-white">
         <div id="chatThread" class="flex-1 space-y-3 overflow-y-auto p-5"
             data-poll-url="{{ route('portal.chat.poll', $project) }}"
             data-send-url="{{ route('portal.chat.send', $project) }}">
         </div>
 
-        <form id="chatForm" class="flex items-center gap-3 border-t border-black/10 p-4">
+        <form id="chatForm" class="flex items-center gap-3 border-t border-black/8 p-4">
             @csrf
             <input id="chatInput" autocomplete="off" maxlength="4000" required
                 placeholder="{{ t('portal.chat_placeholder') }}"
-                class="h-11 flex-1 rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
-            <button class="ui-btn ui-btn-primary h-11 px-6 text-sm font-bold" data-hover="true">
+                class="h-11 flex-1 rounded-ds border border-black/20 px-3.5 text-body outline-none focus:border-ink">
+            <button class="ui-btn ui-btn-primary h-11 px-6 text-[14px] font-semibold" data-hover="true">
                 {{ t('portal.chat_send') }}
             </button>
         </form>
@@ -44,10 +44,10 @@
                 const wrap = document.createElement('div');
                 wrap.className = 'flex ' + (m.mine ? 'justify-end' : 'justify-start');
                 const box = document.createElement('div');
-                box.className = 'max-w-[75%] rounded-ds-md px-4 py-2.5 text-sm ' +
+                box.className = 'max-w-[75%] rounded-ds-lg px-4 py-3 text-body ' +
                     (m.mine ? 'bg-ink text-white' : (m.staff ? 'bg-sel-bg' : 'bg-gray-soft'));
                 const meta = document.createElement('p');
-                meta.className = 'mb-0.5 text-[11px] font-semibold ' + (m.mine ? 'text-yellow' : 'text-black/40');
+                meta.className = 'mb-1 text-helper font-medium ' + (m.mine ? 'text-yellow' : 'text-black/55');
                 meta.textContent = m.author + ' · ' + m.at;
                 const body = document.createElement('p');
                 body.textContent = m.body;

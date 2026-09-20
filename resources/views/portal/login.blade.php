@@ -15,26 +15,26 @@
     <header class="border-b border-black/8 bg-white">
         <div class="mx-auto flex h-[74px] max-w-[1120px] items-center justify-between px-6">
             <a href="{{ route('landing') }}"><x-archi-logo /></a>
-            <a href="{{ route('entry') }}" class="text-[13px] font-medium text-black/45 transition-colors hover:text-ink">Geri</a>
+            <a href="{{ route('entry') }}" class="text-helper font-medium text-black/60 transition-colors hover:text-ink">Geri</a>
         </div>
     </header>
 
     <main class="flex flex-1 items-center justify-center px-6 py-16">
         <div class="w-full max-w-[420px] rounded-[18px] border border-black/8 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
-            <span class="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-black/45">
+            <span class="inline-flex items-center gap-2 text-helper font-semibold text-black/60">
                 <span class="h-2 w-2 rounded-[2px] bg-yellow"></span>Müştəri portalı
             </span>
-            <h1 class="mt-4 font-b2b text-[26px] font-extrabold tracking-tight">{{ t('portal.login_title') }}</h1>
-            <p class="mt-2 text-[14px] leading-relaxed text-black/55">{{ t('portal.login_hint') }}</p>
+            <h1 class="mt-4 font-b2b text-heading font-semibold tracking-normal">{{ t('portal.login_title') }}</h1>
+            <p class="mt-2 text-body leading-relaxed text-black/60">{{ t('portal.login_hint') }}</p>
 
             @if (session('status'))
-                <div class="mt-5 rounded-ds-md border border-ok/30 bg-ok-soft px-4 py-3 text-[13px] font-medium text-ok">
+                <div class="mt-5 rounded-ds-lg border border-ok/30 bg-ok-soft px-4 py-3 text-helper font-medium text-ok">
                     {{ session('status') }}
                 </div>
             @endif
 
             @if ($errors->any())
-                <div class="mt-5 rounded-ds-md border border-error/30 bg-error-soft px-4 py-3 text-[13px] font-medium text-error">
+                <div class="mt-5 rounded-ds-lg border border-error/30 bg-error-soft px-4 py-3 text-helper font-medium text-error">
                     {{ $errors->first() }}
                 </div>
             @endif
@@ -43,10 +43,10 @@
             <form id="portalLoginForm" method="post" action="{{ route('portal.login-link') }}" class="mt-8 space-y-4">
                 @csrf
                 <div>
-                    <label for="email" class="mb-1.5 block text-[13px] font-semibold">{{ t('portal.email') }}</label>
+                    <label for="email" class="mb-1.5 block text-helper font-semibold">{{ t('portal.email') }}</label>
                     <input id="email" name="email" type="email" required autofocus
                         value="{{ old('email') }}"
-                        class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-sm outline-none transition-colors focus:border-ink">
+                        class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-body outline-none transition-colors focus:border-ink">
                 </div>
 
                 @if ($recaptchaSiteKey)
@@ -54,24 +54,24 @@
                     <input type="hidden" name="g-recaptcha-response" id="recaptchaToken">
                 @endif
 
-                <button class="ui-btn ui-btn-dark h-12 w-full text-sm font-semibold" data-hover="true">
+                <button class="ui-btn ui-btn-dark h-12 w-full text-body font-semibold" data-hover="true">
                     {{ t('portal.send_login_link') }}
                 </button>
             </form>
 
             @if ($recaptchaSiteKey)
-                <p class="mt-3 text-[11px] leading-relaxed text-black/30">
+                <p class="mt-3 text-helper leading-relaxed text-black/55">
                     Bu sayt Google reCAPTCHA ilə qorunur.
                 </p>
             @endif
 
-            <p class="mt-8 text-[13px] leading-relaxed text-black/40">
+            <p class="mt-8 text-helper leading-relaxed text-black/60">
                 {{ t('portal.login_no_link') }}
             </p>
         </div>
     </main>
 
-    <footer class="border-t border-black/8 py-6 text-center text-[12px] text-black/35">
+    <footer class="border-t border-black/8 py-6 text-center text-helper text-black/55">
         © {{ date('Y') }} Archi CRM
     </footer>
 

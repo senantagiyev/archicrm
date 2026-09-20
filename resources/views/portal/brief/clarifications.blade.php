@@ -18,7 +18,7 @@
                             : route('portal.brief', $project);
                     @endphp
                     <div class="rounded-[16px] border border-yellow-line bg-white p-5">
-                        <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-black/40">
+                        <p class="text-[13px] font-semibold text-black/45">
                             {{ $comment->room?->label ?? $section?->getTranslation('name', app()->getLocale()) }}
                         </p>
                         <p class="mt-1 text-[15px] font-bold">{{ $comment->question?->getTranslation('label', app()->getLocale()) }}</p>

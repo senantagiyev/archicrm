@@ -5,7 +5,10 @@ use App\Http\Controllers\Portal\AuthController;
 use App\Http\Controllers\Portal\BriefController;
 use App\Http\Controllers\Portal\ChatController;
 use App\Http\Controllers\Portal\DocumentController;
+use App\Http\Controllers\Portal\GlobalApprovalController;
+use App\Http\Controllers\Portal\GlobalDocumentController;
 use App\Http\Controllers\Portal\PaymentController;
+use App\Http\Controllers\Portal\ProfileController;
 use App\Http\Controllers\Portal\ProjectController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +27,14 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
         Route::get('/', [ProjectController::class, 'index'])->name('home');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+
+        // Global left-nav hub: everything the customer has, across all projects.
+        // Read-only listings, so the read limiter applies.
+        Route::middleware('throttle:portal-read')->group(function () {
+            Route::get('/approvals', [GlobalApprovalController::class, 'index'])->name('approvals.all');
+            Route::get('/documents', [GlobalDocumentController::class, 'index'])->name('documents.all');
+            Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+        });
 
         Route::get('/projects/{project}/brief', [BriefController::class, 'index'])->name('brief');
         // Screen 11 — must be declared before the {section} catch-all below.

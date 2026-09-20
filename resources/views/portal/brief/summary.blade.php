@@ -58,9 +58,9 @@
                 @php $section = $entry['section']; @endphp
                 <div class="rounded-ds-md border border-black/10 bg-white p-5">
                     <div class="mb-3 flex items-start justify-between gap-3">
-                        <h2 class="text-[15px] font-bold">{{ $entry['room']?->label ?? $section->getTranslation('name', $locale) }}</h2>
+                        <h2 class="text-[16px] font-semibold">{{ $entry['room']?->label ?? $section->getTranslation('name', $locale) }}</h2>
                         <a href="{{ route('portal.brief.section', array_filter([$project->id, $section->id, $entry['room']?->id])) }}"
-                            class="shrink-0 text-[12px] font-semibold text-black/50 underline hover:text-ink">{{ t('portal.brief_edit') }}</a>
+                            class="shrink-0 text-[13px] font-semibold text-black/50 underline hover:text-ink">{{ t('portal.brief_edit') }}</a>
                     </div>
                     <dl class="space-y-1.5">
                         @foreach ($section->questions->filter(fn ($q) => $q->shouldShow($entry['values'])) as $question)
@@ -102,7 +102,7 @@
                     </button>
                 </form>
                 @if ($missing->isNotEmpty())
-                    <p class="mt-2 text-center text-[12px] text-black/50">
+                    <p class="mt-2 text-center text-[13px] text-black/50">
                         {{ t('portal.brief_required_missing', ['count' => $missing->count()]) }}
                     </p>
                 @endif

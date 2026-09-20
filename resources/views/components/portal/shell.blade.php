@@ -6,7 +6,10 @@
     // Əvvəl hər şey sol paneldə idi — o zaman istifadəçi hansı layihənin
     // içində olduğunu yalnız kiçik mətn etiketindən bilirdi.
     $nav = [
-        'projects' => [route('portal.home'), t('portal.my_projects'), 'M4 20V8l8-5 8 5v12M9 20v-6h6v6'],
+        'projects'  => [route('portal.home'),           t('portal.my_projects'),   'M4 20V8l8-5 8 5v12M9 20v-6h6v6'],
+        'approvals' => [route('portal.approvals.all'),  t('portal.nav_approvals'), 'M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3'],
+        'documents' => [route('portal.documents.all'),  t('portal.nav_documents'), 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
+        'profile'   => [route('portal.profile'),        t('portal.nav_profile'),   'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 21a7.5 7.5 0 0 1 15 0'],
     ];
 
     $tabs = $project ? [
@@ -18,7 +21,14 @@
         'payments'  => [route('portal.payments', $project),      t('portal.nav_payments'),  'M3 10h18M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM7 15h2'],
     ] : [];
 
-    $activeKey = $project ? $active : 'projects';
+    // Sol panel qlobal naviqasiyadır: layihənin İÇİNDƏ olanda orada «Layihələrim»
+    // işıqlanır (Roomix-də də belədir), konkret bölmə isə yuxarı tabda vurğulanır.
+    $navActive = $project ? 'projects' : ($active ?? 'projects');
+    $tabActive = $active;
+
+    // Tab bar, səhifə başlığı və <main> EYNİ konteynerdən keçir — əks halda geniş
+    // ekranda tablar sol kənardan, məzmun isə mərkəzdən başlayırdı.
+    $container = 'mx-auto w-full max-w-[1180px] px-5 lg:px-8';
 @endphp
 
 <!DOCTYPE html>
@@ -40,22 +50,21 @@
             <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" /></a>
         </div>
 
+        {{-- Roomix ölçüləri: element 10px/16px padding, radius 12px, ikon-mətn 12px, mətn 16px. --}}
         <nav class="flex-1 space-y-1 px-3">
             @foreach ($nav as $key => [$url, $label, $icon])
-                <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
-                   class="relative flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold transition-colors
-                          {{ $activeKey === $key ? 'bg-yellow text-ink' : 'text-white/70 hover:bg-white/8 hover:text-white' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
+                <a href="{{ $url }}"
+                   @if ($navActive === $key) aria-current="page" @endif
+                   class="relative flex items-center gap-3 rounded-[12px] px-4 py-2.5 text-[16px] transition-colors
+                          {{ $navActive === $key ? 'bg-yellow font-semibold text-ink' : 'font-medium text-white/70 hover:bg-white/8 hover:text-white' }}">
+                    <svg width="20" height="20" class="shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
                     <span class="truncate">{{ $label }}</span>
-                    @if ($key === 'chat')
-                        <span data-chat-dot hidden class="ml-auto inline-block h-2 w-2 rounded-pill bg-danger"></span>
-                    @endif
                 </a>
             @endforeach
         </nav>
 
         <div class="border-t border-white/10 px-3 py-4">
-            <form method="post" action="{{ route('locale.switch') }}" class="mb-3 flex items-center gap-1 px-3 text-[11px] font-bold uppercase">
+            <form method="post" action="{{ route('locale.switch') }}" class="mb-3 flex items-center gap-1 px-4 text-[13px] font-semibold uppercase">
                 @csrf
                 @foreach (['az', 'ru', 'en'] as $loc)
                     <button name="locale" value="{{ $loc }}"
@@ -67,8 +76,8 @@
             @auth('customer')
                 <form method="post" action="{{ route('portal.logout') }}">
                     @csrf
-                    <button class="flex w-full items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-semibold text-white/70 transition-colors hover:bg-white/8 hover:text-white">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    <button class="flex w-full items-center gap-3 rounded-[12px] px-4 py-2.5 text-[16px] font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white">
+                        <svg width="20" height="20" class="shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                         {{ t('portal.logout') }}
                     </button>
                 </form>
@@ -100,8 +109,8 @@
         <nav class="flex items-center gap-1 overflow-x-auto border-t border-white/10 px-2 py-2">
             @foreach (($project ? $tabs : $nav) as $key => [$url, $label, $icon])
                 <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
-                   class="relative whitespace-nowrap rounded-[8px] px-3 py-1.5 text-[13px] font-semibold
-                          {{ $activeKey === $key ? 'bg-yellow text-ink' : 'text-white/65' }}">
+                   class="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[14px] font-semibold
+                          {{ ($project ? $tabActive : $navActive) === $key ? 'bg-yellow text-ink' : 'text-white/65' }}">
                     {{ $label }}
                     @if ($key === 'chat')
                         <span data-chat-dot hidden class="absolute -right-0.5 -top-0.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
@@ -113,41 +122,51 @@
 
     {{-- ── Content ─────────────────────────────────────────────────────── --}}
     <div class="lg:pl-[240px]">
-        {{-- Layihə başlığı: geri oxu · ad · istifadəçi. Roomix-dəki kimi layihə
-             adı mərkəzdədir, çünki bu ekranın kontekstini məhz o müəyyən edir. --}}
-        <div class="hidden h-[64px] items-center gap-4 border-b border-black/8 bg-white px-8 lg:flex">
-            @if ($project)
-                <a href="{{ route('portal.home') }}" aria-label="{{ t('portal.my_projects') }}"
-                   class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-ink/60 transition-colors hover:bg-neutral-soft hover:text-ink">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-                </a>
-            @endif
+        {{-- Layihə başlığı: geri oxu · ad · istifadəçi. Ad mərkəzdən sola keçdi —
+             tab, başlıq və kartlar eyni sol oxdan başlamalıdır. --}}
+        <div class="hidden border-b border-black/8 bg-white lg:block">
+            <div class="{{ $container }} flex h-[64px] items-center gap-4">
+                @if ($project)
+                    <a href="{{ route('portal.home') }}" aria-label="{{ t('portal.my_projects') }}"
+                       class="-ml-2 flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-ink/60 transition-colors hover:bg-neutral-soft hover:text-ink">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </a>
+                @endif
 
-            <p class="flex-1 truncate text-center text-[15px] font-bold">{{ $project?->name ?? ($title ?? t('portal.my_projects')) }}</p>
+                <p class="min-w-0 truncate text-[15px] font-bold">{{ $project?->name ?? ($title ?? t('portal.my_projects')) }}</p>
 
-            @auth('customer')
-                <div class="flex shrink-0 items-center gap-3">
-                    <span class="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">
-                        {{ mb_strtoupper(mb_substr(auth('customer')->user()->name, 0, 1)) }}
+                @if ($project)
+                    <span class="inline-flex shrink-0 items-center gap-2 text-[13px] font-semibold text-black/45">
+                        <span class="h-2 w-2 rounded-full bg-yellow"></span>{{ $project->status->label() }}
                     </span>
-                    <span class="text-[13px] font-semibold">{{ auth('customer')->user()->name }}</span>
-                </div>
-            @endauth
+                @endif
+
+                <span class="flex-1"></span>
+
+                @auth('customer')
+                    <a href="{{ route('portal.profile') }}" class="flex shrink-0 items-center gap-3 rounded-[10px] px-2 py-1 transition-colors hover:bg-neutral-soft">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">
+                            {{ mb_strtoupper(mb_substr(auth('customer')->user()->name, 0, 1)) }}
+                        </span>
+                        <span class="text-[13px] font-semibold">{{ auth('customer')->user()->name }}</span>
+                    </a>
+                @endauth
+            </div>
         </div>
 
         {{-- Layihə tabları (yalnız desktop — mobil variant yuxarıdakı header-dədir). --}}
         @if ($project)
-            <div class="hidden border-b border-black/8 bg-white px-8 lg:block">
-                <nav class="flex items-center gap-1 overflow-x-auto" aria-label="{{ $project->name }}">
-                    <span class="mr-4 inline-flex shrink-0 items-center gap-2 text-[12px] font-semibold text-black/45">
-                        <span class="h-2 w-2 rounded-full bg-yellow"></span>{{ $project->status->label() }}
-                    </span>
-
+            <div class="hidden border-b border-black/8 bg-white lg:block">
+                {{-- Tab-ın öz `px-5` daxili boşluğu neqativ marja ilə kompensasiya
+                     olunur ki, BİRİNCİ tabın mətni <main>-dakı başlıqla eyni
+                     piksel oxundan başlasın. --}}
+                <nav class="{{ $container }} flex items-center gap-1 overflow-x-auto" aria-label="{{ $project->name }}">
+                    <span class="-ml-5 flex items-center gap-1">
                     @foreach ($tabs as $key => [$url, $label, $icon])
                         <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
-                           @if ($activeKey === $key) aria-current="page" @endif
+                           @if ($tabActive === $key) aria-current="page" @endif
                            class="relative flex shrink-0 flex-col items-center gap-1 border-b-2 px-5 py-2.5 text-[13px] font-semibold transition-colors
-                                  {{ $activeKey === $key
+                                  {{ $tabActive === $key
                                         ? 'border-yellow text-ink'
                                         : 'border-transparent text-black/50 hover:text-ink' }}">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
@@ -157,11 +176,12 @@
                             @endif
                         </a>
                     @endforeach
+                    </span>
                 </nav>
             </div>
         @endif
 
-        <main class="mx-auto max-w-[1180px] px-5 py-7 lg:px-8">
+        <main class="{{ $container }} py-7">
             @if (session('status'))
                 <div class="mb-5 rounded-[12px] border border-ok/30 bg-ok-soft px-4 py-3 text-sm font-medium text-ok">
                     {{ session('status') }}
@@ -177,7 +197,7 @@
             {{ $slot }}
         </main>
 
-        <footer class="mx-auto max-w-[1180px] px-5 pb-8 pt-2 text-[12px] text-black/40 lg:px-8">
+        <footer class="{{ $container }} pb-8 pt-2 text-[13px] text-black/40">
             © {{ date('Y') }} ARCHI
         </footer>
     </div>
