@@ -157,26 +157,31 @@
         {{-- Layihə tabları (yalnız desktop — mobil variant yuxarıdakı header-dədir). --}}
         @if ($project)
             <div class="hidden border-b border-black/8 bg-white lg:block">
-                {{-- Tab-ın öz `px-5` daxili boşluğu neqativ marja ilə kompensasiya
-                     olunur ki, BİRİNCİ tabın mətni <main>-dakı başlıqla eyni
-                     piksel oxundan başlasın. --}}
-                <nav class="{{ $container }} flex items-center gap-1 overflow-x-auto" aria-label="{{ $project->name }}">
-                    <span class="-ml-5 flex items-center gap-1">
+                {{-- Roomix-də tablar zolağın BÜTÜN ENİNƏ bərabər paylanır (ölçüldü:
+                     aralıqlar ~98px, kənarlarda ~57px), sola yığılmır. Ona görə hər
+                     tab `flex-1 basis-0` ilə boşluğu bölüşür və məzmunu mərkəzdədir.
+                     `min-w-fit` uzun etiketin («Razılaşdırmalar») sıxılıb kəsilməsinin
+                     qarşısını alır; yer çatmasa zolaq sürüşür. --}}
+                <nav class="{{ $container }} flex items-stretch overflow-x-auto" aria-label="{{ $project->name }}">
                     @foreach ($tabs as $key => [$url, $label, $icon])
                         <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
                            @if ($tabActive === $key) aria-current="page" @endif
-                           class="relative flex shrink-0 flex-col items-center gap-1 border-b-2 px-5 py-2.5 text-[13px] font-semibold transition-colors
+                           class="flex min-w-fit flex-1 basis-0 flex-col items-center gap-1 border-b-2 px-3 py-2.5 text-[13px] font-semibold transition-colors
                                   {{ $tabActive === $key
                                         ? 'border-yellow text-ink'
-                                        : 'border-transparent text-black/50 hover:text-ink' }}">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
-                            <span>{{ $label }}</span>
-                            @if ($key === 'chat')
-                                <span data-chat-dot hidden class="absolute right-2.5 top-1.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
-                            @endif
+                                        : 'border-transparent text-black/55 hover:text-ink' }}">
+                            {{-- Oxunmamış nöqtə ikona bağlıdır: tab enləri bərabər
+                                 olmadığı üçün onu tabın sağ kənarına bağlasaq,
+                                 etiketdən qopub havada qalırdı. --}}
+                            <span class="relative">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
+                                @if ($key === 'chat')
+                                    <span data-chat-dot hidden class="absolute -right-1 -top-0.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
+                                @endif
+                            </span>
+                            <span class="whitespace-nowrap">{{ $label }}</span>
                         </a>
                     @endforeach
-                    </span>
                 </nav>
             </div>
         @endif
