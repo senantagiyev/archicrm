@@ -11,7 +11,7 @@ class BriefQuestion extends Model
     use HasTranslations;
 
     protected $fillable = [
-        'brief_section_id', 'key', 'label', 'help', 'type', 'options', 'skip_logic',
+        'brief_section_id', 'key', 'label', 'help', 'group', 'supports_inspiration', 'type', 'options', 'skip_logic',
         'is_required', 'allows_designer_choice', 'position', 'active',
     ];
 
@@ -22,6 +22,7 @@ class BriefQuestion extends Model
         return [
             'options' => 'array',
             'skip_logic' => 'array',
+            'supports_inspiration' => 'boolean',
             'is_required' => 'boolean',
             'allows_designer_choice' => 'boolean',
             'active' => 'boolean',

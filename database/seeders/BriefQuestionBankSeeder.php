@@ -197,8 +197,16 @@ class BriefQuestionBankSeeder extends Seeder
                 [
                     'label' => is_array($label) ? $label : ['az' => $label],
                     'help' => $help === null ? null : (is_array($help) ? $help : ['az' => $help]),
+                    // Bölmə daxilindəki alt başlıq (Roomix «СТИЛЬ», «ЦВЕТ»…).
+                    // Yalnız vizual çeşidləmədir — cavaba və məntiqə təsir etmir.
+                    'group' => $q['group'] ?? null,
+                    // «Bu suala nümunə şəkilləri gözlənilir» niyyəti; şəkillərin
+                    // özü variantların içindədir və admin panelindən yüklənir.
+                    'supports_inspiration' => (bool) ($q['inspire'] ?? false),
                     'type' => $q['type'],
-                    'options' => $q['options'] ?? null,
+                    // Mövcud şəkilləri qoru: seeder yenidən işlədiləndə admin
+                    // yüklədiyi `image_url` / `images` dəyərləri silinməməlidir.
+                    'options' => $this->mergeOptionImages($section->id, $q['key'], $q['options'] ?? null),
                     'skip_logic' => $q['skip'] ?? null,
                     'is_required' => (bool) $q['required'],
                     'allows_designer_choice' => (bool) $q['delegatable'],
@@ -212,6 +220,59 @@ class BriefQuestionBankSeeder extends Seeder
         BriefQuestion::where('brief_section_id', $section->id)
             ->whereNotIn('key', $keys)
             ->update(['active' => false]);
+    }
+
+    /**
+     * Bankdakı variantları saxlayır, amma admin panelindən yüklənmiş şəkilləri
+     * ITIRMIR.
+     *
+     * Bank git-dədir və `options` sahəsini bütövlükdə yenidən yazır; şəkillər
+     * isə runtime-da variantın içinə (`image_url`, `images`) düşür. Bu metod
+     * olmasa, seeder-in hər işləməsi bütün yüklənmiş şəkilləri silərdi.
+     * Uyğunlaşdırma `value` üzrədir — etiket dəyişsə də şəkil yerində qalır.
+     *
+     * @param  array<int, array<string, mixed>>|null  $fresh
+     * @return array<int, array<string, mixed>>|null
+     */
+    private function mergeOptionImages(int $sectionId, string $questionKey, ?array $fresh): ?array
+    {
+        // Yalnız variant SİYAHISI olan tiplər birləşdirilir. matrix /
+        // color_swatch / budget_range kimi tiplərdə `options` assoc konfiqdir
+        // (rows, swatches…) və list_is_list yoxlaması onları kənarda saxlayır.
+        if ($fresh === null || ! array_is_list($fresh)) {
+            return $fresh;
+        }
+
+        $existing = BriefQuestion::where('brief_section_id', $sectionId)
+            ->where('key', $questionKey)
+            ->value('options');
+
+        if (! is_array($existing) || ! array_is_list($existing)) {
+            return $fresh;
+        }
+
+        $imagesByValue = [];
+        foreach ($existing as $option) {
+            if (! is_array($option) || ! isset($option['value'])) {
+                continue;
+            }
+            $carry = array_filter([
+                'image_url' => $option['image_url'] ?? null,
+                'images' => $option['images'] ?? null,
+            ]);
+            if ($carry !== []) {
+                $imagesByValue[(string) $option['value']] = $carry;
+            }
+        }
+
+        if ($imagesByValue === []) {
+            return $fresh;
+        }
+
+        return array_map(
+            fn (array $option) => $option + ($imagesByValue[(string) ($option['value'] ?? '')] ?? []),
+            $fresh,
+        );
     }
 
     /** Focused commercial question-set (distinct keys so it lives beside the residential bank). */

@@ -10,34 +10,73 @@
     $optLabel = fn ($option) => $option['label'][$locale] ?? $option['label']['az'] ?? $option['value'];
 @endphp
 
-<x-portal.shell :title="$sectionTitle" :project="$project" active="brief">
-    <div class="flex gap-8">
-        {{-- Side map: jump to any section (TZ: breadcrumb/progress navigation) --}}
-        <aside class="hidden w-60 shrink-0 lg:block">
-            <div class="sticky top-6 space-y-1">
-                @foreach ($map as $entry)
-                    @php $isCurrent = $entry['section']->id === $section->id && ($entry['room']?->id === $room?->id); @endphp
-                    <a href="{{ route('portal.brief.section', array_filter([$project->id, $entry['section']->id, $entry['room']?->id])) }}"
-                        class="flex items-center justify-between rounded-ds px-3 py-2 text-[13px] {{ $isCurrent ? 'bg-ink font-bold text-white' : 'font-medium text-black/60 hover:bg-white' }}">
-                        <span class="truncate">{{ $entry['room']?->label ?? $entry['section']->getTranslation('name', $locale) }}</span>
-                        <span class="{{ $isCurrent ? 'text-yellow' : ($entry['status'] === 'submitted' ? 'text-ok' : 'text-black/40') }}">{{ $entry['progress'] }}%</span>
-                    </a>
-                @endforeach
-                <a href="{{ route('portal.brief.summary', $project) }}"
-                    class="mt-2 flex items-center justify-between rounded-ds border border-black/15 px-3 py-2 text-[13px] font-semibold text-black/70 hover:bg-white">
-                    {{ t('portal.brief_summary') }} →
-                </a>
-            </div>
-        </aside>
+@php
+    // Stepper YALNIZ əsas bölmələri sayır. Otaqlar xəritədə ayrıca sətirlərdir
+    // (Mətbəx, Uşaq otağı 1…); onları da nömrələsək addım sayı otaq sayından
+    // asılı olaraq dəyişərdi və «N-ci addım M-dən» mənasını itirərdi. Otaq
+    // açıqdırsa, onun bölməsi aktiv sayılır, otaqlar isə ikinci sətirdə çipdir.
+    $steps = collect($map)->filter(fn ($e) => $e['room'] === null)->values();
+    $roomEntries = collect($map)->filter(fn ($e) => $e['room'] !== null)->values();
+    $currentStep = $steps->search(fn ($e) => $e['section']->id === $section->id);
+    $stepNumber = $currentStep === false ? null : $currentStep + 1;
+@endphp
 
-        <div class="min-w-0 flex-1">
-            <div class="mb-6 flex items-center justify-between gap-4">
-                <div>
+<x-portal.shell :title="$sectionTitle" :project="$project" active="brief">
+    {{-- Addım naviqasiyası: harada olduğun və neçəsinin qaldığı həmişə görünür. --}}
+    <nav class="-mx-5 mb-6 overflow-x-auto border-b border-black/8 px-5 lg:-mx-8 lg:px-8" aria-label="{{ t('portal.nav_brief') }}">
+        <ol class="flex min-w-max items-stretch gap-1">
+            @foreach ($steps as $i => $entry)
+                @php
+                    $isCurrent = $entry['section']->id === $section->id;
+                    $isDone = $entry['status'] === 'submitted' || $entry['progress'] >= 100;
+                @endphp
+                <li>
+                    <a href="{{ route('portal.brief.section', [$project->id, $entry['section']->id]) }}"
+                       @if ($isCurrent) aria-current="step" @endif
+                       class="flex items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-[13px] font-semibold transition-colors
+                              {{ $isCurrent ? 'border-yellow text-ink' : 'border-transparent text-black/45 hover:text-ink' }}">
+                        <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold
+                                     {{ $isCurrent ? 'bg-ink text-white' : ($isDone ? 'bg-ok-soft text-ok' : 'bg-neutral-soft text-black/45') }}">
+                            @if ($isDone && ! $isCurrent) ✓ @else {{ $i + 1 }} @endif
+                        </span>
+                        {{ $entry['section']->getTranslation('name', $locale) }}
+                    </a>
+                </li>
+            @endforeach
+        </ol>
+    </nav>
+
+    <div class="min-w-0">
+            <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+                <div class="min-w-0">
                     <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
+                    @if ($stepNumber)
+                        <p class="mt-2 text-[11px] font-bold uppercase tracking-[0.16em] text-black/40">
+                            {{ $stepNumber }} / {{ $steps->count() }}
+                        </p>
+                    @endif
                     <h1 class="mt-1 text-2xl font-bold">{{ $sectionTitle }}</h1>
+                    @if ($intro = $section->getTranslation('intro', $locale))
+                        <p class="mt-1.5 max-w-2xl text-[13px] text-black/55">{{ $intro }}</p>
+                    @endif
                 </div>
                 <span id="saveState" class="text-[12px] font-medium text-black/40"></span>
             </div>
+
+            {{-- Otaq çipləri: otaq bölməsindəykən hansı otaqda olduğun görünsün. --}}
+            @if ($roomEntries->isNotEmpty() && ($room !== null || $section->isRoomSection()))
+                <div class="mb-5 flex flex-wrap gap-2">
+                    @foreach ($roomEntries as $entry)
+                        @php $isCurrentRoom = $entry['room']->id === $room?->id; @endphp
+                        <a href="{{ route('portal.brief.section', [$project->id, $entry['section']->id, $entry['room']->id]) }}"
+                           class="rounded-pill border px-3.5 py-1.5 text-[12px] font-semibold transition-colors
+                                  {{ $isCurrentRoom ? 'border-ink bg-ink text-white' : 'border-black/15 bg-white text-black/60 hover:border-black/35' }}">
+                            {{ $entry['room']->label }}
+                            <span class="{{ $isCurrentRoom ? 'text-yellow' : 'text-black/35' }}">{{ $entry['progress'] }}%</span>
+                        </a>
+                    @endforeach
+                </div>
+            @endif
 
             @if ($errors->any())
                 <div class="mb-5 rounded-ds-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
@@ -67,7 +106,20 @@
                         $visible = $question->shouldShow($values);
                         $comment = $comments->get($question->id);
                         $completed = $briefLocked && ! in_array($question->id, $editableIds, true);
+
+                        // Alt başlıq qrup DƏYİŞƏNDƏ bir dəfə çıxır. Qruplar bankda
+                        // ardıcıl verilib, ona görə sadə müqayisə kifayətdir və
+                        // əlavə çeşidləmə sualların sırasını pozmur.
+                        $groupChanged = filled($question->group) && $question->group !== ($lastGroup ?? null);
+                        $lastGroup = $question->group ?: ($lastGroup ?? null);
                     @endphp
+
+                    @if ($groupChanged)
+                        <h2 class="{{ $loop->first ? '' : 'mt-8' }} border-l-2 border-yellow pl-3 text-[11px] font-bold uppercase tracking-[0.16em] text-black/45">
+                            {{ $question->group }}
+                        </h2>
+                    @endif
+
                     <div class="rounded-ds-md border {{ $comment ? 'border-yellow-line ring-2 ring-yellow/40' : 'border-black/10' }} bg-white p-5" data-question="{{ $question->id }}"
                         data-key="{{ $question->key }}" data-type="{{ $question->type }}"
                         @unless ($visible) hidden @endunless
@@ -102,24 +154,104 @@
                                     <textarea data-field rows="3" {{ $completed ? 'disabled' : '' }}
                                         class="w-full rounded-ds border border-black/20 px-3.5 py-2.5 text-sm outline-none focus:border-ink">{{ is_array($value) ? implode("\n", $value) : $value }}</textarea>
                                     @break
+                                {{-- select / multiselect: qısa siyahılar «pill», uzunları isə
+                                     tam enli hüceyrə sətirləri kimi verilir. 15-20 variantı
+                                     yan-yana pill kimi yığmaq onları oxunmaz edirdi; sətir
+                                     formatı həm də B patterni üçün ilham ikonuna yer açır. --}}
                                 @case('select')
-                                    <div class="flex flex-wrap gap-2" data-single-choice>
-                                        @foreach ($question->options ?? [] as $option)
-                                            <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
-                                                class="rounded-pill border px-4 py-2 text-[13px] font-semibold transition-colors
-                                                    {{ $value === $option['value'] ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
-                                                {{ $optLabel($option) }}
-                                            </button>
+                                @case('multiselect')
+                                    @php
+                                        $isMulti = $question->type === 'multiselect';
+                                        $selected = $isMulti ? (array) $value : [$value];
+                                        $options = $question->options ?? [];
+                                        $asRows = count($options) > 6 || $question->supports_inspiration;
+                                    @endphp
+
+                                    {{-- C patterni: işığın temperaturu rəqəmlə (2700K…5000K) çətin
+                                         təsəvvür olunur, ona görə variantların üstündə isti→soyuq
+                                         qradiyent verilir. Şəkil faylı lazım deyil, saf CSS-dir. --}}
+                                    @if ($question->key === 'light_temperature')
+                                        <div class="mb-3 overflow-hidden rounded-ds" aria-hidden="true">
+                                            <div class="h-9 w-full" style="background:linear-gradient(90deg,#f6c67a 0%,#ffe0b8 28%,#fff6e8 50%,#eef3ff 75%,#cfe0ff 100%)"></div>
+                                            <div class="flex justify-between px-1 pt-1 text-[10px] font-semibold uppercase tracking-wide text-black/35">
+                                                <span>{{ t('portal.brief_warm') }}</span>
+                                                <span>{{ t('portal.brief_cold') }}</span>
+                                            </div>
+                                        </div>
+                                    @endif
+                                    <div class="{{ $asRows ? 'grid gap-2 sm:grid-cols-2' : 'flex flex-wrap gap-2' }}"
+                                         @if ($isMulti) data-multi-choice @else data-single-choice @endif>
+                                        @foreach ($options as $option)
+                                            @php
+                                                $isOn = in_array($option['value'], $selected, true);
+                                                // Yollar burada URL-ə çevrilir ki, modal JS-i
+                                                // storage konfiqurasiyasından xəbərsiz qalsın.
+                                                $optImages = collect((array) ($option['images'] ?? []))
+                                                    ->filter()
+                                                    ->map(fn ($p) => storage_url($p))
+                                                    ->values()
+                                                    ->all();
+                                            @endphp
+                                            <div class="{{ $asRows ? 'flex items-stretch' : '' }}">
+                                                <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
+                                                    class="{{ $asRows
+                                                        ? 'flex flex-1 items-center gap-2.5 rounded-ds border px-3.5 py-2.5 text-left text-[13px] font-semibold transition-colors'
+                                                        : 'rounded-pill border px-4 py-2 text-[13px] font-semibold transition-colors' }}
+                                                        {{ $isOn ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
+                                                    @if ($asRows)
+                                                        <span class="flex h-4 w-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] leading-none
+                                                                     {{ $isOn ? 'border-yellow bg-yellow text-ink' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
+                                                    @endif
+                                                    <span class="min-w-0">{{ $optLabel($option) }}</span>
+                                                </button>
+
+                                                {{-- B patterni: şəkil seçimə təsir etmir, yalnız nümunə göstərir.
+                                                     Şəkil yüklənməyibsə ikon ÜMUMİYYƏTLƏ render olunmur —
+                                                     boş modal açan düymə göstərmirik. --}}
+                                                @if ($optImages !== [])
+                                                    <button type="button"
+                                                        data-inspire='@json($optImages)'
+                                                        data-inspire-title="{{ $optLabel($option) }}"
+                                                        aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_inspiration') }}"
+                                                        class="ml-1.5 flex w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-black/35 hover:text-ink">
+                                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                                    </button>
+                                                @endif
+                                            </div>
                                         @endforeach
                                     </div>
                                     @break
-                                @case('multiselect')
-                                    <div class="flex flex-wrap gap-2" data-multi-choice>
+
+                                {{-- A patterni: seçimin ÖZÜ şəkildir (üslub kartları). --}}
+                                @case('image_select')
+                                @case('image_multiselect')
+                                    @php
+                                        $isMultiImage = $question->type === 'image_multiselect';
+                                        $selectedImages = $isMultiImage ? (array) $value : [$value];
+                                    @endphp
+                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                                         @if ($isMultiImage) data-multi-choice @else data-single-choice @endif>
                                         @foreach ($question->options ?? [] as $option)
-                                            <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
-                                                class="rounded-pill border px-4 py-2 text-[13px] font-semibold transition-colors
-                                                    {{ in_array($option['value'], (array) $value, true) ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
-                                                {{ $optLabel($option) }}
+                                            @php
+                                                $isOn = in_array($option['value'], $selectedImages, true);
+                                                $img = $option['image_url'] ?? null;
+                                            @endphp
+                                            <button type="button" data-choice data-image-card value="{{ $option['value'] }}"
+                                                {{ $completed ? 'disabled' : '' }} @if ($isOn) data-selected @endif
+                                                class="group relative overflow-hidden rounded-ds-md border-2 text-left transition-all
+                                                       {{ $isOn ? 'border-yellow shadow-[0_0_0_3px_rgba(253,254,0,.35)]' : 'border-black/10 hover:border-black/30' }}">
+                                                <span class="block aspect-[4/3] w-full bg-neutral-soft bg-cover bg-center"
+                                                    @if ($img) style="background-image:url('{{ storage_url($img) }}')" @endif>
+                                                    @unless ($img)
+                                                        {{-- Şəkil hələ yüklənməyib: kart öz quruluşunu saxlayır. --}}
+                                                        <span class="flex h-full w-full items-center justify-center text-black/20">
+                                                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+                                                        </span>
+                                                    @endunless
+                                                </span>
+                                                <span data-card-check
+                                                    class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-yellow text-[12px] font-bold text-ink {{ $isOn ? '' : 'hidden' }}">✓</span>
+                                                <span class="block bg-white px-3 py-2 text-[13px] font-bold">{{ $optLabel($option) }}</span>
                                             </button>
                                         @endforeach
                                     </div>
@@ -289,20 +421,6 @@
                                     </div>
                                     @break
 
-                                @case('image_select')
-                                    {{-- Uses the same single-choice mechanism: selected marker is the bg-ink class, read by collect(). --}}
-                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3" data-single-choice>
-                                        @foreach ($question->options ?? [] as $option)
-                                            <button type="button" data-choice value="{{ $option['value'] }}" {{ $completed ? 'disabled' : '' }}
-                                                class="overflow-hidden rounded-ds-md border text-left transition-colors
-                                                    {{ $value === $option['value'] ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
-                                                <span class="block aspect-[4/3] w-full bg-gray-soft2 bg-cover bg-center"
-                                                    style="background-image:url('{{ storage_url($option['image_url'] ?? '') }}')"></span>
-                                                <span class="block px-3 py-2 text-[13px] font-semibold">{{ $optLabel($option) }}</span>
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                    @break
                                 @default
                                     <input data-field type="text" value="{{ $value }}" {{ $completed ? 'disabled' : '' }}
                                         class="h-11 w-full rounded-ds border border-black/20 px-3.5 text-sm outline-none focus:border-ink">
@@ -322,8 +440,62 @@
                     </div>
                 @endunless
             </form>
+    </div>
+
+    {{-- B patterni üçün nümunə qalereyası. Bir modal bütün variantlara xidmət
+         edir: məzmun klikləndikdə `data-inspire` massivindən qurulur. --}}
+    <div id="inspireModal" hidden
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         role="dialog" aria-modal="true" aria-labelledby="inspireTitle">
+        <div class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-white p-6">
+            <div class="mb-4 flex items-start justify-between gap-4">
+                <div>
+                    <h2 id="inspireTitle" class="text-[17px] font-bold"></h2>
+                    <p class="mt-0.5 text-[12px] text-black/45">{{ t('portal.brief_inspiration_hint') }}</p>
+                </div>
+                <button type="button" data-inspire-close aria-label="{{ t('portal.close') }}"
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-ds text-black/45 transition-colors hover:bg-neutral-soft hover:text-ink">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="inspireGrid" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
         </div>
     </div>
+
+    <script>
+        // Qalereya seçimdən ASILI DEYİL, ona görə brifin kilidli olub-olmamasından
+        // asılı olmayaraq həmişə işləyir (baxış rejimində də nümunələr açılmalıdır).
+        (() => {
+            const modal = document.getElementById('inspireModal');
+            if (!modal) return;
+            const grid = document.getElementById('inspireGrid');
+            const title = document.getElementById('inspireTitle');
+
+            const close = () => { modal.hidden = true; document.body.classList.remove('overflow-hidden'); };
+
+            document.querySelectorAll('[data-inspire]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    let images = [];
+                    try { images = JSON.parse(btn.getAttribute('data-inspire')) || []; } catch (e) { images = []; }
+
+                    title.textContent = btn.getAttribute('data-inspire-title') || '';
+                    grid.replaceChildren(...images.map(src => {
+                        const wrap = document.createElement('span');
+                        wrap.className = 'block aspect-[4/3] w-full overflow-hidden rounded-ds-md bg-neutral-soft bg-cover bg-center';
+                        wrap.style.backgroundImage = `url('${src}')`;
+                        return wrap;
+                    }));
+
+                    modal.hidden = false;
+                    document.body.classList.add('overflow-hidden');
+                });
+            });
+
+            modal.querySelector('[data-inspire-close]')?.addEventListener('click', close);
+            modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+        })();
+    </script>
 
     @unless (! $anyEditable)
     <script>
@@ -388,13 +560,18 @@
                         return null; // uploaded separately
                 }
 
+                // Seçim nişanı iki cürdür: adi variantlarda `bg-ink` klassı,
+                // şəkil kartlarında isə `data-selected` atributu (kartın fonu
+                // şəkildir, ona görə onu `bg-ink` ilə işarələmək olmur).
+                const PICKED = '[data-choice].bg-ink, [data-choice][data-selected]';
+
                 const multi = block.querySelector('[data-multi-choice]');
                 if (multi) {
-                    return [...multi.querySelectorAll('[data-choice].bg-ink')].map(b => b.getAttribute('value'));
+                    return [...multi.querySelectorAll(PICKED)].map(b => b.getAttribute('value'));
                 }
                 const single = block.querySelector('[data-single-choice]');
                 if (single) {
-                    return single.querySelector('[data-choice].bg-ink')?.getAttribute('value') ?? null;
+                    return single.querySelector(PICKED)?.getAttribute('value') ?? null;
                 }
                 return block.querySelector('[data-field]')?.value ?? null;
             };
@@ -441,8 +618,6 @@
                 const id = block.dataset.question;
                 const delegate = block.querySelector('[data-delegate]');
                 const zone = block.querySelector('[data-input-zone]');
-                const active = ['border-ink', 'bg-ink', 'text-white'];
-                const inactive = ['border-black/20', 'bg-white'];
 
                 // Debounced free-text / numeric / date fields.
                 block.querySelectorAll('[data-field], [data-budget-min], [data-budget-max]').forEach(field => {
@@ -451,24 +626,47 @@
                 block.querySelector('[data-budget-currency]')?.addEventListener('change', () => save(block, delegate));
                 block.querySelector('[data-consent]')?.addEventListener('change', () => save(block, delegate));
 
+                // Şəkil kartı ilə adi variantın «seçilmiş» görünüşü fərqlidir:
+                // kartın fonu şəkildir, ona görə tünd fon yerinə sarı çərçivə +
+                // künc nişanı işlədilir. Nişanın özü `data-selected` atributudur
+                // (collect() də onu oxuyur), klasslar sadəcə görüntüdür.
+                const isCard = (b) => b.hasAttribute('data-image-card');
+                const cardOn = (b, on) => {
+                    b.toggleAttribute('data-selected', on);
+                    b.classList.toggle('border-yellow', on);
+                    b.classList.toggle('shadow-[0_0_0_3px_rgba(253,254,0,.35)]', on);
+                    b.classList.toggle('border-black/10', !on);
+                    b.querySelector('[data-card-check]')?.classList.toggle('hidden', !on);
+                };
+                const rowOn = (b, on) => {
+                    b.classList.toggle('border-ink', on); b.classList.toggle('bg-ink', on); b.classList.toggle('text-white', on);
+                    b.classList.toggle('border-black/20', !on); b.classList.toggle('bg-white', !on);
+                    const box = b.querySelector('span:first-child');
+                    if (box && box.classList.contains('rounded-[4px]')) {
+                        box.classList.toggle('border-yellow', on);
+                        box.classList.toggle('bg-yellow', on);
+                        box.classList.toggle('text-ink', on);
+                        box.classList.toggle('border-black/25', !on);
+                        box.textContent = on ? '✓' : '';
+                    }
+                };
+                const setOn = (b, on) => isCard(b) ? cardOn(b, on) : rowOn(b, on);
+                const isOn = (b) => isCard(b) ? b.hasAttribute('data-selected') : b.classList.contains('bg-ink');
+
                 block.querySelectorAll('[data-choice]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         const group = btn.closest('[data-multi-choice], [data-single-choice]');
 
                         if (group.hasAttribute('data-single-choice')) {
-                            group.querySelectorAll('[data-choice]').forEach(b => { b.classList.remove(...active); b.classList.add(...inactive); });
-                            btn.classList.remove(...inactive); btn.classList.add(...active);
+                            group.querySelectorAll('[data-choice]').forEach(b => setOn(b, false));
+                            setOn(btn, true);
                         } else {
-                            const isActive = btn.classList.contains('bg-ink');
-                            const setOn = (b, on) => {
-                                b.classList.toggle('border-ink', on); b.classList.toggle('bg-ink', on); b.classList.toggle('text-white', on);
-                                b.classList.toggle('border-black/20', !on); b.classList.toggle('bg-white', !on);
-                            };
-                            setOn(btn, !isActive);
+                            const wasOn = isOn(btn);
+                            setOn(btn, !wasOn);
 
                             // Part 10 №16 exclusive_override: «Dizaynerin ixtiyarına» is exclusive
                             // with every concrete pick in the same block, in both directions.
-                            if (!isActive) {
+                            if (!wasOn) {
                                 if (btn.value === 'designer') {
                                     group.querySelectorAll('[data-choice]').forEach(b => { if (b !== btn) setOn(b, false); });
                                 } else {
