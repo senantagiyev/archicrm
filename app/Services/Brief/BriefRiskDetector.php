@@ -75,12 +75,12 @@ class BriefRiskDetector
         }
 
         // ── R5: «pərdəsiz» + qaranlıqlaşdırma konflikti ──
-        if (($v['curtains_type'] ?? null) === 'none' && filled($v['curtains_blackout_location'] ?? null)) {
+        if (in_array('none', (array) ($v['curtains'] ?? []), true) && filled($v['blackout_zones'] ?? null)) {
             $risks[] = [
                 'code' => 'R5',
                 'level' => 'important',
                 'message' => '«Pərdəsiz» göstərilib və eyni zamanda qaranlıqlaşdırma tələbi var — müştəridən dəqiqləşdirin.',
-                'keys' => ['curtains_type', 'curtains_blackout_location'],
+                'keys' => ['curtains', 'blackout_zones'],
             ];
         }
 

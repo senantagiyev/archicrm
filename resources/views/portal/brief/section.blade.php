@@ -236,6 +236,17 @@
                                                         <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border text-[11px] leading-none
                                                                      {{ $isOn ? 'border-yellow bg-yellow text-ink' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
                                                     @endif
+                                                    {{-- C patterni: metal kimi variantlarda rəngi sözlə izah etmək
+                                                         çətindir — variantın öz çipi göstərilir. Rəngi olmayan
+                                                         variant («Dizaynerin ixtiyarına») çipsiz qalır. --}}
+                                                    @php $optColors = array_values(array_filter((array) ($option['colors'] ?? []))); @endphp
+                                                    @if ($optColors !== [])
+                                                        <span class="flex h-[18px] w-[18px] shrink-0 overflow-hidden rounded-full border border-black/15" aria-hidden="true">
+                                                            @foreach ($optColors as $hex)
+                                                                <span class="h-full flex-1" style="background-color: {{ $hex }}"></span>
+                                                            @endforeach
+                                                        </span>
+                                                    @endif
                                                     <span class="min-w-0">{{ $optLabel($option) }}</span>
                                                 </button>
 
@@ -290,6 +301,153 @@
                                         @endforeach
                                     </div>
                                     @break
+
+                                {{-- Roomix «Сочетания цветов»: hər kart bəyənilir VƏ YA
+                                     bəyənilmir — üçüncü vəziyyət «cavabsız»dır. Kartın özü
+                                     rəng zolağıdır (palitra hex dəyərlərindən qurulur), foto
+                                     lazım deyil; şəkil yüklənibsə onun yerinə keçir. --}}
+                                @case('image_rating')
+                                    @php $ratings = is_array($value) ? $value : []; @endphp
+                                    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" data-rating>
+                                        @foreach ($question->options ?? [] as $option)
+                                            @php
+                                                $verdict = $ratings[$option['value']] ?? null;
+                                                $img = $option['image_url'] ?? null;
+                                                $colors = array_values(array_filter((array) ($option['colors'] ?? [])));
+                                            @endphp
+                                            <div data-rating-row="{{ $option['value'] }}"
+                                                class="overflow-hidden rounded-ds-md border-2 transition-colors
+                                                       {{ $verdict === 'like' ? 'border-ok' : ($verdict === 'dislike' ? 'border-danger' : 'border-black/10') }}">
+                                                <span class="flex aspect-[4/3] w-full overflow-hidden bg-neutral-soft"
+                                                    @if ($img) style="background-image:url('{{ storage_url($img) }}');background-size:cover;background-position:center" @endif>
+                                                    @unless ($img)
+                                                        @foreach ($colors as $hex)
+                                                            <span class="h-full flex-1" style="background-color: {{ $hex }}"></span>
+                                                        @endforeach
+                                                    @endunless
+                                                </span>
+                                                <span class="flex items-center justify-between gap-1 bg-white px-2.5 py-2">
+                                                    <span class="truncate text-[13px] font-semibold">{{ $optLabel($option) }}</span>
+                                                    <span class="flex shrink-0 gap-1">
+                                                        <button type="button" data-rating-btn value="dislike" {{ $completed ? 'disabled' : '' }}
+                                                            aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_dislike') }}"
+                                                            class="flex h-7 w-7 items-center justify-center rounded-full border text-[13px] leading-none transition-colors
+                                                                   {{ $verdict === 'dislike' ? 'border-danger bg-danger text-white' : 'border-black/20 bg-white hover:border-black/45' }}">✕</button>
+                                                        <button type="button" data-rating-btn value="like" {{ $completed ? 'disabled' : '' }}
+                                                            aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_like') }}"
+                                                            class="flex h-7 w-7 items-center justify-center rounded-full border text-[13px] leading-none transition-colors
+                                                                   {{ $verdict === 'like' ? 'border-ok bg-ok text-white' : 'border-black/20 bg-white hover:border-black/45' }}">♥</button>
+                                                    </span>
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    @break
+
+                                {{-- Roomix «Мебельные высоты»: erqonomikanın standartı var, amma
+                                     rahatlıq fərdidir. Hər sətir «standart üzrə» və «öz ölçüm»
+                                     arasında keçir; ikincisi rəqəm sahəsini açır. --}}
+                                @case('std_or_custom')
+                                    @php
+                                        $items = $question->options['items'] ?? [];
+                                        $pickedRows = is_array($value) ? $value : [];
+                                    @endphp
+                                    <div class="space-y-2.5" data-stdcustom>
+                                        @foreach ($items as $item)
+                                            @php
+                                                $row = (array) ($pickedRows[$item['value']] ?? []);
+                                                $mode = in_array($row['mode'] ?? null, ['std', 'custom'], true) ? $row['mode'] : null;
+                                                $itemImages = collect((array) ($item['images'] ?? []))
+                                                    ->filter()->map(fn ($p) => storage_url($p))->values()->all();
+                                            @endphp
+                                            <div data-stdcustom-row="{{ $item['value'] }}"
+                                                 class="flex flex-col gap-2.5 rounded-ds border border-black/15 p-3 sm:flex-row sm:items-center sm:gap-3">
+                                                @if ($itemImages !== [])
+                                                    <button type="button"
+                                                        data-inspire='@json($itemImages)'
+                                                        data-inspire-title="{{ $optLabel($item) }}"
+                                                        aria-label="{{ $optLabel($item) }} — {{ t('portal.brief_inspiration') }}"
+                                                        class="h-12 w-16 shrink-0 overflow-hidden rounded-ds border border-black/15 bg-neutral-soft bg-cover bg-center"
+                                                        style="background-image:url('{{ $itemImages[0] }}')"></button>
+                                                @endif
+                                                <span class="min-w-0 flex-1 text-[14px] font-medium">{{ $optLabel($item) }}</span>
+                                                <span class="flex shrink-0 flex-wrap items-center gap-2">
+                                                    <button type="button" data-stdcustom-mode value="std" {{ $completed ? 'disabled' : '' }}
+                                                        class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
+                                                               {{ $mode === 'std' ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/45' }}">
+                                                        {{ t('portal.brief_std') }} · {{ $item['standard'] }} {{ $item['unit'] ?? 'mm' }}
+                                                    </button>
+                                                    <button type="button" data-stdcustom-mode value="custom" {{ $completed ? 'disabled' : '' }}
+                                                        class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
+                                                               {{ $mode === 'custom' ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/45' }}">
+                                                        {{ t('portal.brief_custom') }}
+                                                    </button>
+                                                    <input type="number" data-stdcustom-value inputmode="numeric"
+                                                        value="{{ $mode === 'custom' ? ($row['value'] ?? '') : '' }}"
+                                                        placeholder="{{ $item['standard'] }}" {{ $completed ? 'disabled' : '' }}
+                                                        class="h-9 w-24 rounded-ds border border-black/20 px-2.5 text-sm outline-none focus:border-ink {{ $mode === 'custom' ? '' : 'hidden' }}">
+                                                </span>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                    @break
+
+                                {{-- Roomix-də ailə tərkibi və hobbi siyahısı sərbəst mətn deyil,
+                                     sətir-sətir əlavə olunan cədvəldir. Yeni sətir `<template>`
+                                     klonlanaraq yaradılır. --}}
+                                @case('repeater')
+                                    @php
+                                        $fields = $question->options['fields'] ?? [];
+                                        $repRows = array_values(array_filter((array) $value, 'is_array'));
+                                        $cell = function (array $f, string $val = '') use ($optLabel, $completed) {
+                                            $base = 'h-10 w-full rounded-ds border border-black/20 px-3 text-sm outline-none focus:border-ink';
+                                            $off = $completed ? ' disabled' : '';
+                                            if (($f['type'] ?? 'text') === 'select') {
+                                                $html = '<select data-rep-cell="'.e($f['key']).'" class="'.$base.'"'.$off.'><option value="">—</option>';
+                                                foreach ((array) ($f['options'] ?? []) as $o) {
+                                                    $html .= '<option value="'.e($o['value']).'"'.($val === $o['value'] ? ' selected' : '').'>'.e($optLabel($o)).'</option>';
+                                                }
+
+                                                return $html.'</select>';
+                                            }
+
+                                            return '<input data-rep-cell="'.e($f['key']).'" type="'.e($f['type'] ?? 'text').'" value="'.e($val).'" '
+                                                .'placeholder="'.e($optLabel($f)).'" class="'.$base.'"'.$off.'>';
+                                        };
+                                    @endphp
+                                    <div data-repeater>
+                                        <div data-rep-rows class="space-y-2">
+                                            @foreach ($repRows as $row)
+                                                <div data-rep-row class="flex flex-col gap-2 rounded-ds border border-black/10 bg-neutral-soft/40 p-2.5 sm:flex-row sm:items-center">
+                                                    @foreach ($fields as $f)
+                                                        <span class="min-w-0 flex-1">{!! $cell($f, (string) ($row[$f['key']] ?? '')) !!}</span>
+                                                    @endforeach
+                                                    @unless ($completed)
+                                                        <button type="button" data-rep-remove aria-label="{{ t('portal.brief_row_remove') }}"
+                                                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
+                                                    @endunless
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        @unless ($completed)
+                                            <template data-rep-template>
+                                                <div data-rep-row class="flex flex-col gap-2 rounded-ds border border-black/10 bg-neutral-soft/40 p-2.5 sm:flex-row sm:items-center">
+                                                    @foreach ($fields as $f)
+                                                        <span class="min-w-0 flex-1">{!! $cell($f) !!}</span>
+                                                    @endforeach
+                                                    <button type="button" data-rep-remove aria-label="{{ t('portal.brief_row_remove') }}"
+                                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
+                                                </div>
+                                            </template>
+                                            <button type="button" data-rep-add
+                                                class="mt-2.5 inline-flex items-center gap-1.5 rounded-ds border border-dashed border-black/25 px-4 py-2 text-[13px] font-semibold text-black/60 transition-colors hover:border-ink hover:text-ink">
+                                                + {{ $question->options['add_label'] ?? t('portal.brief_row_add') }}
+                                            </button>
+                                        @endunless
+                                    </div>
+                                    @break
+
                                 @case('boolean')
                                     <div class="flex gap-2" data-single-choice>
                                         <button type="button" data-choice value="1" {{ $completed ? 'disabled' : '' }}
@@ -592,6 +750,44 @@
                         return block.querySelector('[data-consent]').checked ? '1' : '0';
                     case 'file':
                         return null; // uploaded separately
+                    case 'image_rating': {
+                        // Rəyi verilməyən kart cavaba ÜMUMİYYƏTLƏ düşmür — «bəyənmədim»
+                        // ilə «hələ baxmamışam» fərqli məlumatdır.
+                        const out = {};
+                        block.querySelectorAll('[data-rating-row]').forEach(row => {
+                            const on = row.querySelector('[data-rating-btn].text-white');
+                            if (on) out[row.dataset.ratingRow] = on.getAttribute('value');
+                        });
+                        return out;
+                    }
+                    case 'std_or_custom': {
+                        const out = {};
+                        block.querySelectorAll('[data-stdcustom-row]').forEach(row => {
+                            const on = row.querySelector('[data-stdcustom-mode].bg-ink');
+                            if (!on) return;
+                            const mode = on.getAttribute('value');
+                            const own = row.querySelector('[data-stdcustom-value]').value.trim();
+                            // «Öz ölçüm» seçilib, amma rəqəm hələ yazılmayıbsa sətir
+                            // yarımçıqdır — yarımçıq sətri cavab kimi saymırıq.
+                            if (mode === 'custom' && own === '') return;
+                            out[row.dataset.stdcustomRow] = mode === 'custom' ? { mode, value: own } : { mode };
+                        });
+                        return out;
+                    }
+                    case 'repeater': {
+                        const rows = [];
+                        block.querySelectorAll('[data-rep-row]').forEach(row => {
+                            const obj = {};
+                            let filled = false;
+                            row.querySelectorAll('[data-rep-cell]').forEach(c => {
+                                const v = (c.value || '').trim();
+                                obj[c.dataset.repCell] = v;
+                                if (v !== '') filled = true;
+                            });
+                            if (filled) rows.push(obj);
+                        });
+                        return rows;
+                    }
                 }
 
                 // Seçim nişanı iki cürdür: adi variantlarda `bg-ink` klassı,
@@ -712,6 +908,76 @@
                         save(block, delegate);
                     });
                 });
+
+                // Rəng kombinasiyaları: eyni düyməyə təkrar basmaq rəyi geri alır.
+                block.querySelectorAll('[data-rating-btn]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const row = btn.closest('[data-rating-row]');
+                        const was = btn.classList.contains('text-white');
+                        row.querySelectorAll('[data-rating-btn]').forEach(b => {
+                            b.classList.remove('border-ok', 'bg-ok', 'border-danger', 'bg-danger', 'text-white');
+                            b.classList.add('border-black/20', 'bg-white');
+                        });
+                        if (!was) {
+                            const like = btn.getAttribute('value') === 'like';
+                            btn.classList.remove('border-black/20', 'bg-white');
+                            btn.classList.add(like ? 'border-ok' : 'border-danger', like ? 'bg-ok' : 'bg-danger', 'text-white');
+                        }
+                        const verdict = was ? null : btn.getAttribute('value');
+                        row.classList.remove('border-ok', 'border-danger', 'border-black/10');
+                        row.classList.add(verdict === 'like' ? 'border-ok' : (verdict === 'dislike' ? 'border-danger' : 'border-black/10'));
+                        save(block, delegate);
+                    });
+                });
+
+                // Standart / öz ölçüm: «öz ölçüm» rəqəm sahəsini açır və fokuslayır.
+                block.querySelectorAll('[data-stdcustom-mode]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const row = btn.closest('[data-stdcustom-row]');
+                        const input = row.querySelector('[data-stdcustom-value]');
+                        const was = btn.classList.contains('bg-ink');
+                        row.querySelectorAll('[data-stdcustom-mode]').forEach(b => {
+                            b.classList.remove('border-ink', 'bg-ink', 'text-white');
+                            b.classList.add('border-black/20', 'bg-white');
+                        });
+                        if (!was) {
+                            btn.classList.remove('border-black/20', 'bg-white');
+                            btn.classList.add('border-ink', 'bg-ink', 'text-white');
+                        }
+                        const custom = !was && btn.getAttribute('value') === 'custom';
+                        input.classList.toggle('hidden', !custom);
+                        if (!custom) input.value = '';
+                        if (custom) input.focus();
+                        save(block, delegate);
+                    });
+                });
+                block.querySelectorAll('[data-stdcustom-value]').forEach(i => {
+                    i.addEventListener('input', () => save(block, delegate, 800));
+                });
+
+                // Təkrarlanan sətirlər: şablon klonlanır, silinən sətir dərhal yazılır.
+                const repeater = block.querySelector('[data-repeater]');
+                if (repeater) {
+                    const rows = repeater.querySelector('[data-rep-rows]');
+                    const tpl = repeater.querySelector('[data-rep-template]');
+                    const bindRow = (row) => {
+                        row.querySelectorAll('[data-rep-cell]').forEach(c => {
+                            c.addEventListener('input', () => save(block, delegate, 800));
+                            c.addEventListener('change', () => save(block, delegate));
+                        });
+                        row.querySelector('[data-rep-remove]')?.addEventListener('click', () => {
+                            row.remove();
+                            save(block, delegate, 0);
+                        });
+                    };
+                    rows.querySelectorAll('[data-rep-row]').forEach(bindRow);
+                    repeater.querySelector('[data-rep-add]')?.addEventListener('click', () => {
+                        const row = tpl.content.firstElementChild.cloneNode(true);
+                        rows.appendChild(row);
+                        bindRow(row);
+                        row.querySelector('[data-rep-cell]')?.focus();
+                    });
+                }
 
                 // Matrix: one exclusive pick per row.
                 block.querySelectorAll('[data-matrix-cell]').forEach(cell => {

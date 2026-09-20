@@ -22,9 +22,13 @@ use Illuminate\Database\Eloquent\Builder;
  * Bu ekranın yeganə işi variantlara şəkil bağlamaqdır, çünki şəkillər
  * kontentdir: onları dizayner/kontent menecer yükləyir, developer yox.
  *
- * İki rol (docs/roomix-brief-ux-analiz.md):
- *  - `image_select` / `image_multiselect` → variant başına BİR şəkil (kartın özü);
- *  - `supports_inspiration` → variant başına BİR NEÇƏ nümunə şəkli (modal qalereya).
+ * Üç rol (docs/roomix-brief-parity.md):
+ *  - `image_select` / `image_multiselect` / `image_rating` → variant başına BİR
+ *    şəkil (kartın özü); `image_rating`-də şəkil opsionaldır, çünki kart şəkilsiz
+ *    də rəng zolağı kimi işləyir;
+ *  - `supports_inspiration` → variant başına BİR NEÇƏ nümunə şəkli (modal qalereya);
+ *  - `std_or_custom` → variantlar `options.items` altındadır, hər sətrin nümunə
+ *    qalereyası var (Roomix «Мебельные высоты»).
  *
  * Seeder yenidən işlədiləndə bu şəkillər İTMİR: `BriefQuestionBankSeeder`
  * `mergeOptionImages()` ilə onları value üzrə köçürür.
@@ -55,8 +59,14 @@ class BriefQuestionResource extends Resource
     {
         return parent::getEloquentQuery()
             ->where(fn (Builder $query) => $query
-                ->whereIn('type', ['image_select', 'image_multiselect'])
+                ->whereIn('type', ['image_select', 'image_multiselect', 'image_rating', 'std_or_custom'])
                 ->orWhere('supports_inspiration', true));
+    }
+
+    /** Variantları `options.items` altında saxlayan tip. */
+    private static function isItemised(?BriefQuestion $record): bool
+    {
+        return $record?->type === 'std_or_custom';
     }
 
     public static function form(Schema $form): Schema
@@ -71,10 +81,47 @@ class BriefQuestionResource extends Resource
                     Forms\Components\TextInput::make('group')->label('Qrup')->disabled(),
                 ]),
 
+            // «Mebel hündürlükləri» kimi suallarda variantlar `options.items`
+            // altındadır — onları ayrıca repeater idarə edir, çünki `options`
+            // özü siyahı deyil, konfiqdir.
+            Section::make('Sətirlərin nümunə şəkilləri')
+                ->description('Hər sətir üçün bir neçə nümunə şəkli — müştəri sətrin solundakı kiçik şəklə basaraq onları modalda görür.')
+                ->visible(fn (?BriefQuestion $record) => static::isItemised($record))
+                ->schema([
+                    Forms\Components\Repeater::make('options.items')
+                        ->label('')
+                        ->addable(false)
+                        ->deletable(false)
+                        ->reorderable(false)
+                        ->itemLabel(fn (array $state): ?string => $state['label']['az'] ?? ($state['value'] ?? null))
+                        ->schema([
+                            Forms\Components\Hidden::make('value'),
+                            Forms\Components\Hidden::make('label'),
+                            Forms\Components\Hidden::make('standard'),
+                            Forms\Components\Hidden::make('unit'),
+
+                            Forms\Components\FileUpload::make('images')
+                                ->label('Nümunə şəkilləri')
+                                ->multiple()
+                                ->image()
+                                ->reorderable()
+                                ->directory('brief/inspiration')
+                                ->visibility('public')
+                                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                                ->maxSize(2048)
+                                ->maxFiles(6)
+                                ->rules([SafeUpload::image()])
+                                ->helperText('Birinci şəkil sətrin yanındakı kiçik önizləmə kimi görünür.'),
+                        ]),
+                ]),
+
             Section::make('Variantların şəkilləri')
-                ->description(fn (?BriefQuestion $record) => $record?->supports_inspiration
-                    ? 'Hər variant üçün bir neçə nümunə şəkli yükləyin — onlar seçimə TƏSİR ETMİR, müştəriyə modalda nümunə kimi göstərilir. Şəkil yüklənməyən variantda ikon ümumiyyətlə görünmür.'
-                    : 'Hər variant üçün bir şəkil — variant kartının özü budur. Şəkil yüklənməyən kart neytral placeholder kimi görünür.')
+                ->description(fn (?BriefQuestion $record) => match (true) {
+                    (bool) $record?->supports_inspiration => 'Hər variant üçün bir neçə nümunə şəkli yükləyin — onlar seçimə TƏSİR ETMİR, müştəriyə modalda nümunə kimi göstərilir. Şəkil yüklənməyən variantda ikon ümumiyyətlə görünmür.',
+                    $record?->type === 'image_rating' => 'Hər kart üçün bir şəkil — OPSİONALDIR. Şəkil yükləməsəniz kart bankdakı rəng zolağı kimi görünür.',
+                    default => 'Hər variant üçün bir şəkil — variant kartının özü budur. Şəkil yüklənməyən kart neytral placeholder kimi görünür.',
+                })
+                ->visible(fn (?BriefQuestion $record) => ! static::isItemised($record))
                 ->schema([
                     Forms\Components\Repeater::make('options')
                         ->label('')
@@ -134,9 +181,11 @@ class BriefQuestionResource extends Resource
                 Tables\Columns\TextColumn::make('type')
                     ->label('Rol')
                     ->badge()
-                    ->formatStateUsing(fn (BriefQuestion $record) => $record->supports_inspiration
-                        ? 'Nümunə qalereyası'
-                        : 'Kart şəkli'),
+                    ->formatStateUsing(fn (BriefQuestion $record) => match (true) {
+                        static::isItemised($record) => 'Sətir qalereyası',
+                        (bool) $record->supports_inspiration => 'Nümunə qalereyası',
+                        default => 'Kart şəkli',
+                    }),
                 // Şəkilsiz variant sayı — «nə qalıb» sualının cavabı bir baxışda.
                 Tables\Columns\TextColumn::make('missing')
                     ->label('Şəkilsiz variant')
@@ -144,7 +193,7 @@ class BriefQuestionResource extends Resource
                     ->color(fn (BriefQuestion $record) => static::missingCount($record) === 0 ? 'success' : 'warning')
                     ->getStateUsing(function (BriefQuestion $record) {
                         $missing = static::missingCount($record);
-                        $total = count($record->options ?? []);
+                        $total = count(static::imageOptions($record));
 
                         return $missing === 0 ? "hamısı hazır ({$total})" : "{$missing} / {$total}";
                     }),
@@ -155,17 +204,37 @@ class BriefQuestionResource extends Resource
             ]);
     }
 
-    /** Şəkli olmayan variantların sayı — həm rəng, həm mətn üçün. */
-    private static function missingCount(BriefQuestion $question): int
+    /**
+     * Şəkil qəbul edən variantların siyahısı — tipindən asılı olaraq ya
+     * `options`, ya da `options.items`.
+     *
+     * @return array<int, mixed>
+     */
+    private static function imageOptions(BriefQuestion $question): array
     {
         $options = $question->options ?? [];
 
-        if (! is_array($options) || ! array_is_list($options)) {
-            return 0;
+        if (! is_array($options)) {
+            return [];
         }
 
-        return collect($options)
-            ->reject(fn ($option) => $question->supports_inspiration
+        if (static::isItemised($question)) {
+            $items = $options['items'] ?? [];
+
+            return is_array($items) ? array_values($items) : [];
+        }
+
+        return array_is_list($options) ? $options : [];
+    }
+
+    /** Şəkli olmayan variantların sayı — həm rəng, həm mətn üçün. */
+    private static function missingCount(BriefQuestion $question): int
+    {
+        // `std_or_custom` sətirləri də qalereyalıdır — orada da `images` axtarılır.
+        $wantsGallery = $question->supports_inspiration || static::isItemised($question);
+
+        return collect(static::imageOptions($question))
+            ->reject(fn ($option) => $wantsGallery
                 ? filled($option['images'] ?? null)
                 : filled($option['image_url'] ?? null))
             ->count();

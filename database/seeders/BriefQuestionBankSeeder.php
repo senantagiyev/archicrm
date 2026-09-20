@@ -169,6 +169,10 @@ class BriefQuestionBankSeeder extends Seeder
             [
                 'brief_template_id' => $templateId,
                 'name' => $sectionData['name'],
+                // Roomix hər bölməni bir abzaslıq giriş mətni ilə açır («Здесь
+                // начинается ваш дом»). Bank bu mətnin mənbəyidir — otaq blokları
+                // kimi introsuz bölmələrdə sahə boş qalır.
+                'intro' => $sectionData['intro'] ?? null,
                 'icon' => $sectionData['icon'] ?? null,
                 'room_type' => $sectionData['room_type'] ?? null,
                 // TZ §8.8: per-section time estimate. Explicit value wins, else ~20s/question.
@@ -236,21 +240,43 @@ class BriefQuestionBankSeeder extends Seeder
      */
     private function mergeOptionImages(int $sectionId, string $questionKey, ?array $fresh): ?array
     {
-        // Yalnız variant SİYAHISI olan tiplər birləşdirilir. matrix /
-        // color_swatch / budget_range kimi tiplərdə `options` assoc konfiqdir
-        // (rows, swatches…) və list_is_list yoxlaması onları kənarda saxlayır.
-        if ($fresh === null || ! array_is_list($fresh)) {
-            return $fresh;
+        if ($fresh === null) {
+            return null;
         }
 
         $existing = BriefQuestion::where('brief_section_id', $sectionId)
             ->where('key', $questionKey)
             ->value('options');
 
-        if (! is_array($existing) || ! array_is_list($existing)) {
+        if (! is_array($existing)) {
             return $fresh;
         }
 
+        // `std_or_custom` variantları `options['items']` altındadır; onların da
+        // nümunə şəkilləri var, ona görə eyni birləşdirmə o siyahıya tətbiq olunur.
+        if (! array_is_list($fresh)) {
+            if (is_array($fresh['items'] ?? null) && is_array($existing['items'] ?? null)) {
+                $fresh['items'] = $this->carryImages($existing['items'], $fresh['items']);
+            }
+
+            // matrix / color_swatch / budget_range kimi tiplərdə `options` sırf
+            // konfiqdir (rows, swatches…) — orada birləşdiriləsi şəkil yoxdur.
+            return $fresh;
+        }
+
+        return array_is_list($existing) ? $this->carryImages($existing, $fresh) : $fresh;
+    }
+
+    /**
+     * Köhnə siyahıdakı `image_url` / `images` dəyərlərini yeni siyahıya `value`
+     * üzrə köçürür — etiket dəyişsə də şəkil öz variantında qalır.
+     *
+     * @param  array<int, mixed>  $existing
+     * @param  array<int, mixed>  $fresh
+     * @return array<int, mixed>
+     */
+    private function carryImages(array $existing, array $fresh): array
+    {
         $imagesByValue = [];
         foreach ($existing as $option) {
             if (! is_array($option) || ! isset($option['value'])) {
@@ -270,7 +296,22 @@ class BriefQuestionBankSeeder extends Seeder
         }
 
         return array_map(
-            fn (array $option) => $option + ($imagesByValue[(string) ($option['value'] ?? '')] ?? []),
+            function ($option) use ($imagesByValue) {
+                if (! is_array($option)) {
+                    return $option;
+                }
+
+                $carry = $imagesByValue[(string) ($option['value'] ?? '')] ?? [];
+
+                // Bankdakı boş `images => []` yüklənmiş şəkilləri üstələməməlidir.
+                foreach ($carry as $field => $value) {
+                    if (blank($option[$field] ?? null)) {
+                        $option[$field] = $value;
+                    }
+                }
+
+                return $option;
+            },
             $fresh,
         );
     }

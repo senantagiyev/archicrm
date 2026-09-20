@@ -3,7 +3,7 @@
     $completed = $brief->isCompleted();
     $answers = $brief->answers->keyBy(fn ($a) => $a->brief_question_id.':'.($a->brief_room_id ?? 0));
     // Part 10 №12 / Risk R5 — the one conflict the client is asked to resolve here.
-    $curtainsConflict = ($values['curtains_type'] ?? null) === 'none' && filled($values['curtains_blackout_location'] ?? null);
+    $curtainsConflict = in_array('none', (array) ($values['curtains'] ?? []), true) && filled($values['blackout_zones'] ?? null);
     $validationErrors = $validationErrors ?? [];
     $canSend = $missing->isEmpty() && $consented && ! $completed && $validationErrors === [];
 @endphp

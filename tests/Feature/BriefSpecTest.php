@@ -12,12 +12,15 @@ use App\Models\User;
 use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
 use Database\Seeders\BriefQuestionBankSeeder;
+use Database\Seeders\TranslationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * «ARCHI CRM — BRİF» spesifikasiyası v1.0 üzrə: bölmə sırası, dinamik otaq
- * tərkibi, matrislər, göndərmə şərtləri (razılıq) və risk detection.
+ * Brif quruluşu: bölmə sırası (Roomix «Премиум бриф» ilə bir-bir — bax
+ * docs/roomix-brief-parity.md), dinamik otaq tərkibi, matrislər, yeni
+ * vidjetlər (repeater · std_or_custom · image_rating), göndərmə şərtləri
+ * (razılıq) və risk detection.
  */
 class BriefSpecTest extends TestCase
 {
@@ -49,7 +52,7 @@ class BriefSpecTest extends TestCase
         );
     }
 
-    public function test_section_order_matches_spec_part_8_2(): void
+    public function test_section_order_matches_roomix(): void
     {
         $brief = $this->brief();
 
@@ -60,9 +63,11 @@ class BriefSpecTest extends TestCase
             ->pluck('key')
             ->all();
 
+        // Roomix: О вас · Объект · Комплектация · Эстетика · Отделочные материалы ·
+        // Освещение · Помещения · Инженерия · Контакты.
         $this->assertSame([
-            'about_you', 'object', 'format_budget', 'aesthetics', 'finish_materials',
-            'lighting', 'engineering', 'rooms_hub', 'procurement', 'contacts',
+            'about_you', 'object', 'procurement', 'aesthetics', 'finish_materials',
+            'lighting', 'rooms_hub', 'engineering', 'contacts',
         ], $general);
     }
 
@@ -70,17 +75,17 @@ class BriefSpecTest extends TestCase
     {
         $brief = $this->brief();
 
-        app(BriefService::class)->syncRooms($brief, ['kitchen' => 1, 'kids' => 2]);
+        app(BriefService::class)->syncRooms($brief, ['kitchen_furniture' => 1, 'kids' => 2]);
 
         $rooms = $brief->fresh()->rooms;
 
         $this->assertCount(3, $rooms);
         $this->assertSame(2, $rooms->where('room_type', 'kids')->count());
-        $this->assertContains('Uşaq otağı 2', $rooms->pluck('label')->all());
+        $this->assertContains('Uşaq yataq otağı 2', $rooms->pluck('label')->all());
 
         // Only the selected rooms get an accordion (spec Part 10 №18).
         $keys = app(BriefService::class)->sectionMap($brief->fresh())->map(fn ($e) => $e['section']->key)->all();
-        $this->assertContains('room_kitchen', $keys);
+        $this->assertContains('room_kitchen_furniture', $keys);
         $this->assertNotContains('room_bathroom', $keys);
     }
 
@@ -89,10 +94,10 @@ class BriefSpecTest extends TestCase
         $brief = $this->brief();
         $service = app(BriefService::class);
 
-        $service->syncRooms($brief, ['kitchen' => 1]);
+        $service->syncRooms($brief, ['kitchen_furniture' => 1]);
         $room = $brief->fresh()->rooms->first();
 
-        $question = BriefQuestion::whereHas('section', fn ($q) => $q->where('key', 'room_kitchen'))->firstOrFail();
+        $question = BriefQuestion::whereHas('section', fn ($q) => $q->where('key', 'room_kitchen_furniture'))->firstOrFail();
         $brief->answers()->create([
             'brief_question_id' => $question->id, 'brief_room_id' => $room->id,
             'value' => 'daily', 'answered_at' => now(),
@@ -107,8 +112,8 @@ class BriefSpecTest extends TestCase
     {
         $brief = $this->brief();
 
-        // §7 «Mühəndislik» balcony question depends on §8 room_inventory.
-        $balconyQuestion = BriefQuestion::where('key', 'balcony_insulate')->firstOrFail();
+        // §8 «Mühəndislik» balkon sualı §7 room_inventory-dən asılıdır.
+        $balconyQuestion = BriefQuestion::where('key', 'balcony_works')->firstOrFail();
 
         $this->assertFalse($balconyQuestion->shouldShow(app(BriefService::class)->valuesByKey($brief)));
 
@@ -127,8 +132,98 @@ class BriefSpecTest extends TestCase
         $this->assertTrue($other->shouldShow(['contractor_matrix' => ['other' => 'own']]));
 
         $this->assertSame(
-            'Təmir briqadası: Öz podratçısı var',
+            'Təmir briqadası: Öz podratçım var',
             $question->displayValue(['crew' => 'own']),
+        );
+    }
+
+    /**
+     * Roomix-dən gətirilən üç yeni vidjet. Hər biri cavabı fərqli formada
+     * saxlayır, ona görə displayValue() hər üçünü ayrıca tanımalıdır — əks
+     * halda xülasə və PDF ixracı «Array to string conversion» verir.
+     */
+    public function test_new_roomix_widgets_render_their_answers(): void
+    {
+        $this->brief();
+
+        // Ailə tərkibi — sətir-sətir cədvəl.
+        $members = BriefQuestion::where('key', 'household_members')->firstOrFail();
+        $this->assertSame('repeater', $members->type);
+        $this->assertSame(
+            "Ata · Elçin · 41\nQızı · Nərgiz · 9",
+            $members->displayValue([
+                ['role' => 'Ata', 'name' => 'Elçin', 'age' => '41', 'height' => '', 'handedness' => ''],
+                ['role' => 'Qızı', 'name' => 'Nərgiz', 'age' => '9'],
+            ]),
+        );
+
+        // Mebel hündürlükləri — standart ölçü və ya öz ölçün. «Standart üzrə»
+        // etiketi tərcümələrdən gəlir, ona görə onları da yükləyirik.
+        $this->seed(TranslationSeeder::class);
+
+        $heights = BriefQuestion::where('key', 'furniture_heights')->firstOrFail();
+        $this->assertSame('std_or_custom', $heights->type);
+        $this->assertSame(
+            'Mətbəx iş səthi: 950 mm · Tropik duş: 2100 mm (Standart üzrə)',
+            $heights->displayValue([
+                'kitchen_worktop' => ['mode' => 'custom', 'value' => '950'],
+                'rain_shower' => ['mode' => 'std'],
+            ]),
+        );
+
+        // Rəng kombinasiyaları — 27 kart, hər biri bəyənilir və ya bəyənilmir.
+        $combos = BriefQuestion::where('key', 'color_combinations')->firstOrFail();
+        $this->assertSame('image_rating', $combos->type);
+        $this->assertCount(27, $combos->options);
+        $this->assertSame('Kombinasiya 1 ♥ · Kombinasiya 3 ✕', $combos->displayValue([
+            'combo_1' => 'like',
+            'combo_2' => null,
+            'combo_3' => 'dislike',
+        ]));
+    }
+
+    /**
+     * Bankdakı rəng dəyərləri Roomix-dən ölçülüb — kartlar foto olmadan da
+     * doğru görünməlidir, ona görə hər palitra və hər metal çipi yerindədir.
+     */
+    public function test_colour_driven_options_carry_their_swatches(): void
+    {
+        $this->brief();
+
+        $combos = BriefQuestion::where('key', 'color_combinations')->firstOrFail();
+        foreach ($combos->options as $option) {
+            $this->assertCount(5, $option['colors']);
+            $this->assertMatchesRegularExpression('/^#[0-9a-f]{6}$/', $option['colors'][0]);
+        }
+
+        $metals = BriefQuestion::where('key', 'preferred_metals')->firstOrFail();
+        $gold = collect($metals->options)->firstWhere('value', 'gold');
+        $this->assertSame(['#d4af37'], $gold['colors']);
+
+        // «Dizaynerin ixtiyarına» rəng deyil — çipsiz qalır.
+        $designer = collect($metals->options)->firstWhere('value', 'designer');
+        $this->assertSame([], $designer['colors']);
+    }
+
+    /**
+     * `std_or_custom` variantları `options.items` altındadır — siyahı deyil,
+     * konfiqdir. Seeder onları da qorumalıdır, əks halda hər deploy mebel
+     * hündürlüklərinin nümunə şəkillərini silərdi.
+     */
+    public function test_reseeding_keeps_images_of_itemised_rows(): void
+    {
+        $this->brief();
+
+        $heights = BriefQuestion::where('key', 'furniture_heights')->firstOrFail();
+        $options = $heights->options;
+        $options['items'][0]['images'] = ['brief/inspiration/worktop.webp'];
+        $heights->update(['options' => $options]);
+
+        $this->seed(BriefQuestionBankSeeder::class);
+
+        $this->assertSame(
+            ['brief/inspiration/worktop.webp'],
+            BriefQuestion::where('key', 'furniture_heights')->firstOrFail()->options['items'][0]['images'],
         );
     }
 
@@ -145,18 +240,19 @@ class BriefSpecTest extends TestCase
             'total_area_sqm' => '120',
             'design_area_sqm' => '120',
             'property_readiness' => 'new_shell',
-            'utilities_available' => ['water'],
-            'premises_purpose' => 'permanent',
+            'object_utilities' => ['water'],
+            'premises_purpose' => 'residential',
             'cooperation_scope' => 'design_only',
             'project_budget_range' => ['min' => '50000', 'max' => '80000', 'currency' => 'AZN'],
-            'room_inventory' => ['kitchen' => 1],
+            'room_inventory' => ['kitchen_furniture' => 1],
             'contact_full_name' => 'Aygün Əliyeva',
             'contact_phone' => '+994501234567',
+            'contact_email' => 'aygun@test.az',
         ] as $key => $value) {
             $this->answer($brief, $key, $value);
         }
 
-        $service->syncRooms($brief->fresh(), ['kitchen' => 1]);
+        $service->syncRooms($brief->fresh(), ['kitchen_furniture' => 1]);
 
         // Only the consent checkbox is left (spec Part 10 №20).
         $missing = $service->missingRequired($brief->fresh());
@@ -252,8 +348,8 @@ class BriefSpecTest extends TestCase
         $this->answer($brief, 'design_area_sqm', '200');
         $this->answer($brief, 'project_budget_range', ['min' => '10000', 'max' => '20000', 'currency' => 'AZN']);
         $this->answer($brief, 'has_measurement_plan', 'no');
-        $this->answer($brief, 'curtains_type', 'none');
-        $this->answer($brief, 'curtains_blackout_location', 'Yataq otağı');
+        $this->answer($brief, 'curtains', ['none']);
+        $this->answer($brief, 'blackout_zones', 'Yataq otağı');
         $this->answer($brief, 'wall_materials', ['paint', 'designer']);
 
         $codes = collect(app(BriefRiskDetector::class)->detect($brief->fresh()))->pluck('code')->all();

@@ -5,6 +5,11 @@ Mənbə: `roomix.space` Premium brif, dizayner hesabı ilə **baxış rejimində
 pattern-ləridir**; şəkil aktivləri və mətnləri köçürülmür — onlar Roomix-in
 müəllif hüququdur. Archi öz şəkilləri və öz palitrası ilə eyni UX-i qurur.
 
+> **Yenilənmə (2026-09-20):** bu sənəd UX/qarşılıqlı təsir analizidir.
+> Sualların, variantların və qrupların TAM SİYAHISI artıq ayrıca sənəddədir —
+> [`roomix-brief-parity.md`](roomix-brief-parity.md). Bank (`database/seeders/brief/bank.php`)
+> o sənədə görə qurulub; dəyişiklik edəndə əvvəlcə parity sənədini yenilə.
+
 ---
 
 ## 1. Brifin bölmələri — Archi ilə müqayisə

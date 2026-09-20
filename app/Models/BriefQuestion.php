@@ -77,7 +77,7 @@ class BriefQuestion extends Model
         $options = $this->options ?? [];
         $flat = array_is_list($options)
             ? $options
-            : array_merge($options['rows'] ?? [], $options['columns'] ?? []);
+            : array_merge($options['rows'] ?? [], $options['columns'] ?? [], $options['items'] ?? []);
 
         foreach ($flat as $option) {
             if (($option['value'] ?? null) === $value) {
@@ -112,6 +112,30 @@ class BriefQuestion extends Model
                 ->filter(fn ($n) => (int) $n > 0)
                 ->map(fn ($n, $type) => $this->optionLabel((string) $type).((int) $n > 1 ? ' ×'.$n : ''))
                 ->implode(', '),
+            // «Bəyəndim / bəyənmədim» — rəyi verilməyən kart cavabda yoxdur.
+            'image_rating' => collect($value)
+                ->filter(fn ($verdict) => in_array($verdict, ['like', 'dislike'], true))
+                ->map(fn ($verdict, $key) => $this->optionLabel((string) $key).' '.($verdict === 'like' ? '♥' : '✕'))
+                ->implode(' · '),
+            // Standart ölçü qalıbsa rəqəmi bankdan, öz ölçüsüdürsə cavabdan gəlir.
+            'std_or_custom' => collect($value)
+                ->filter(fn ($row) => is_array($row))
+                ->map(function (array $row, $key) {
+                    $item = collect($this->options['items'] ?? [])->firstWhere('value', $key);
+                    $unit = $item['unit'] ?? 'mm';
+                    $size = ($row['mode'] ?? null) === 'custom'
+                        ? ($row['value'] ?? '').' '.$unit
+                        : ($item['standard'] ?? '').' '.$unit.' ('.t('portal.brief_std').')';
+
+                    return $this->optionLabel((string) $key).': '.trim($size);
+                })
+                ->implode(' · '),
+            // Sətir-sətir doldurulan cədvəl: hər sətir «dəyər · dəyər» kimi yığılır.
+            'repeater' => collect($value)
+                ->filter(fn ($row) => is_array($row))
+                ->map(fn (array $row) => collect($row)->filter(fn ($v) => filled($v))->implode(' · '))
+                ->filter(fn (string $row) => $row !== '')
+                ->implode("\n"),
             'color_swatch' => trim(
                 (filled($value['base'] ?? null) ? 'Fon: '.implode(', ', $value['base']) : '')
                 .(filled($value['accent'] ?? null) ? '  Akcent: '.implode(', ', $value['accent']) : '')

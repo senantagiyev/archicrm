@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Filament\Resources\BriefQuestionResource;
+use App\Filament\Resources\BriefQuestionResource\Pages\EditBriefQuestion;
 use App\Models\BriefQuestion;
 use App\Models\BriefSection;
 use App\Models\User;
 use App\Policies\BriefQuestionPolicy;
 use Database\Seeders\BriefQuestionBankSeeder;
+use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -80,6 +83,51 @@ class BriefOptionImagesTest extends TestCase
         $this->assertContains($image->id, $listed);
         $this->assertContains($inspire->id, $listed, 'İlham bayraqlı sual da siyahıda olmalıdır.');
         $this->assertNotContains($plain->id, $listed, 'Şəkil qəbul etməyən sual siyahıya düşməməlidir.');
+    }
+
+    /**
+     * Roomix-dən gələn iki yeni şəkilli tip də ekrana düşməlidir: rəng
+     * kombinasiyaları (kart fotosu opsionaldır) və mebel hündürlükləri
+     * (variantlar `options.items` altındadır).
+     */
+    public function test_new_image_capable_types_are_listed(): void
+    {
+        $this->seed(BriefQuestionBankSeeder::class);
+
+        $listed = BriefQuestionResource::getEloquentQuery()->pluck('key')->all();
+
+        $this->assertContains('color_combinations', $listed);
+        $this->assertContains('furniture_heights', $listed);
+        $this->assertContains('curtains', $listed, 'Pərdələrin nümunə qalereyası var.');
+        $this->assertNotContains('object_address', $listed);
+    }
+
+    /**
+     * `std_or_custom` sualında `options` siyahı deyil, konfiqdir — repeater
+     * `options.items`-ə bağlanır. Form bu iki halı qarışdırsa, ekran ağ açılır,
+     * ona görə hər iki forma yüklənib sətirlərini göstərməlidir.
+     */
+    public function test_edit_form_opens_for_both_option_shapes(): void
+    {
+        $this->seed(BriefQuestionBankSeeder::class);
+
+        $owner = User::create([
+            'name' => 'Sahib', 'email' => 'form@test.az', 'password' => 'secret123', 'role' => 'owner',
+        ]);
+
+        $this->actingAs($owner);
+
+        Filament::setCurrentPanel('admin');
+
+        $heights = BriefQuestion::where('key', 'furniture_heights')->firstOrFail();
+        Livewire::test(EditBriefQuestion::class, ['record' => $heights->getKey()])
+            ->assertOk()
+            ->assertFormFieldExists('options.items');
+
+        $styles = BriefQuestion::where('key', 'style_preferences')->firstOrFail();
+        Livewire::test(EditBriefQuestion::class, ['record' => $styles->getKey()])
+            ->assertOk()
+            ->assertFormFieldExists('options');
     }
 
     /**
