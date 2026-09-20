@@ -64,20 +64,38 @@
         </div>
     @endif
 
+    @php $stepNo = 0; @endphp
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         @foreach ($map as $entry)
+            @php
+                // Nömrə yalnız əsas bölmələrə verilir — otaq kartları («Mətbəx»,
+                // «Uşaq otağı 1») bölmə deyil, bölmənin içindəki təkrarlardır və
+                // onları da nömrələsək sıra qarışardı.
+                $isRoomCard = $entry['room'] !== null;
+                if (! $isRoomCard) { $stepNo++; }
+                $cardIntro = $isRoomCard ? null : $entry['section']->getTranslation('intro', $locale);
+            @endphp
             <a href="{{ route('portal.brief.section', array_filter([$project->id, $entry['section']->id, $entry['room']?->id])) }}"
-                class="group rounded-ds-md border border-black/10 bg-white p-5 transition-colors hover:border-black/30">
-                <div class="mb-3 flex items-start justify-between gap-2">
-                    <h2 class="text-[15px] font-bold group-hover:underline">
-                        {{ $entry['room']?->label ?? $entry['section']->getTranslation('name', $locale) }}
-                    </h2>
+                class="group flex flex-col rounded-ds-md border border-black/10 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-black/30 hover:shadow-[0_10px_30px_-18px_rgba(0,0,0,.3)]">
+                <div class="mb-2 flex items-start justify-between gap-2">
+                    <span class="text-[10px] font-bold uppercase tracking-[0.16em] text-black/35">
+                        {{ $isRoomCard ? t('portal.brief_room') : t('portal.brief_section_no', ['number' => $stepNo]) }}
+                    </span>
                     @if ($entry['status'] === 'submitted')
                         <span class="rounded-pill bg-ok-soft px-2.5 py-0.5 text-[11px] font-semibold text-ok">{{ t('portal.brief_submitted') }}</span>
                     @elseif ($entry['status'] === 'in_progress')
                         <span class="rounded-pill bg-warn-soft px-2.5 py-0.5 text-[11px] font-semibold text-warn">{{ t('portal.brief_in_progress') }}</span>
+                    @else
+                        <span class="rounded-pill bg-neutral-soft px-2.5 py-0.5 text-[11px] font-semibold text-black/45">{{ t('portal.brief_not_started') }}</span>
                     @endif
                 </div>
+                <h2 class="text-[15px] font-bold group-hover:underline">
+                    {{ $entry['room']?->label ?? $entry['section']->getTranslation('name', $locale) }}
+                </h2>
+                @if ($cardIntro)
+                    <p class="mt-1 line-clamp-2 text-[12px] text-black/50">{{ $cardIntro }}</p>
+                @endif
+                <div class="mt-auto pt-3">
                 @if (($entry['section']->estimated_minutes ?? 0) > 0)
                     <p class="mb-2 text-[11px] text-black/40">≈ {{ $entry['section']->estimated_minutes }} {{ t('portal.brief_minutes') }}</p>
                 @endif
@@ -87,6 +105,7 @@
                 </div>
                 <div class="h-1 overflow-hidden rounded-pill bg-neutral-soft">
                     <div class="h-full {{ $entry['status'] === 'submitted' ? 'bg-ok' : 'bg-yellow-line' }}" style="width: {{ $entry['progress'] }}%"></div>
+                </div>
                 </div>
             </a>
         @endforeach
