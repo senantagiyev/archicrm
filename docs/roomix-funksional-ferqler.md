@@ -156,3 +156,18 @@ Yəni arxa ofisdə Archi daha zəngindir; fərq əsasən **müştərinin gördü
 11. Subprojects
 12. Analytics «bu gün nəyə diqqət»
 13. Billing / limitlər (biznes qərarı)
+
+---
+
+## 10. Sonrakı analiz — müştəri tərəfi
+
+Bu sənəd **dizayner** hesabından çıxarılıb. Müştərinin gördüyü tərəf ayrıca
+sənəddədir: [`roomix-musteri-terefi.md`](roomix-musteri-terefi.md) — Roomix-in
+**Demo space → «View as» → Apartment client** rejimi ilə. Orada bir neçə nəticə
+dəqiqləşir, xüsusilə:
+
+- Müştəri üçün Roomix **çat-mərkəzlidir** (sol panel: Chats · Stages · Notifications · Profile);
+- razılaşdırmalar ayrıca tab deyil, **çatın içində versiyalı kartlardır**;
+- brifin **«Discuss with the designer»** funksiyası təsdiqləndi — bölmə səviyyəsindədir
+  və çata keçidli mesaj göndərir (yuxarıdakı B1 bəndi);
+- brifdən **Texniki tapşırıq** sənədi doğur, versiyalanır və təsdiqə gedir.
