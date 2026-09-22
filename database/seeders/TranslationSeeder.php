@@ -184,6 +184,7 @@ class TranslationSeeder extends Seeder
                 'procurement_comment' => 'Şərh|Комментарий|Comment',
                 'procurement_total_before' => 'Endirimdən əvvəl cəmi|Итого до скидки|Total before discount',
                 'procurement_total_after' => 'Endirimlə cəmi|Итого со скидкой|Total with discount',
+                'sheet_items' => ':count sətir|:count позиций|:count items',
                 'diary_intro' => 'Obyektdən qısa qeydlər və fotolar.|Короткие заметки и фото с объекта.|Short progress notes and photos from the site.',
                 'stages_intro' => 'Layihənin gedişatı — mərhələ-mərhələ.|Ход проекта — по этапам.|Project progress, stage by stage.',
                 'project_your_turn' => 'Sizin növbəniz|Ваш ход|Your turn',

@@ -1,4 +1,4 @@
-<x-portal.shell :title="t('portal.nav_procurement')" :project="$project" active="procurement">
+<x-portal.shell :title="t('portal.nav_procurement')" :project="$project" active="documents">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-heading font-semibold">{{ t('portal.nav_procurement') }}</h1>
 

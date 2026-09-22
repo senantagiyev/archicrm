@@ -20,9 +20,10 @@
         'stages'    => [route('portal.stages', $project),        t('portal.nav_stages'),    'M4 6h16M4 12h16M4 18h9M2.5 6h.01M2.5 12h.01M2.5 18h.01'],
         'files'     => [route('portal.files', $project),         t('portal.nav_files'),     'M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z'],
         'diary'     => [route('portal.diary', $project),         t('portal.nav_diary'),     'M4 4h13l3 3v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM7 10h9M7 14h6'],
-        'approvals' => [route('portal.approvals', $project),     t('portal.nav_approvals'), 'M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3'],
-        'estimate'  => [route('portal.estimate', $project),      t('portal.nav_estimate'),  'M8 2h8a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM9 6h6M9 10h6M9 14h3'],
-        'procurement' => [route('portal.procurement', $project), t('portal.nav_procurement'), 'M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4ZM3 6h18M16 10a4 4 0 0 1-8 0'],
+        // Razılaşdırma, smeta və komplektasiya QƏSDƏN tab deyil: Roomix-də onlar
+        // sənəd alt-səhifələridir (`/estimate/<id>`, `/complectation/<id>`), tab
+        // zolağında isə cəmi 4 bənd var. Onları da tab etsək zolaq 11 bəndə
+        // çatıb daşırdı — indi «Sənədlər» səhifəsindən açılırlar.
         'documents' => [route('portal.documents', $project),     t('portal.nav_documents'), 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
         'payments'  => [route('portal.payments', $project),      t('portal.nav_payments'),  'M3 10h18M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM7 15h2'],
     ] : [];
