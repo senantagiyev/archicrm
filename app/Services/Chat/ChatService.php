@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Support\AccessMatrix;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -17,14 +18,60 @@ use Illuminate\Support\Facades\DB;
  */
 class ChatService
 {
-    public function send(Project $project, User|ClientUser $author, string $body): ChatMessage
-    {
-        return ChatMessage::create([
+    /**
+     * Mesaj göndərir. İmza geriyə uyğundur — mövcud `send($p, $u, $body)`
+     * çağırışları dəyişmədən işləyir; əlavə arqumentlər opsionaldır.
+     *
+     * Faylın diskə yazılması burada olur ki, controller yüngül qalsın.
+     */
+    public function send(
+        Project $project,
+        User|ClientUser $author,
+        ?string $body = null,
+        ?UploadedFile $attachment = null,
+        string $kind = ChatMessage::KIND_TEXT,
+    ): ChatMessage {
+        $payload = [
             'project_id' => $project->id,
             'author_type' => $author->getMorphClass(),
             'author_id' => $author->getKey(),
-            'body' => $body,
-        ]);
+            'body' => filled($body) ? $body : null,
+            'kind' => in_array($kind, ChatMessage::KINDS, true) ? $kind : ChatMessage::KIND_TEXT,
+        ];
+
+        if ($attachment !== null) {
+            // Layihə üzrə qovluq; fayl adı təsadüfi hash olur, yəni orijinal ad
+            // yola düşmür və yol kənardan təxmin edilə bilmir.
+            $payload['attachment_path'] = $attachment->store('chat/'.$project->id, 'public');
+            $payload['attachment_name'] = $attachment->getClientOriginalName();
+            $payload['attachment_mime'] = $attachment->getClientMimeType();
+            $payload['attachment_size'] = $attachment->getSize();
+
+            if ($payload['kind'] === ChatMessage::KIND_TEXT) {
+                $payload['kind'] = ChatMessage::KIND_FILE;
+            }
+        }
+
+        return ChatMessage::create($payload);
+    }
+
+    /**
+     * Lentdə axtarış — mesaj mətni və əlavənin adı üzrə. Sorğu layihə ilə
+     * məhdudlaşır, ona görə yad lentin mesajları nəticəyə düşə bilmir.
+     */
+    public function search(Project $project, string $term, int $limit = 50): Collection
+    {
+        // `like` xüsusi simvolları qaçırılır ki, `%` ilə bütün lent çəkilməsin.
+        $escaped = addcslashes($term, '%_\\');
+
+        return $project->chatMessages()
+            ->where(fn ($q) => $q
+                ->where('body', 'like', '%'.$escaped.'%')
+                ->orWhere('attachment_name', 'like', '%'.$escaped.'%'))
+            ->with('author')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
     }
 
     /** Messages after the given id — the polling payload. */
@@ -137,6 +184,29 @@ class ChatService
             'mine' => $m->author_type === $viewer->getMorphClass() && $m->author_id === $viewer->getKey(),
             'staff' => $m->author_type === 'user',
             'at' => $m->created_at->format('d.m.Y H:i'),
+            'kind' => $m->kind ?? ChatMessage::KIND_TEXT,
+            // Əlavə YALNIZ avtorizasiyalı marşruta bağlanır — `Storage::url()`
+            // linki sessiya tələb etmədiyindən cavaba heç vaxt düşmür.
+            'attachment' => $m->hasAttachment() ? [
+                'name' => $m->attachment_name,
+                'size' => self::humanSize((int) $m->attachment_size),
+                'mime' => $m->attachment_mime,
+                'url' => route('portal.chat.attachment', [$m->project_id, $m->id]),
+            ] : null,
         ])->values()->all();
+    }
+
+    /** Balonda göstərilən oxunaqlı fayl ölçüsü. */
+    public static function humanSize(int $bytes): string
+    {
+        if ($bytes < 1024) {
+            return $bytes.' B';
+        }
+
+        if ($bytes < 1024 * 1024) {
+            return round($bytes / 1024).' KB';
+        }
+
+        return round($bytes / 1048576, 1).' MB';
     }
 }

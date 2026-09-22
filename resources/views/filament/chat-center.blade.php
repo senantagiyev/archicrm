@@ -26,7 +26,8 @@
                         </p>
                         @if ($c['last'])
                             <p class="mt-1 truncate text-[12px] text-gray-400 dark:text-gray-500">
-                                {{ \Illuminate\Support\Str::limit($c['last']->body, 48) }}
+                                {{-- Fayl-yalnız mesajda `body` boşdur — `preview()` fayl adını verir. --}}
+                                {{ \Illuminate\Support\Str::limit($c['last']->preview(), 48) }}
                             </p>
                         @endif
                     </a>

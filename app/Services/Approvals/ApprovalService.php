@@ -28,8 +28,12 @@ class ApprovalService
     /**
      * Send a row (smeta line, procurement item, stage or document) to the
      * customer for approval. Notifies every portal account of the client.
+     *
+     * @param  array<int, array{key: string, label: string, note?: string}>  $variants
+     *                                                                                  Roomix-dəki «pick one option» halı: bir neçə variant göndərilir,
+     *                                                                                  müştəri birini seçir. Boş massiv adi bəli/xeyr deməkdir.
      */
-    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null): Approval
+    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null, array $variants = []): Approval
     {
         // `visible_to_client = false` means the studio marked this line internal.
         // The portal prints the approval's subject label and total verbatim, so
@@ -49,12 +53,28 @@ class ApprovalService
             ->where('status', ApprovalStatus::Pending->value)
             ->update(['status' => ApprovalStatus::Draft->value]);
 
+        // Versiya nömrəsi bu obyektin BÜTÜN keçmiş göndərişlərinə görə artır —
+        // rədd edilmiş dövrlər də sayılır, çünki müştəri «v2» deyəndə neçənci
+        // dəfə baxdığını nəzərdə tutur, neçənci dəfə bəyəndiyini yox.
+        $version = 1 + (int) Approval::query()
+            ->where('approvable_type', $approvable->getMorphClass())
+            ->where('approvable_id', $approvable->getKey())
+            ->max('version');
+
+        // Cavab müddəti verilməyibsə layihənin öz pəncərəsindən götürülür
+        // (Roomix «Client response window»), yoxsa hər sorğuda əl ilə yazılardı.
+        $respondBy ??= $project->client_response_days
+            ? now()->addDays($project->client_response_days)
+            : null;
+
         $approval = Approval::create([
             'approvable_type' => $approvable->getMorphClass(),
             'approvable_id' => $approvable->getKey(),
             'project_id' => $project->id,
             'requested_by_user_id' => $requestedBy->id,
             'status' => ApprovalStatus::Pending,
+            'version' => $version,
+            'variants' => $variants === [] ? null : array_values($variants),
             'respond_by' => $respondBy,
         ]);
 
@@ -70,10 +90,25 @@ class ApprovalService
     /**
      * Record the customer's decision. Rejection requires a comment (TZ §5.7).
      */
-    public function decide(Approval $approval, bool $approved, ?string $comment, ?ClientUser $decidedBy = null): Approval
-    {
+    public function decide(
+        Approval $approval,
+        bool $approved,
+        ?string $comment,
+        ?ClientUser $decidedBy = null,
+        ?string $chosenVariant = null,
+    ): Approval {
         if (! $approved && blank($comment)) {
             throw new InvalidArgumentException('Rədd edərkən şərh məcburidir.');
+        }
+
+        // Variantlı razılaşdırmanı «təsdiq» etmək seçim etmək deməkdir: hansının
+        // seçildiyi bilinmədən təsdiq dizaynerə heç nə demir.
+        if ($approved && $approval->hasVariants()) {
+            $allowed = collect($approval->variants)->pluck('key')->all();
+
+            if (! in_array($chosenVariant, $allowed, true)) {
+                throw new InvalidArgumentException('Təsdiq üçün variantlardan biri seçilməlidir.');
+            }
         }
 
         // One transaction: the decision and the subject's status have to move
@@ -81,10 +116,11 @@ class ApprovalService
         // reading "approved" while the budget line still read "pending", so the
         // amount never reached projects.debt and staff saw a request the client
         // had already answered.
-        DB::transaction(function () use ($approval, $approved, $comment, $decidedBy): void {
+        DB::transaction(function () use ($approval, $approved, $comment, $decidedBy, $chosenVariant): void {
             $approval->update([
                 'status' => $approved ? ApprovalStatus::Approved : ApprovalStatus::Rejected,
                 'comment' => $comment,
+                'chosen_variant' => $approved ? $chosenVariant : null,
                 'client_user_id' => $decidedBy?->id ?? $approval->client_user_id,
                 'decided_at' => now(),
             ]);

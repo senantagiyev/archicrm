@@ -88,6 +88,10 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::middleware('throttle:portal-read')->group(function () {
             Route::get('/chat-unread', [ChatController::class, 'unread'])->name('chat.unread');
             Route::get('/projects/{project}/chat', [ChatController::class, 'index'])->name('chat');
+            // Əlavə birbaşa `public` disk linki ilə verilsəydi, linki bilən kənar
+            // şəxs onu sessiyasız aça bilərdi — ona görə avtorizasiyalı marşrut.
+            Route::get('/projects/{project}/chat/attachment/{message}', [ChatController::class, 'download'])
+                ->whereNumber('message')->name('chat.attachment');
             Route::get('/projects/{project}/chat/poll', [ChatController::class, 'poll'])->name('chat.poll');
         });
     });

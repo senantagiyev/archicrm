@@ -90,6 +90,16 @@ class ProjectResource extends Resource
                     ->default(ProjectStatus::Active->value)
                     ->required()
                     ->native(false),
+
+                // Razılaşdırma göndəriləndə `respond_by` bu pəncərəyə görə
+                // hesablanır — əks halda hər sorğuda tarix əl ilə yazılardı.
+                Forms\Components\Select::make('client_response_days')
+                    ->label('Müştərinin cavab müddəti')
+                    ->helperText('Razılaşdırma göndəriləndə müştəriyə bu qədər gün verilir.')
+                    ->options([1 => '1 gün', 2 => '2 gün', 3 => '3 gün', 5 => '5 gün', 7 => '7 gün', 10 => '10 gün', 14 => '14 gün'])
+                    ->default(3)
+                    ->required()
+                    ->native(false),
             ]),
 
             Section::make('İdarəetmə və büdcə')->columns(2)->schema([

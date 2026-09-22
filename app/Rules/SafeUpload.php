@@ -60,6 +60,24 @@ class SafeUpload implements ValidationRule
         );
     }
 
+    /**
+     * Səsli mesaj: brauzerin MediaRecorder-i webm/ogg blob verir.
+     *
+     * `finfo` webm konteynerini audio-only olsa belə çox vaxt `video/webm`
+     * kimi tanıyır — ona görə hər iki MIME siyahıdadır.
+     */
+    public static function audio(): self
+    {
+        return new self(
+            [
+                'audio/webm', 'video/webm',
+                'audio/ogg', 'video/ogg', 'application/ogg',
+                'audio/mpeg', 'audio/mp4', 'audio/wav', 'audio/x-wav',
+            ],
+            ['webm', 'ogg', 'oga', 'mp3', 'm4a', 'wav'],
+        );
+    }
+
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         foreach (is_array($value) ? $value : [$value] as $file) {

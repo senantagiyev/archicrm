@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ApprovalStatus;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -18,16 +19,55 @@ class Approval extends Model
     protected $fillable = [
         'approvable_type', 'approvable_id', 'project_id',
         'requested_by_user_id', 'client_user_id',
-        'status', 'comment', 'respond_by', 'decided_at',
+        'status', 'version', 'comment', 'variants', 'chosen_variant',
+        'respond_by', 'decided_at',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => ApprovalStatus::class,
+            'variants' => 'array',
             'respond_by' => 'date',
             'decided_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Eyni obyektin bütün göndəriş dövrləri — Roomix-dəki «Approval history».
+     *
+     * Hər yeni göndəriş ayrıca sətirdir (köhnəsi `draft`-a keçir), ona görə
+     * tarixçə elə sətirlərin özüdür; burada yalnız düzgün sıralanır.
+     */
+    public function history(): Builder
+    {
+        return static::query()
+            ->where('approvable_type', $this->approvable_type)
+            ->where('approvable_id', $this->approvable_id)
+            ->whereKeyNot($this->getKey())
+            ->orderByDesc('version');
+    }
+
+    /** Roomix: «Client thinking for N days» — göndərişdən bəri keçən tam gün. */
+    public function daysWaiting(): int
+    {
+        return $this->status === ApprovalStatus::Pending
+            ? (int) $this->created_at->startOfDay()->diffInDays(now()->startOfDay())
+            : 0;
+    }
+
+    /** Cavab müddəti keçibsə dizayner üçün siqnal olmalıdır. */
+    public function isOverdue(): bool
+    {
+        return $this->status === ApprovalStatus::Pending
+            && $this->respond_by !== null
+            && $this->respond_by->isPast();
+    }
+
+    /** Çoxvariantlı razılaşdırma: müştəri birini seçməlidir. */
+    public function hasVariants(): bool
+    {
+        return is_array($this->variants) && count($this->variants) > 1;
     }
 
     public function getActivitylogOptions(): LogOptions

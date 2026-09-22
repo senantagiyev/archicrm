@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Portal;
 
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
+use App\Models\ChatMessage;
+use App\Rules\SafeUpload;
 use App\Services\Chat\ChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class ChatController extends Controller
 {
@@ -14,11 +17,22 @@ class ChatController extends Controller
 
     public function __construct(private readonly ChatService $chat) {}
 
-    public function index(int $project)
+    public function index(Request $request, int $project)
     {
         $project = $this->clientProject($project);
 
-        return view('portal.chat', compact('project'));
+        // `?q=` — lentdə axtarış. Süzgəc serverdə işləyir ki, brauzerə yalnız
+        // uyğun mesajlar getsin (bütün lenti çəkib JS-də süzmürük).
+        $query = trim((string) $request->query('q', ''));
+
+        $results = $query === ''
+            ? null
+            : $this->chat->serialize(
+                $this->chat->search($project, $query),
+                Auth::guard('customer')->user(),
+            );
+
+        return view('portal.chat', compact('project', 'query', 'results'));
     }
 
     public function poll(Request $request, int $project)
@@ -50,10 +64,54 @@ class ChatController extends Controller
     {
         $project = $this->clientProject($project);
 
-        $validated = $request->validate(['body' => ['required', 'string', 'max:4000']]);
+        // Səsli mesaj brauzerdən audio blob kimi gəlir — icazəli tiplər
+        // fayl əlavəsindən fərqlidir, ona görə tip əvvəlcədən oxunur.
+        $kind = $request->input('kind') === ChatMessage::KIND_VOICE
+            ? ChatMessage::KIND_VOICE
+            : ($request->hasFile('attachment') ? ChatMessage::KIND_FILE : ChatMessage::KIND_TEXT);
 
-        $message = $this->chat->send($project, Auth::guard('customer')->user(), $validated['body']);
+        $fileRules = $kind === ChatMessage::KIND_VOICE
+            ? ['file', 'max:10240', SafeUpload::audio()]
+            : ['file', 'max:10240', SafeUpload::document()];
+
+        $validated = $request->validate([
+            // Fayl-yalnız mesajda mətn olmur; amma ikisi də boş ola bilməz.
+            'body' => ['nullable', 'string', 'max:4000', 'required_without:attachment'],
+            'attachment' => array_merge(['nullable'], $fileRules),
+        ]);
+
+        $message = $this->chat->send(
+            $project,
+            Auth::guard('customer')->user(),
+            $validated['body'] ?? null,
+            $request->file('attachment'),
+            $kind,
+        );
 
         return response()->json(['ok' => true, 'id' => $message->id]);
+    }
+
+    /**
+     * Çat əlavəsi — avtorizasiyadan keçərək verilir.
+     *
+     * Fayllar `public` diskindədir, yəni `Storage::url()` linki sessiya tələb
+     * etmir: linki ələ keçirən kənar şəxs yazışmanın faylını aça bilərdi.
+     * Burada həm müştəri sərhədi (layihə onun müştərisinindir), həm də
+     * mesajın MƏHZ bu layihəyə aid olması yoxlanılır.
+     */
+    public function download(int $project, int $message)
+    {
+        $project = $this->clientProject($project);
+
+        $chatMessage = $project->chatMessages()->findOrFail($message);
+
+        abort_unless($chatMessage->hasAttachment(), 404);
+        abort_unless(Storage::disk('public')->exists($chatMessage->attachment_path), 404);
+
+        // Səsli mesaj brauzerdə <audio> ilə oxunur, ona görə inline verilir;
+        // sənəd isə endirilir.
+        return $chatMessage->isVoice()
+            ? Storage::disk('public')->response($chatMessage->attachment_path, $chatMessage->attachment_name)
+            : Storage::disk('public')->download($chatMessage->attachment_path, $chatMessage->attachment_name);
     }
 }

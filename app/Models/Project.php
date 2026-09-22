@@ -24,7 +24,7 @@ class Project extends Model
     protected $fillable = [
         'client_id', 'name', 'type', 'address', 'area',
         'budget_plan', 'budget_fact', 'deadline', 'status',
-        'readiness', 'debt', 'manager_user_id',
+        'readiness', 'debt', 'manager_user_id', 'client_response_days',
     ];
 
     protected function casts(): array

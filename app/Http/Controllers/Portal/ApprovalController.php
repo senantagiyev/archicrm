@@ -42,6 +42,9 @@ class ApprovalController extends Controller
         $validated = $request->validate([
             'decision' => ['required', 'in:approve,reject'],
             'comment' => ['required_if:decision,reject', 'nullable', 'string', 'max:2000'],
+            // Variantın özü deyil, yalnız AÇARI qəbul edilir; hansının
+            // mövcud olduğunu servis razılaşdırmanın öz siyahısına görə yoxlayır.
+            'variant' => ['nullable', 'string', 'max:64'],
         ], [
             'comment.required_if' => t('portal.reject_comment_required'),
         ]);
@@ -51,6 +54,7 @@ class ApprovalController extends Controller
             $validated['decision'] === 'approve',
             $validated['comment'] ?? null,
             Auth::guard('customer')->user(),
+            $validated['variant'] ?? null,
         );
 
         return back()->with('status', $validated['decision'] === 'approve'
