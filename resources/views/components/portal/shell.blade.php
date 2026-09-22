@@ -9,6 +9,7 @@
         'projects'  => [route('portal.home'),           t('portal.my_projects'),   'M4 20V8l8-5 8 5v12M9 20v-6h6v6'],
         'approvals' => [route('portal.approvals.all'),  t('portal.nav_approvals'), 'M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3'],
         'documents' => [route('portal.documents.all'),  t('portal.nav_documents'), 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
+        'notifications' => [route('portal.notifications'), t('portal.nav_notifications'), 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0'],
         'profile'   => [route('portal.profile'),        t('portal.nav_profile'),   'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 21a7.5 7.5 0 0 1 15 0'],
     ];
 
@@ -16,6 +17,9 @@
         'overview'  => [route('portal.projects.show', $project), t('portal.nav_overview'),  'M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5'],
         'brief'     => [route('portal.brief', $project),         t('portal.nav_brief'),     'M8 4h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M9.5 9h5M9.5 13h5M9.5 17h3'],
         'chat'      => [route('portal.chat', $project),          t('portal.nav_chat'),      'M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5'],
+        'stages'    => [route('portal.stages', $project),        t('portal.nav_stages'),    'M4 6h16M4 12h16M4 18h9M2.5 6h.01M2.5 12h.01M2.5 18h.01'],
+        'files'     => [route('portal.files', $project),         t('portal.nav_files'),     'M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z'],
+        'diary'     => [route('portal.diary', $project),         t('portal.nav_diary'),     'M4 4h13l3 3v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM7 10h9M7 14h6'],
         'approvals' => [route('portal.approvals', $project),     t('portal.nav_approvals'), 'M22 11.1V12a10 10 0 1 1-5.9-9.1M22 4 12 14l-3-3'],
         'documents' => [route('portal.documents', $project),     t('portal.nav_documents'), 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
         'payments'  => [route('portal.payments', $project),      t('portal.nav_payments'),  'M3 10h18M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM7 15h2'],
@@ -136,9 +140,20 @@
                 <p class="min-w-0 truncate text-[15px] font-bold">{{ $project?->name ?? ($title ?? t('portal.my_projects')) }}</p>
 
                 @if ($project)
-                    <span class="inline-flex shrink-0 items-center gap-2 text-[13px] font-semibold text-black/45">
-                        <span class="h-2 w-2 rounded-full bg-yellow"></span>{{ $project->status->label() }}
-                    </span>
+                    {{-- Roomix layihə başlığının yanında «Your turn» yazır: müştəri
+                         siyahıya baxan kimi topun kimdə olduğunu bilir. Şərt sadədir —
+                         onun qərarını gözləyən açıq razılaşdırma varmı. --}}
+                    @php $waiting = $project->pendingClientApprovalsCount(); @endphp
+                    @if ($waiting > 0)
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-yellow px-3 py-1 text-[13px] font-bold text-ink">
+                            {{ t('portal.project_your_turn') }}
+                            <span class="text-ink/60">{{ $waiting }}</span>
+                        </span>
+                    @else
+                        <span class="inline-flex shrink-0 items-center gap-2 text-[13px] font-semibold text-black/45">
+                            <span class="h-2 w-2 rounded-full bg-yellow"></span>{{ $project->status->label() }}
+                        </span>
+                    @endif
                 @endif
 
                 <span class="flex-1"></span>

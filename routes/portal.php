@@ -4,12 +4,16 @@ use App\Http\Controllers\Portal\ApprovalController;
 use App\Http\Controllers\Portal\AuthController;
 use App\Http\Controllers\Portal\BriefController;
 use App\Http\Controllers\Portal\ChatController;
+use App\Http\Controllers\Portal\DiaryController;
 use App\Http\Controllers\Portal\DocumentController;
+use App\Http\Controllers\Portal\FileController;
 use App\Http\Controllers\Portal\GlobalApprovalController;
 use App\Http\Controllers\Portal\GlobalDocumentController;
+use App\Http\Controllers\Portal\NotificationController;
 use App\Http\Controllers\Portal\PaymentController;
 use App\Http\Controllers\Portal\ProfileController;
 use App\Http\Controllers\Portal\ProjectController;
+use App\Http\Controllers\Portal\StageController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('portal')->name('portal.')->group(function () {
@@ -34,9 +38,22 @@ Route::prefix('portal')->name('portal.')->group(function () {
             Route::get('/approvals', [GlobalApprovalController::class, 'index'])->name('approvals.all');
             Route::get('/documents', [GlobalDocumentController::class, 'index'])->name('documents.all');
             Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
+            Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications');
         });
+        // «Hamısını oxunmuş et» — yazan əməliyyatdır, ona görə oxu qrupunun
+        // xaricində, öz `portal-write` limiti ilə.
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->middleware('throttle:portal-write')->name('notifications.read-all');
 
         Route::get('/projects/{project}/brief', [BriefController::class, 'index'])->name('brief');
+        // Layihə bölmələri — Roomix-dəki tab dəsti.
+        Route::get('/projects/{project}/stages', [StageController::class, 'index'])->name('stages');
+        Route::get('/projects/{project}/files', [FileController::class, 'index'])->name('files');
+        Route::get('/projects/{project}/files/{file}/download', [FileController::class, 'download'])->name('files.download');
+        Route::get('/projects/{project}/diary', [DiaryController::class, 'index'])->name('diary');
+        // Foto birbaşa public disk linki ilə verilsəydi, linki bilən kənar şəxs
+        // onu sessiyasız aça bilərdi — ona görə avtorizasiyalı marşrutdan keçir.
+        Route::get('/projects/{project}/diary/{entry}/photo/{index}', [DiaryController::class, 'photo'])
+            ->whereNumber('index')->middleware('throttle:portal-read')->name('diary.photo');
         // Screen 11 — must be declared before the {section} catch-all below.
         Route::get('/projects/{project}/brief/summary', [BriefController::class, 'summary'])->name('brief.summary');
         Route::get('/projects/{project}/brief/sent', [BriefController::class, 'sent'])->name('brief.sent');

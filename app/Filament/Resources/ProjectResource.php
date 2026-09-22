@@ -183,6 +183,7 @@ class ProjectResource extends Resource
             RelationManagers\PaymentsRelationManager::class,
             RelationManagers\DocumentsRelationManager::class,
             RelationManagers\FilesRelationManager::class,
+            RelationManagers\DiaryRelationManager::class,
             RelationManagers\ChangeRequestsRelationManager::class,
             RelationManagers\DecisionsRelationManager::class,
             RelationManagers\PunchListRelationManager::class,

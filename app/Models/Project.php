@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ApprovalStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\ProjectType;
 use App\Models\Concerns\BelongsToTenant;
@@ -100,6 +101,11 @@ class Project extends Model
         return $this->hasMany(ProjectFile::class);
     }
 
+    public function diaryEntries(): HasMany
+    {
+        return $this->hasMany(DiaryEntry::class);
+    }
+
     public function deliverables(): HasMany
     {
         return $this->hasMany(Deliverable::class);
@@ -149,6 +155,20 @@ class Project extends Model
     public function approvals(): HasMany
     {
         return $this->hasMany(Approval::class);
+    }
+
+    /**
+     * Müştərinin qərarını gözləyən razılaşdırmaların sayı — portalda
+     * «Sizin növbəniz» göstəricisini qidalandırır.
+     *
+     * Nəticə sorğu başına bir dəfə hesablanır: göstərici hər səhifənin
+     * başlığındadır, yoxsa hər açılışda eyni sorğu təkrarlanardı.
+     */
+    public function pendingClientApprovalsCount(): int
+    {
+        return once(fn () => $this->approvals()
+            ->where('status', ApprovalStatus::Pending->value)
+            ->count());
     }
 
     public function chatMessages(): HasMany
