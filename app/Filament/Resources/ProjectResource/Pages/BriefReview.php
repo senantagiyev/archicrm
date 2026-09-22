@@ -10,10 +10,12 @@ use App\Filament\Resources\ProjectResource;
 use App\Models\Brief;
 use App\Models\BriefQuestion;
 use App\Models\BriefRoom;
+use App\Services\Approvals\ApprovalService;
 use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
 use App\Support\AccessMatrix;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Checkbox;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
@@ -136,6 +138,39 @@ class BriefReview extends Page
 
                     $this->service()->approve($this->brief(), auth()->user());
                     Notification::make()->success()->title('Brif təsdiqləndi')->send();
+                }),
+            // Roomix axını: brif → TEXNİKİ TAPŞIRIQ → razılaşdırma → imzalanma.
+            // Sənəd brifin surəti deyil, ondan çıxarılan tapşırıqdır, ona görə
+            // ayrıca tiplə saxlanılır və öz versiyası var.
+            Action::make('technicalSpec')
+                ->label('Texniki tapşırıq hazırla')
+                ->icon('heroicon-o-document-check')
+                ->color('primary')
+                ->requiresConfirmation()
+                ->modalDescription('Brifdəki cavablardan texniki tapşırıq sənədi yaradılacaq. İstəsəniz, dərhal müştəriyə razılaşdırmaya göndərilsin.')
+                ->schema([
+                    Checkbox::make('send')
+                        ->label('Dərhal müştəriyə razılaşdırmaya göndər')
+                        ->default(true),
+                ])
+                ->visible(fn () => $this->canManageBrief() && $this->brief()->isLocked())
+                ->action(function (array $data) {
+                    abort_unless($this->canManageBrief(), 403);
+
+                    $document = $this->service()->buildTechnicalSpec($this->brief());
+
+                    if ($data['send'] ?? false) {
+                        // Razılaşdırmaya gedirsə müştəri onu görməlidir — sənəd
+                        // yaradılanda qəsdən gizli olur (dizayner hələ işləyir).
+                        $document->update(['visible_to_client' => true]);
+                        app(ApprovalService::class)->request($document, auth()->user());
+                    }
+
+                    Notification::make()
+                        ->success()
+                        ->title('Texniki tapşırıq hazırlandı')
+                        ->body($document->title)
+                        ->send();
                 }),
             // Roomix-dəki «they will reopen the brief»: müştəri çatda düzəliş
             // istəyəndə dizayner brifi bütövlükdə redaktəyə qaytarır.

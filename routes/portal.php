@@ -6,11 +6,13 @@ use App\Http\Controllers\Portal\BriefController;
 use App\Http\Controllers\Portal\ChatController;
 use App\Http\Controllers\Portal\DiaryController;
 use App\Http\Controllers\Portal\DocumentController;
+use App\Http\Controllers\Portal\EstimateController;
 use App\Http\Controllers\Portal\FileController;
 use App\Http\Controllers\Portal\GlobalApprovalController;
 use App\Http\Controllers\Portal\GlobalDocumentController;
 use App\Http\Controllers\Portal\NotificationController;
 use App\Http\Controllers\Portal\PaymentController;
+use App\Http\Controllers\Portal\ProcurementController;
 use App\Http\Controllers\Portal\ProfileController;
 use App\Http\Controllers\Portal\ProjectController;
 use App\Http\Controllers\Portal\StageController;
@@ -82,7 +84,16 @@ Route::prefix('portal')->name('portal.')->group(function () {
 
         Route::get('/projects/{project}/payments', [PaymentController::class, 'index'])->name('payments');
 
+        Route::get('/projects/{project}/estimate', [EstimateController::class, 'index'])->name('estimate');
+        Route::get('/projects/{project}/estimate/export', [EstimateController::class, 'export'])
+            ->middleware('throttle:portal-read')->name('estimate.export');
+
         Route::get('/projects/{project}/approvals', [ApprovalController::class, 'index'])->name('approvals');
+
+        // Komplektasiya siyahısı — səhifə, CSV ixracı və avtorizasiyalı foto.
+        Route::get('/projects/{project}/procurement', [ProcurementController::class, 'index'])->middleware('throttle:portal-read')->name('procurement');
+        Route::get('/projects/{project}/procurement/export', [ProcurementController::class, 'export'])->middleware('throttle:portal-read')->name('procurement.export');
+        Route::get('/projects/{project}/procurement/{item}/photo', [ProcurementController::class, 'photo'])->whereNumber('item')->middleware('throttle:portal-read')->name('procurement.photo');
 
         // Polling endpoints — generous read limit.
         Route::middleware('throttle:portal-read')->group(function () {

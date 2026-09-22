@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Portal;
 
+use App\Enums\DocumentType;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,17 @@ class DocumentController extends Controller
             ->latest()
             ->get();
 
-        return view('portal.documents', compact('project', 'documents'));
+        // Roomix sənəd siyahısında hələ hazır olmayan sənədlər də görünür
+        // («Not started»): müştəri nəyin gözlənildiyini bilir və hər dəfə
+        // dizaynerdən soruşmur. Yalnız müqavilə axınının SABİT sənədləri —
+        // ixtiyari yüklənən fayllar üçün slot uydurmuruq.
+        $present = $documents->pluck('type')->all();
+
+        $missing = collect([DocumentType::TechnicalSpec, DocumentType::Contract, DocumentType::Act])
+            ->reject(fn (DocumentType $type) => in_array($type, $present, true))
+            ->values();
+
+        return view('portal.documents', compact('project', 'documents', 'missing'));
     }
 
     public function download(int $project, int $document)

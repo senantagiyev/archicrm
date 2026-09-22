@@ -689,6 +689,48 @@ class BriefService
     }
 
     /** Render the whole brief to PDF and attach it to the project documents. */
+    /**
+     * Roomix: brif göndəriləndən sonra ondan «Technical specification» doğur,
+     * versiyalanır və müştəri ilə razılaşdırılır.
+     *
+     * Brif ixracından FƏRQLİDİR: brif müştərinin cavablarıdır, texniki tapşırıq
+     * isə dizaynerin onlardan çıxardığı tapşırıqdır — ona görə ayrıca sənəd
+     * tipidir və öz nömrəsi var. Nömrə layihədəki mövcud TT sənədlərinə görə
+     * artır ki, «v2» yenidən hazırlanan variant olsun.
+     */
+    public function buildTechnicalSpec(Brief $brief): Document
+    {
+        $project = $brief->project;
+
+        $version = 1 + $project->documents()
+            ->where('type', DocumentType::TechnicalSpec->value)
+            ->count();
+
+        $pdf = Pdf::loadView('portal.brief.technical-spec', [
+            'brief' => $brief,
+            'project' => $project,
+            'version' => $version,
+            'map' => $this->sectionMap($brief),
+            'answers' => $brief->answers()->with('question')->get(),
+            'risks' => app(BriefRiskDetector::class)->detect($brief),
+        ]);
+
+        // Təsadüfi sonluq brif ixracındakı ilə eyni səbəbdəndir: sənəddə ünvan,
+        // telefon və büdcə var, ona görə fayl adı təxmin edilə bilməməlidir.
+        $path = 'documents/tz-'.$project->id.'-v'.$version.'-'.Str::random(24).'.pdf';
+        Storage::disk('public')->put($path, $pdf->output());
+
+        return $project->documents()->create([
+            'type' => DocumentType::TechnicalSpec,
+            'title' => 'Texniki tapşırıq v'.$version.' — '.$project->name,
+            'file_path' => $path,
+            'mime' => 'application/pdf',
+            // Razılaşdırmaya göndərilənə qədər müştəri onu görməməlidir:
+            // dizayner hələ üzərində işləyir.
+            'visible_to_client' => false,
+        ]);
+    }
+
     public function exportPdf(Brief $brief): Document
     {
         $map = $this->sectionMap($brief);

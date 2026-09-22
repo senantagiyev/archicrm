@@ -8,6 +8,7 @@
             'contract'     => 'M4 4h10l6 6v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM14 4v6h6M8 16c1.5-2 3-2 4 0s2.5 2 4 0',
             'act'          => 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM15 2v5h5M9 14l2 2 4-4',
             'brief_export' => 'M9 3h6a1 1 0 0 1 1 1v1h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2V4a1 1 0 0 1 1-1ZM9 12h6M9 16h4',
+            'technical_spec' => 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM15 2v5h5M9 13l2 2 4-4',
             'drawing'      => 'm12 3 9 5-9 5-9-5 9-5ZM3 13l9 5 9-5M3 17l9 5 9-5',
             'other'        => 'M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM15 2v5h5',
         ];
@@ -43,8 +44,29 @@
             </span>
         </a>
     @empty
+    @endforelse
+
+    {{-- Roomix: hələ hazır olmayan sənədlər də siyahıda «Не начат» kimi durur —
+         müştəri nəyin gözlənildiyini bilir və dizaynerdən soruşmur. --}}
+    @foreach ($missing as $type)
+        <div class="mb-3 flex items-center gap-4 rounded-ds-xl border border-dashed border-black/15 px-5 py-4 last:mb-0">
+            <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-ds-lg bg-neutral-soft text-black/30">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="{{ $icons[$type->value] ?? $icons['other'] }}"/>
+                </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+                <p class="truncate text-body font-semibold text-black/45">{{ $type->label() }}</p>
+            </div>
+            <span class="shrink-0 rounded-pill bg-neutral-soft px-3.5 py-1.5 text-helper font-medium text-black/45">
+                {{ t('portal.doc_not_started') }}
+            </span>
+        </div>
+    @endforeach
+
+    @if ($documents->isEmpty() && $missing->isEmpty())
         <div class="rounded-ds-xl border border-black/8 bg-white px-5 py-12 text-center">
             <p class="text-body text-black/55">{{ t('portal.no_documents') }}</p>
         </div>
-    @endforelse
+    @endif
 </x-portal.shell>
