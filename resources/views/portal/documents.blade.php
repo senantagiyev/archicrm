@@ -18,7 +18,7 @@
 
     @forelse ($documents as $document)
         <a href="{{ route('portal.documents.download', [$project, $document]) }}"
-           class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-white px-5 py-4 transition-all last:mb-0
+           class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-card px-5 py-4 transition-all last:mb-0
                   hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-ds-lg bg-neutral-soft text-ink transition-colors group-hover:bg-sel-bg">
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -50,7 +50,7 @@
          məhz buradan açılır — ona görə onlar tab zolağında deyil, bu siyahıdadır. --}}
     @foreach ($sheets as $sheet)
         <a href="{{ $sheet['url'] }}"
-           class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-white px-5 py-4 transition-all last:mb-0
+           class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-card px-5 py-4 transition-all last:mb-0
                   hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
             <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-ds-lg bg-neutral-soft text-ink transition-colors group-hover:bg-sel-bg">
                 <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -73,7 +73,7 @@
     {{-- Razılaşdırmalar da Roomix-də ayrıca tab deyil — sol paneldə qlobal
          bölmə və çatın içindədir. Layihə daxilində buradan açılır. --}}
     <a href="{{ route('portal.approvals', $project) }}"
-       class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-white px-5 py-4 transition-all last:mb-0
+       class="group mb-3 flex items-center gap-4 rounded-ds-xl border border-black/8 bg-card px-5 py-4 transition-all last:mb-0
               hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
         <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-ds-lg bg-neutral-soft text-ink transition-colors group-hover:bg-sel-bg">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -112,7 +112,7 @@
     @endforeach
 
     @if ($documents->isEmpty() && $missing->isEmpty() && $sheets === [])
-        <div class="rounded-ds-xl border border-black/8 bg-white px-5 py-12 text-center">
+        <div class="rounded-ds-xl border border-black/8 bg-card px-5 py-12 text-center">
             <p class="text-body text-black/55">{{ t('portal.no_documents') }}</p>
         </div>
     @endif

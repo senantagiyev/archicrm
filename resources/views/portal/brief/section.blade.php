@@ -44,11 +44,11 @@
                                       ? 'border-transparent font-medium text-ink/70 hover:text-ink'
                                       : 'border-transparent font-medium text-black/40 hover:text-ink') }}">
                         <span class="relative flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-semibold
-                                     {{ $isCurrent ? 'bg-ink text-white' : ($isDone ? 'bg-ink/12 text-ink/75' : 'bg-neutral-soft text-black/40') }}">
+                                     {{ $isCurrent ? 'bg-accent-dark text-white' : ($isDone ? 'bg-accent-dark/12 text-ink/75' : 'bg-neutral-soft text-black/40') }}">
                             {{ $i + 1 }}
                             @if ($isDone && ! $isCurrent)
                                 <span aria-hidden="true"
-                                      class="absolute -bottom-px -right-px flex h-[11px] w-[11px] items-center justify-center rounded-full bg-ink/70 text-white ring-[1.5px] ring-gray-soft2">
+                                      class="absolute -bottom-px -right-px flex h-[11px] w-[11px] items-center justify-center rounded-full bg-accent-dark/70 text-white ring-[1.5px] ring-gray-soft2">
                                     <svg width="6" height="6" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 6.3 4.6 8.9 10 3.2"/></svg>
                                 </span>
                             @endif
@@ -101,7 +101,7 @@
                         @php $isCurrentRoom = $entry['room']->id === $room?->id; @endphp
                         <a href="{{ route('portal.brief.section', [$project->id, $entry['section']->id, $entry['room']->id]) }}"
                            class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
-                                  {{ $isCurrentRoom ? 'border-ink bg-ink text-white' : 'border-black/15 bg-white text-black/60 hover:border-black/35' }}">
+                                  {{ $isCurrentRoom ? 'border-ink bg-accent-dark text-white' : 'border-black/15 bg-card text-black/60 hover:border-black/35' }}">
                             {{ $entry['room']->label }}
                             <span class="{{ $isCurrentRoom ? 'text-yellow' : 'text-black/35' }}">{{ $entry['progress'] }}%</span>
                         </a>
@@ -151,7 +151,7 @@
                         </h2>
                     @endif
 
-                    <div class="rounded-ds-md border {{ $comment ? 'border-yellow-line ring-2 ring-yellow/40' : 'border-black/10' }} bg-white p-5" data-question="{{ $question->id }}"
+                    <div class="rounded-ds-md border {{ $comment ? 'border-yellow-line ring-2 ring-yellow/40' : 'border-black/10' }} bg-card p-5" data-question="{{ $question->id }}"
                         data-key="{{ $question->key }}" data-type="{{ $question->type }}"
                         @unless ($visible) hidden @endunless
                         @if (! empty($question->skip_logic['question'])) data-skip="{{ json_encode($question->skip_logic) }}" @endif>
@@ -231,7 +231,7 @@
                                                     class="{{ $asRows
                                                         ? 'flex flex-1 items-center gap-2.5 rounded-ds border px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors'
                                                         : 'rounded-pill border px-4 py-2 text-[14px] font-medium transition-colors' }}
-                                                        {{ $isOn ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">
+                                                        {{ $isOn ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/40' }}">
                                                     @if ($asRows)
                                                         <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border text-[11px] leading-none
                                                                      {{ $isOn ? 'border-yellow bg-yellow text-ink' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
@@ -258,7 +258,7 @@
                                                         data-inspire='@json($optImages)'
                                                         data-inspire-title="{{ $optLabel($option) }}"
                                                         aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_inspiration') }}"
-                                                        class="ml-1.5 flex w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-black/35 hover:text-ink">
+                                                        class="ml-1.5 flex w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-card text-black/45 transition-colors hover:border-black/35 hover:text-ink">
                                                         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
                                                     </button>
                                                 @endif
@@ -296,7 +296,7 @@
                                                 </span>
                                                 <span data-card-check
                                                     class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-yellow text-[12px] font-bold text-ink {{ $isOn ? '' : 'hidden' }}">✓</span>
-                                                <span class="block bg-white px-3 py-2.5 text-[14px] font-semibold">{{ $optLabel($option) }}</span>
+                                                <span class="block bg-card px-3 py-2.5 text-[14px] font-semibold">{{ $optLabel($option) }}</span>
                                             </button>
                                         @endforeach
                                     </div>
@@ -326,17 +326,17 @@
                                                         @endforeach
                                                     @endunless
                                                 </span>
-                                                <span class="flex items-center justify-between gap-1 bg-white px-2.5 py-2">
+                                                <span class="flex items-center justify-between gap-1 bg-card px-2.5 py-2">
                                                     <span class="truncate text-[13px] font-semibold">{{ $optLabel($option) }}</span>
                                                     <span class="flex shrink-0 gap-1">
                                                         <button type="button" data-rating-btn value="dislike" {{ $completed ? 'disabled' : '' }}
                                                             aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_dislike') }}"
                                                             class="flex h-7 w-7 items-center justify-center rounded-full border text-[13px] leading-none transition-colors
-                                                                   {{ $verdict === 'dislike' ? 'border-danger bg-danger text-white' : 'border-black/20 bg-white hover:border-black/45' }}">✕</button>
+                                                                   {{ $verdict === 'dislike' ? 'border-danger bg-danger text-white' : 'border-black/20 bg-card hover:border-black/45' }}">✕</button>
                                                         <button type="button" data-rating-btn value="like" {{ $completed ? 'disabled' : '' }}
                                                             aria-label="{{ $optLabel($option) }} — {{ t('portal.brief_like') }}"
                                                             class="flex h-7 w-7 items-center justify-center rounded-full border text-[13px] leading-none transition-colors
-                                                                   {{ $verdict === 'like' ? 'border-ok bg-ok text-white' : 'border-black/20 bg-white hover:border-black/45' }}">♥</button>
+                                                                   {{ $verdict === 'like' ? 'border-ok bg-ok text-white' : 'border-black/20 bg-card hover:border-black/45' }}">♥</button>
                                                     </span>
                                                 </span>
                                             </div>
@@ -374,12 +374,12 @@
                                                 <span class="flex shrink-0 flex-wrap items-center gap-2">
                                                     <button type="button" data-stdcustom-mode value="std" {{ $completed ? 'disabled' : '' }}
                                                         class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
-                                                               {{ $mode === 'std' ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/45' }}">
+                                                               {{ $mode === 'std' ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/45' }}">
                                                         {{ t('portal.brief_std') }} · {{ $item['standard'] }} {{ $item['unit'] ?? 'mm' }}
                                                     </button>
                                                     <button type="button" data-stdcustom-mode value="custom" {{ $completed ? 'disabled' : '' }}
                                                         class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
-                                                               {{ $mode === 'custom' ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/45' }}">
+                                                               {{ $mode === 'custom' ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/45' }}">
                                                         {{ t('portal.brief_custom') }}
                                                     </button>
                                                     <input type="number" data-stdcustom-value inputmode="numeric"
@@ -424,7 +424,7 @@
                                                     @endforeach
                                                     @unless ($completed)
                                                         <button type="button" data-rep-remove aria-label="{{ t('portal.brief_row_remove') }}"
-                                                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
+                                                            class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-card text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
                                                     @endunless
                                                 </div>
                                             @endforeach
@@ -437,7 +437,7 @@
                                                         <span class="min-w-0 flex-1">{!! $cell($f) !!}</span>
                                                     @endforeach
                                                     <button type="button" data-rep-remove aria-label="{{ t('portal.brief_row_remove') }}"
-                                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-white text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
+                                                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-ds border border-black/15 bg-card text-black/45 transition-colors hover:border-danger hover:text-danger">✕</button>
                                                 </div>
                                             </template>
                                             <button type="button" data-rep-add
@@ -451,9 +451,9 @@
                                 @case('boolean')
                                     <div class="flex gap-2" data-single-choice>
                                         <button type="button" data-choice value="1" {{ $completed ? 'disabled' : '' }}
-                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '1' || $value === true ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.yes') }}</button>
+                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '1' || $value === true ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/40' }}">{{ t('portal.yes') }}</button>
                                         <button type="button" data-choice value="0" {{ $completed ? 'disabled' : '' }}
-                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '0' || $value === false ? 'border-ink bg-ink text-white' : 'border-black/20 bg-white hover:border-black/40' }}">{{ t('portal.no') }}</button>
+                                            class="rounded-pill border px-5 py-2 text-[14px] font-medium {{ $value === '0' || $value === false ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/40' }}">{{ t('portal.no') }}</button>
                                     </div>
                                     @break
                                 @case('number')
@@ -521,7 +521,7 @@
                                                             aria-label="{{ $optLabel($rowOpt) }} — {{ $optLabel($col) }}"
                                                             class="rounded-pill border px-3.5 py-1.5 text-[13px] font-semibold transition-colors
                                                                 sm:mx-auto sm:h-5 sm:w-5 sm:rounded-full sm:border-2 sm:p-0
-                                                                {{ $picked ? 'border-ink bg-ink text-white' : 'border-black/25 bg-white hover:border-black/50' }}">
+                                                                {{ $picked ? 'border-ink bg-accent-dark text-white' : 'border-black/25 bg-card hover:border-black/50' }}">
                                                             <span class="sm:hidden">{{ $optLabel($col) }}</span>
                                                         </button>
                                                     @endforeach
@@ -543,9 +543,9 @@
                                     <div data-swatch data-base-max="{{ $baseMax }}" data-accent-max="{{ $accentMax }}">
                                         <div class="mb-3 flex gap-2">
                                             <button type="button" data-swatch-mode="base"
-                                                class="rounded-pill border border-ink bg-ink px-4 py-1.5 text-[13px] font-semibold text-white">{{ t('portal.brief_swatch_base') }} ({{ $baseMax }})</button>
+                                                class="rounded-pill border border-ink bg-accent-dark px-4 py-1.5 text-[13px] font-semibold text-white">{{ t('portal.brief_swatch_base') }} ({{ $baseMax }})</button>
                                             <button type="button" data-swatch-mode="accent"
-                                                class="rounded-pill border border-black/20 bg-white px-4 py-1.5 text-[13px] font-semibold">{{ t('portal.brief_swatch_accent') }} ({{ $accentMax }})</button>
+                                                class="rounded-pill border border-black/20 bg-card px-4 py-1.5 text-[13px] font-semibold">{{ t('portal.brief_swatch_accent') }} ({{ $accentMax }})</button>
                                         </div>
                                         <div class="grid grid-cols-8 gap-2">
                                             @foreach ($swatches as $hex)
@@ -554,7 +554,7 @@
                                                     title="{{ $hex }}"
                                                     class="relative aspect-square rounded-ds border-2 {{ in_array($hex, $base, true) || in_array($hex, $accent, true) ? 'border-ink' : 'border-black/10' }}"
                                                     style="background-color: {{ $hex }}">
-                                                    <span data-swatch-tag class="absolute inset-x-0 bottom-0 bg-ink/80 text-[10px] font-bold text-white">{{ in_array($hex, $accent, true) ? 'A' : (in_array($hex, $base, true) ? 'F' : '') }}</span>
+                                                    <span data-swatch-tag class="absolute inset-x-0 bottom-0 bg-accent-dark/80 text-[10px] font-bold text-white">{{ in_array($hex, $accent, true) ? 'A' : (in_array($hex, $base, true) ? 'F' : '') }}</span>
                                                 </button>
                                             @endforeach
                                         </div>
@@ -578,7 +578,7 @@
                                         @foreach ($question->options ?? [] as $option)
                                             @php $count = (int) ($inventory[$option['value']] ?? 0); @endphp
                                             <div data-inventory-row="{{ $option['value'] }}"
-                                                class="flex items-center justify-between gap-3 rounded-ds border px-3.5 py-2.5 {{ $count > 0 ? 'border-ink bg-sel-bg' : 'border-black/15 bg-white' }}">
+                                                class="flex items-center justify-between gap-3 rounded-ds border px-3.5 py-2.5 {{ $count > 0 ? 'border-ink bg-sel-bg' : 'border-black/15 bg-card' }}">
                                                 <span class="text-[14px] font-medium">{{ $optLabel($option) }}</span>
                                                 <span class="flex shrink-0 items-center gap-2">
                                                     <button type="button" data-inv-step="-1" {{ $completed ? 'disabled' : '' }}
@@ -608,7 +608,7 @@
                                         @endif
                                         @unless ($completed)
                                             <input type="file" data-file-input accept=".pdf,.jpg,.jpeg,.png"
-                                                class="block w-full text-[13px] file:mr-3 file:rounded-ds file:border-0 file:bg-ink file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-white">
+                                                class="block w-full text-[13px] file:mr-3 file:rounded-ds file:border-0 file:bg-accent-dark file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-white">
                                         @endunless
                                     </div>
                                     @break
@@ -650,7 +650,7 @@
 
     <div class="h-24" aria-hidden="true"></div>
 
-    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/95 backdrop-blur">
+    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-card/95 backdrop-blur">
         <div class="mx-auto flex w-full max-w-[1180px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 lg:px-8">
             <div class="min-w-0 flex-1">
                 <p class="text-[13px] font-semibold">
@@ -686,7 +686,7 @@
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
          role="dialog" aria-modal="true" aria-labelledby="discussTitle">
         <form method="POST" action="{{ route('portal.brief.discuss', [$project->id, $section->id]) }}"
-              class="w-full max-w-md rounded-[18px] bg-white p-6">
+              class="w-full max-w-md rounded-[18px] bg-card p-6">
             @csrf
             @if ($room)<input type="hidden" name="room_id" value="{{ $room->id }}">@endif
 
@@ -733,7 +733,7 @@
     <div id="inspireModal" hidden
          class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
          role="dialog" aria-modal="true" aria-labelledby="inspireTitle">
-        <div class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-white p-6">
+        <div class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-[18px] bg-card p-6">
             <div class="mb-4 flex items-start justify-between gap-4">
                 <div>
                     <h2 id="inspireTitle" class="text-[17px] font-bold"></h2>
@@ -817,7 +817,7 @@
                     case 'matrix': {
                         const out = {};
                         block.querySelectorAll('[data-matrix-row]').forEach(row => {
-                            const picked = row.querySelector('[data-matrix-cell].bg-ink');
+                            const picked = row.querySelector('[data-matrix-cell].bg-accent-dark');
                             if (picked) out[row.dataset.matrixRow] = picked.getAttribute('value');
                         });
                         return out;
@@ -857,7 +857,7 @@
                     case 'std_or_custom': {
                         const out = {};
                         block.querySelectorAll('[data-stdcustom-row]').forEach(row => {
-                            const on = row.querySelector('[data-stdcustom-mode].bg-ink');
+                            const on = row.querySelector('[data-stdcustom-mode].bg-accent-dark');
                             if (!on) return;
                             const mode = on.getAttribute('value');
                             const own = row.querySelector('[data-stdcustom-value]').value.trim();
@@ -884,10 +884,10 @@
                     }
                 }
 
-                // Seçim nişanı iki cürdür: adi variantlarda `bg-ink` klassı,
+                // Seçim nişanı iki cürdür: adi variantlarda `bg-accent-dark` klassı,
                 // şəkil kartlarında isə `data-selected` atributu (kartın fonu
-                // şəkildir, ona görə onu `bg-ink` ilə işarələmək olmur).
-                const PICKED = '[data-choice].bg-ink, [data-choice][data-selected]';
+                // şəkildir, ona görə onu `bg-accent-dark` ilə işarələmək olmur).
+                const PICKED = '[data-choice].bg-accent-dark, [data-choice][data-selected]';
 
                 const multi = block.querySelector('[data-multi-choice]');
                 if (multi) {
@@ -963,8 +963,8 @@
                     b.querySelector('[data-card-check]')?.classList.toggle('hidden', !on);
                 };
                 const rowOn = (b, on) => {
-                    b.classList.toggle('border-ink', on); b.classList.toggle('bg-ink', on); b.classList.toggle('text-white', on);
-                    b.classList.toggle('border-black/20', !on); b.classList.toggle('bg-white', !on);
+                    b.classList.toggle('border-ink', on); b.classList.toggle('bg-accent-dark', on); b.classList.toggle('text-white', on);
+                    b.classList.toggle('border-black/20', !on); b.classList.toggle('bg-card', !on);
                     const box = b.querySelector('span:first-child');
                     if (box && box.classList.contains('rounded-[4px]')) {
                         box.classList.toggle('border-yellow', on);
@@ -975,7 +975,7 @@
                     }
                 };
                 const setOn = (b, on) => isCard(b) ? cardOn(b, on) : rowOn(b, on);
-                const isOn = (b) => isCard(b) ? b.hasAttribute('data-selected') : b.classList.contains('bg-ink');
+                const isOn = (b) => isCard(b) ? b.hasAttribute('data-selected') : b.classList.contains('bg-accent-dark');
 
                 block.querySelectorAll('[data-choice]').forEach(btn => {
                     btn.addEventListener('click', () => {
@@ -1010,11 +1010,11 @@
                         const was = btn.classList.contains('text-white');
                         row.querySelectorAll('[data-rating-btn]').forEach(b => {
                             b.classList.remove('border-ok', 'bg-ok', 'border-danger', 'bg-danger', 'text-white');
-                            b.classList.add('border-black/20', 'bg-white');
+                            b.classList.add('border-black/20', 'bg-card');
                         });
                         if (!was) {
                             const like = btn.getAttribute('value') === 'like';
-                            btn.classList.remove('border-black/20', 'bg-white');
+                            btn.classList.remove('border-black/20', 'bg-card');
                             btn.classList.add(like ? 'border-ok' : 'border-danger', like ? 'bg-ok' : 'bg-danger', 'text-white');
                         }
                         const verdict = was ? null : btn.getAttribute('value');
@@ -1029,14 +1029,14 @@
                     btn.addEventListener('click', () => {
                         const row = btn.closest('[data-stdcustom-row]');
                         const input = row.querySelector('[data-stdcustom-value]');
-                        const was = btn.classList.contains('bg-ink');
+                        const was = btn.classList.contains('bg-accent-dark');
                         row.querySelectorAll('[data-stdcustom-mode]').forEach(b => {
-                            b.classList.remove('border-ink', 'bg-ink', 'text-white');
-                            b.classList.add('border-black/20', 'bg-white');
+                            b.classList.remove('border-ink', 'bg-accent-dark', 'text-white');
+                            b.classList.add('border-black/20', 'bg-card');
                         });
                         if (!was) {
-                            btn.classList.remove('border-black/20', 'bg-white');
-                            btn.classList.add('border-ink', 'bg-ink', 'text-white');
+                            btn.classList.remove('border-black/20', 'bg-card');
+                            btn.classList.add('border-ink', 'bg-accent-dark', 'text-white');
                         }
                         const custom = !was && btn.getAttribute('value') === 'custom';
                         input.classList.toggle('hidden', !custom);
@@ -1078,11 +1078,11 @@
                     cell.addEventListener('click', () => {
                         const row = cell.closest('[data-matrix-row]');
                         row.querySelectorAll('[data-matrix-cell]').forEach(c => {
-                            c.classList.remove('border-ink', 'bg-ink', 'text-white');
-                            c.classList.add('border-black/25', 'bg-white');
+                            c.classList.remove('border-ink', 'bg-accent-dark', 'text-white');
+                            c.classList.add('border-black/25', 'bg-card');
                         });
-                        cell.classList.remove('border-black/25', 'bg-white');
-                        cell.classList.add('border-ink', 'bg-ink', 'text-white');
+                        cell.classList.remove('border-black/25', 'bg-card');
+                        cell.classList.add('border-ink', 'bg-accent-dark', 'text-white');
                         save(block, delegate);
                     });
                 });
@@ -1097,10 +1097,10 @@
                             swatch.querySelectorAll('[data-swatch-mode]').forEach(b => {
                                 const on = b === btn;
                                 b.classList.toggle('border-ink', on);
-                                b.classList.toggle('bg-ink', on);
+                                b.classList.toggle('bg-accent-dark', on);
                                 b.classList.toggle('text-white', on);
                                 b.classList.toggle('border-black/20', !on);
-                                b.classList.toggle('bg-white', !on);
+                                b.classList.toggle('bg-card', !on);
                             });
                         });
                     });
@@ -1133,7 +1133,7 @@
                         row.classList.toggle('border-ink', next > 0);
                         row.classList.toggle('bg-sel-bg', next > 0);
                         row.classList.toggle('border-black/15', next === 0);
-                        row.classList.toggle('bg-white', next === 0);
+                        row.classList.toggle('bg-card', next === 0);
                         save(block, delegate);
                     });
                 });

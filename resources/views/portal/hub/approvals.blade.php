@@ -4,7 +4,7 @@
 
     <div class="space-y-4">
         @forelse ($approvals as $approval)
-            <div class="rounded-[16px] border border-black/8 bg-white p-5">
+            <div class="rounded-[16px] border border-black/8 bg-card p-5">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div class="min-w-0">
                         {{-- Layihə adı hər sətirdə: qlobal siyahıda kontekst olmadan
@@ -45,7 +45,7 @@
                 </div>
             </div>
         @empty
-            <div class="rounded-[16px] border border-black/8 bg-white px-5 py-12 text-center">
+            <div class="rounded-[16px] border border-black/8 bg-card px-5 py-12 text-center">
                 <p class="text-[14px] text-black/40">{{ t('portal.no_pending_approvals') }}</p>
             </div>
         @endforelse

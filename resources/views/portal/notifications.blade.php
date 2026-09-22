@@ -33,7 +33,7 @@
             <a href="{{ route('portal.notifications', $key === 'all' ? [] : ['filter' => $key]) }}"
                @if ($filter === $key) aria-current="page" @endif
                class="rounded-pill px-4 py-2 text-[13px] font-semibold transition-colors
-                      {{ $filter === $key ? 'bg-ink text-white' : 'bg-neutral-soft text-black/55 hover:text-ink' }}">
+                      {{ $filter === $key ? 'bg-accent-dark text-white' : 'bg-neutral-soft text-black/55 hover:text-ink' }}">
                 {{ $label }}
             </a>
         @endforeach
@@ -47,7 +47,7 @@
             @endphp
 
             {{-- Oxunmamış sətir: ağ fon + sarı sol zolaq; oxunmuş sətir sönükdür. --}}
-            <div class="rounded-[16px] border p-5 {{ $unread ? 'border-l-4 border-l-yellow border-black/8 bg-white' : 'border-black/8 bg-white/60' }}">
+            <div class="rounded-[16px] border p-5 {{ $unread ? 'border-l-4 border-l-yellow border-black/8 bg-card' : 'border-black/8 bg-card/60' }}">
                 {{-- Keçid yalnız bildirişin özü verdikdə olur (AutomationAlert
                      `url`). Ayrıca düymə əvəzinə başlıq link edilir — belədə
                      yeni tərcümə açarı (düymə etiketi) lazım gəlmir. --}}
@@ -69,7 +69,7 @@
                 <p class="mt-2 text-[13px] text-black/40">{{ $notification->created_at->format('d.m.Y H:i') }}</p>
             </div>
         @empty
-            <div class="rounded-[16px] border border-black/8 bg-white px-5 py-12 text-center">
+            <div class="rounded-[16px] border border-black/8 bg-card px-5 py-12 text-center">
                 <p class="text-[14px] font-semibold text-black/50">{{ t('portal.no_notifications') }}</p>
                 <p class="mt-1 text-[13px] text-black/40">{{ t('portal.notifications_hint') }}</p>
             </div>

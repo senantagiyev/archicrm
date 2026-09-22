@@ -40,6 +40,20 @@
   --color-ink-alt: #141414;
   --color-off-white: #efefef;
 
+  /* SƏTH ≠ MƏTN. `bg-white` və `text-white` eyni token idi, halbuki tünd
+     temada biri tündləşməli, digəri ağ qalmalıdır (tünd panelin üstündəki
+     mətn üçün). Ona görə səthlər ayrıca tokendədir:
+       --color-card         — kart və panel fonu (açıq temada ağ)
+       --color-accent-dark  — tünd sətir: sol panel, tünd düymə
+     `text-white` toxunulmamış qalır və hər iki temada ağdır. */
+  --color-card: #ffffff;
+  --color-accent-dark: #111111;
+
+  /* Sol panel `--color-accent-dark`-dan AYRIDIR: tünd temada seçilmiş element
+     kartdan AÇIQ olmalıdır ki, seçim görünsün, sol panel isə səhifədən TÜND
+     qalmalıdır. Eyni token ikisinə birdən xidmət edə bilmir. */
+  --color-sidebar: #111111;
+
   /* state */
   --color-green: #00a613;
   --color-red: #d3524c;
@@ -73,6 +87,45 @@
   --radius-pill: 100px;
 }
 
+/* ── Tünd tema ───────────────────────────────────────────────────────────
+   Tailwind 4 utiliti-ləri token dəyişənlərinə istinad edir, ona görə burada
+   dəyişəni yenidən təyin etmək bütün `bg-card`, `text-ink`, `border-black/8`
+   siniflərini bir yerdən çevirir — yüzlərlə blade sinfini əl ilə yazmaq
+   lazım gəlmir.
+
+   `--color-black` ağa çevrilir: portalda solid `bg-black`/`text-black` YOXDUR,
+   yalnız `black/NN` şəffaflıqları var (sönük mətn və sərhədlər) — onlar tünd
+   fonda ağın şəffaflığı olmalıdır. Bu yoxlanılıb, solid istifadə tapılmayıb.
+
+   Tema YALNIZ `<html data-theme>` ilə işə düşür — landing səhifəsi və Filament
+   paneli bu atributu qoymur, ona görə onlara toxunmur. */
+:root[data-theme='dark'] {
+  --color-black: #ffffff;
+
+  --color-card: #191b20;
+  /* Kartdan AÇIQ: seçilmiş variant və tünd düymə tünd fonda itməməlidir. */
+  --color-accent-dark: #3b414d;
+  /* Səhifədən TÜND: sol panel hər iki temada ən tünd səthdir. */
+  --color-sidebar: #0c0d10;
+  --color-gray-soft: #101216;
+  --color-gray-soft2: #0e1013;
+  --color-neutral-soft: #24272e;
+
+  --color-ink: #eceef1;
+  --color-ink-alt: #d7dade;
+  --color-off-white: #24272e;
+
+  /* Sarı brend rəngidir — tündləşdirmirik, yalnız seçim fonunu fona uyğunlaşdırırıq. */
+  --color-sel-bg: #302c12;
+
+  /* Status rəngləri tünd fonda parlaq qalmalıdır, «soft» variantları isə
+     açıq pastel əvəzinə tünd tona keçir — əks halda mətn oxunmurdu. */
+  --color-ok-soft: #14301f;
+  --color-warn-soft: #33270c;
+  --color-success-soft: #14301f;
+  --color-error-soft: #3a1917;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
@@ -89,6 +142,20 @@
   a {
     text-decoration: none;
     color: inherit;
+  }
+
+  /* Form sahələrinin fonu brauzerin standartı (ağ) idi — tünd temada səhifənin
+     ortasında parlaq ağ qutular qalırdı. İndi səth tokenindən gəlir, yəni açıq
+     temada eyni ağ, tünd temada isə kartla eyni tondur. */
+  input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  textarea,
+  select {
+    background-color: var(--color-card);
+    color: var(--color-ink);
+  }
+
+  ::placeholder {
+    color: color-mix(in oklab, var(--color-black) 40%, transparent);
   }
 
   img {
@@ -137,13 +204,13 @@
   .ui-btn                            { @apply flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-ds; }
   .ui-btn-primary                    { @apply bg-yellow text-ink; }
   .ui-btn-primary[data-hover="true"] { @apply transition-[filter] duration-150 hover:brightness-95; }
-  .ui-btn-dark                       { @apply bg-ink text-white; }
+  .ui-btn-dark                       { @apply bg-accent-dark text-white; }
   .ui-btn-dark[data-hover="true"]    { @apply transition-[filter] duration-150 hover:brightness-110; }
-  .ui-btn-outline                    { @apply border border-black/20 bg-white text-ink; }
+  .ui-btn-outline                    { @apply border border-black/20 bg-card text-ink; }
   .ui-btn-outline[data-hover="true"] { @apply transition-colors duration-150 hover:border-black/35 hover:bg-gray-soft2; }
   .ui-btn-ghost                      { @apply bg-transparent text-danger; }
   .ui-btn-ghost[data-hover="true"]   { @apply transition-colors duration-150 hover:bg-danger/10; }
-  .ui-btn-danger                     { @apply border border-danger/80 bg-white text-danger; }
+  .ui-btn-danger                     { @apply border border-danger/80 bg-card text-danger; }
   .ui-btn-danger[data-hover="true"]  { @apply transition-colors duration-150 hover:border-danger hover:bg-danger/8; }
   .ui-btn-on-ink                     { @apply border border-white/35 bg-transparent text-white/85; }
   .ui-btn-on-ink[data-hover="true"]  { @apply transition-colors duration-150 hover:border-white/60 hover:bg-white/10; }

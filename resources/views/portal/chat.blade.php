@@ -17,7 +17,7 @@
     </form>
 
     @if ($results !== null)
-        <div class="mb-4 rounded-ds-xl border border-black/8 bg-white p-5">
+        <div class="mb-4 rounded-ds-xl border border-black/8 bg-card p-5">
             <p class="mb-3 text-helper font-semibold text-black/55">
                 {{ t('portal.chat_search_results') }} — {{ count($results) }}
             </p>
@@ -40,7 +40,7 @@
         </div>
     @endif
 
-    <div class="flex h-[60vh] flex-col overflow-hidden rounded-ds-xl border border-black/8 bg-white">
+    <div class="flex h-[60vh] flex-col overflow-hidden rounded-ds-xl border border-black/8 bg-card">
         <div id="chatThread" class="flex-1 space-y-3 overflow-y-auto p-5"
             data-poll-url="{{ route('portal.chat.poll', $project) }}"
             data-send-url="{{ route('portal.chat.send', $project) }}"
@@ -116,7 +116,7 @@
                 wrap.className = 'flex ' + (m.mine ? 'justify-end' : 'justify-start');
                 const box = document.createElement('div');
                 box.className = 'max-w-[75%] rounded-ds-lg px-4 py-3 text-body ' +
-                    (m.mine ? 'bg-ink text-white' : (m.staff ? 'bg-sel-bg' : 'bg-gray-soft'));
+                    (m.mine ? 'bg-accent-dark text-white' : (m.staff ? 'bg-sel-bg' : 'bg-gray-soft'));
                 const meta = document.createElement('p');
                 meta.className = 'mb-1 text-helper font-medium ' + (m.mine ? 'text-yellow' : 'text-black/55');
                 meta.textContent = m.author + ' · ' + m.at;

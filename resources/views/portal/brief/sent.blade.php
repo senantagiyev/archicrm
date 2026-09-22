@@ -27,7 +27,7 @@
                     <span class="mt-2 flex items-center gap-1.5 text-[13px] leading-tight
                                  {{ $active ? 'font-semibold text-ink' : ($done ? 'text-black/55' : 'text-black/35') }}">
                         <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[11px] font-bold
-                                     {{ $done ? 'bg-ok text-white' : ($active ? 'bg-ink text-white' : 'bg-neutral-soft text-black/45') }}">
+                                     {{ $done ? 'bg-ok text-white' : ($active ? 'bg-accent-dark text-white' : 'bg-neutral-soft text-black/45') }}">
                             {{ $done ? '✓' : $n }}
                         </span>
                         <span class="min-w-0">{{ $label }}</span>
@@ -36,7 +36,7 @@
             @endforeach
         </ol>
 
-        <div class="rounded-[18px] border border-black/8 bg-white p-8 text-center sm:p-10">
+        <div class="rounded-[18px] border border-black/8 bg-card p-8 text-center sm:p-10">
             @if ($brief->needsClarification())
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sel-bg text-2xl">✎</span>
                 <h1 class="mt-5 font-b2b text-[24px] font-extrabold tracking-tight">{{ t('portal.brief_needs_clar_title') }}</h1>
@@ -72,7 +72,7 @@
 
         {{-- «Quick summary»: dizaynerə nəyin yola düşdüyünü müştəri bir baxışda görür. --}}
         @if ($summary !== [])
-            <div class="mt-4 rounded-[18px] border border-black/8 bg-white p-5">
+            <div class="mt-4 rounded-[18px] border border-black/8 bg-card p-5">
                 <h2 class="mb-3 text-[13px] font-semibold text-black/55">{{ t('portal.brief_quick_summary') }}</h2>
                 <dl class="grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
                     @foreach ($summary as $label => $value)

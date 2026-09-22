@@ -56,7 +56,7 @@
         <div class="mt-6 space-y-3">
             @foreach ($map as $entry)
                 @php $section = $entry['section']; @endphp
-                <div class="rounded-ds-md border border-black/10 bg-white p-5">
+                <div class="rounded-ds-md border border-black/10 bg-card p-5">
                     <div class="mb-3 flex items-start justify-between gap-3">
                         <h2 class="text-[16px] font-semibold">{{ $entry['room']?->label ?? $section->getTranslation('name', $locale) }}</h2>
                         <a href="{{ route('portal.brief.section', array_filter([$project->id, $section->id, $entry['room']?->id])) }}"
@@ -86,7 +86,7 @@
         </div>
 
         {{-- Göndərmə --}}
-        <div class="mt-6 rounded-ds-md border border-black/10 bg-white p-5">
+        <div class="mt-6 rounded-ds-md border border-black/10 bg-card p-5">
             @if ($completed)
                 <p class="text-sm font-semibold text-ok">{{ t('portal.brief_completed_note') }}</p>
             @else

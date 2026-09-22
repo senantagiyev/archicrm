@@ -5,8 +5,8 @@
     @endphp
 
     {{-- Hero --}}
-    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-white">
-        <div class="flex flex-wrap items-center justify-between gap-6 bg-ink px-6 py-7 text-white sm:px-8">
+    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-card">
+        <div class="flex flex-wrap items-center justify-between gap-6 bg-accent-dark px-6 py-7 text-white sm:px-8">
             <div class="min-w-0">
                 <span class="inline-flex items-center gap-2 text-helper font-medium text-white/70">
                     <span class="h-2 w-2 rounded-[2px] bg-yellow"></span>{{ $project->type->translatedLabel() }}
@@ -80,7 +80,7 @@
         @endphp
         @foreach ($cards as [$key, $url, $label, $sub, $icon])
             <a href="{{ $url }}"
-               class="group relative flex flex-col rounded-ds-xl border border-black/8 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
+               class="group relative flex flex-col rounded-ds-xl border border-black/8 bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
                 @if ($key === 'approvals' && $pendingApprovals > 0)
                     <span class="absolute right-4 top-4 flex h-6 min-w-6 items-center justify-center rounded-full bg-yellow px-1.5 text-helper font-semibold text-ink">{{ $pendingApprovals }}</span>
                 @endif
@@ -95,7 +95,7 @@
 
     {{-- Stages timeline --}}
     <h2 class="mb-3 mt-8 text-body font-semibold text-ink">{{ t('portal.stages') }}</h2>
-    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-white">
+    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-card">
         @forelse ($project->stages as $stage)
             <div class="flex items-center gap-4 border-b border-black/5 px-5 py-4 last:border-0">
                 <span @class([

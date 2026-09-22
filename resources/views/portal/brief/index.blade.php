@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold">{{ t('portal.nav_brief') }}</h1>
             <p class="mt-1 text-sm text-black/50">{{ t('portal.brief_intro') }}</p>
         </div>
-        <div class="min-w-[220px] rounded-ds-md border border-black/10 bg-white px-5 py-3">
+        <div class="min-w-[220px] rounded-ds-md border border-black/10 bg-card px-5 py-3">
             <div class="mb-1.5 flex items-center justify-between text-[13px]">
                 <span class="font-semibold text-black/60">{{ t('portal.brief_total_progress') }}</span>
                 <span class="font-bold">{{ $brief->progress }}%</span>
@@ -51,7 +51,7 @@
         @endif
     @else
         {{-- Screen 00 — welcome: dəyər + vaxt qiymətləndirməsi + override ipucu --}}
-        <div class="mb-6 rounded-ds-md border border-black/10 bg-white p-5">
+        <div class="mb-6 rounded-ds-md border border-black/10 bg-card p-5">
             <p class="text-sm font-semibold">{{ t('portal.brief_welcome_title', ['minutes' => $totalMinutes]) }}</p>
             <ul class="mt-2 space-y-1 text-[13px] text-black/60">
                 <li>• {{ t('portal.brief_welcome_hint_delegate') }}</li>
@@ -76,7 +76,7 @@
                 $cardIntro = $isRoomCard ? null : $entry['section']->getTranslation('intro', $locale);
             @endphp
             <a href="{{ route('portal.brief.section', array_filter([$project->id, $entry['section']->id, $entry['room']?->id])) }}"
-                class="group flex flex-col rounded-ds-md border border-black/10 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-black/30 hover:shadow-[0_10px_30px_-18px_rgba(0,0,0,.3)]">
+                class="group flex flex-col rounded-ds-md border border-black/10 bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-black/30 hover:shadow-[0_10px_30px_-18px_rgba(0,0,0,.3)]">
                 <div class="mb-2 flex items-start justify-between gap-2">
                     <span class="text-[13px] font-semibold normal-case tracking-normal text-black/40">
                         {{ $isRoomCard ? t('portal.brief_room') : t('portal.brief_section_no', ['number' => $stepNo]) }}

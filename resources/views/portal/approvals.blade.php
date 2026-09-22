@@ -3,7 +3,7 @@
 
     <div class="space-y-4">
         @forelse ($approvals as $approval)
-            <div class="rounded-ds-xl border border-black/8 bg-white p-6">
+            <div class="rounded-ds-xl border border-black/8 bg-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p class="flex flex-wrap items-center gap-2 text-body font-semibold">
@@ -133,7 +133,7 @@
                 @endif
             </div>
         @empty
-            <div class="rounded-ds-xl border border-black/8 bg-white px-5 py-12 text-center text-body text-black/55">
+            <div class="rounded-ds-xl border border-black/8 bg-card px-5 py-12 text-center text-body text-black/55">
                 {{ t('portal.no_approvals') }}
             </div>
         @endforelse

@@ -2,9 +2,9 @@
     <h1 class="mb-6 font-b2b text-[26px] font-extrabold tracking-tight">{{ t('portal.nav_profile') }}</h1>
 
     <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div class="rounded-[16px] border border-black/8 bg-white p-6">
+        <div class="rounded-[16px] border border-black/8 bg-card p-6">
             <div class="mb-6 flex items-center gap-4">
-                <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-ink text-[20px] font-bold text-white">
+                <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-accent-dark text-[20px] font-bold text-white">
                     {{ mb_strtoupper(mb_substr($user->name, 0, 1)) }}
                 </span>
                 <div class="min-w-0">
@@ -47,7 +47,7 @@
         </div>
 
         <div class="space-y-4">
-            <div class="rounded-[16px] border border-black/8 bg-white p-6">
+            <div class="rounded-[16px] border border-black/8 bg-card p-6">
                 <p class="mb-3 text-[13px] font-semibold">{{ t('portal.profile_language') }}</p>
                 <form method="post" action="{{ route('locale.switch') }}" class="grid gap-2">
                     @csrf
@@ -65,7 +65,7 @@
                 </form>
             </div>
 
-            <div class="rounded-[16px] border border-black/8 bg-white p-6">
+            <div class="rounded-[16px] border border-black/8 bg-card p-6">
                 <form method="post" action="{{ route('portal.logout') }}">
                     @csrf
                     <button class="ui-btn ui-btn-outline h-11 w-full px-5 text-[14px] font-bold" data-hover="true">

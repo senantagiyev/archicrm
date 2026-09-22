@@ -17,7 +17,7 @@
         <p class="mt-1 text-helper text-black/55">{{ t('portal.stages_intro') }}</p>
     </div>
 
-    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-white">
+    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-card">
         @forelse ($stages as $stage)
             <div class="flex flex-col gap-3 border-b border-black/5 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:gap-4">
                 <span @class([

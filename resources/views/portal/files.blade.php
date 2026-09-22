@@ -28,7 +28,7 @@
             <a href="{{ $key === 'all' ? route('portal.files', $project) : route('portal.files', [$project, 'filter' => $key]) }}"
                @if ($on) aria-current="page" @endif
                class="flex items-center gap-1.5 rounded-pill border px-3.5 py-1.5 text-helper font-medium transition-colors
-                      {{ $on ? 'border-ink bg-ink text-white' : 'border-black/15 bg-white hover:border-black/35' }}">
+                      {{ $on ? 'border-ink bg-accent-dark text-white' : 'border-black/15 bg-card hover:border-black/35' }}">
                 {{ $label }}
                 @if ($count !== null && $count > 0)
                     <span class="text-[11px] font-bold {{ $on ? 'text-white/70' : 'text-black/45' }}">{{ $count }}</span>
@@ -37,7 +37,7 @@
         @endforeach
     </div>
 
-    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-white">
+    <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-card">
         @forelse ($files as $file)
             <a href="{{ route('portal.files.download', [$project, $file]) }}"
                class="group flex items-center gap-4 border-b border-black/5 px-5 py-4 transition-colors last:border-0 hover:bg-neutral-soft/50">

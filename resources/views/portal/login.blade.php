@@ -12,7 +12,7 @@
 </head>
 <body class="flex min-h-screen flex-col bg-gray-soft2 text-ink antialiased">
 
-    <header class="border-b border-black/8 bg-white">
+    <header class="border-b border-black/8 bg-card">
         <div class="mx-auto flex h-[74px] max-w-[1120px] items-center justify-between px-6">
             <a href="{{ route('landing') }}"><x-archi-logo /></a>
             <a href="{{ route('entry') }}" class="text-helper font-medium text-black/60 transition-colors hover:text-ink">Geri</a>
@@ -20,7 +20,7 @@
     </header>
 
     <main class="flex flex-1 items-center justify-center px-6 py-16">
-        <div class="w-full max-w-[420px] rounded-[18px] border border-black/8 bg-white p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
+        <div class="w-full max-w-[420px] rounded-[18px] border border-black/8 bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
             <span class="inline-flex items-center gap-2 text-helper font-semibold text-black/60">
                 <span class="h-2 w-2 rounded-[2px] bg-yellow"></span>Müştəri portalı
             </span>

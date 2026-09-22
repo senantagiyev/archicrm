@@ -3,14 +3,14 @@
     <p class="mb-7 text-body text-black/55">Layihələrinizin gedişatını buradan izləyin.</p>
 
     @if ($projects->isEmpty())
-        <div class="rounded-ds-xl border border-black/8 bg-white p-12 text-center text-body text-black/55">
+        <div class="rounded-ds-xl border border-black/8 bg-card p-12 text-center text-body text-black/55">
             {{ t('portal.no_projects') }}
         </div>
     @else
         <div class="grid gap-4 sm:grid-cols-2">
             @foreach ($projects as $project)
                 <a href="{{ route('portal.projects.show', $project) }}"
-                    class="group rounded-ds-xl border border-black/8 bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_12px_34px_-18px_rgba(0,0,0,.28)]">
+                    class="group rounded-ds-xl border border-black/8 bg-card p-6 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_12px_34px_-18px_rgba(0,0,0,.28)]">
                     <div class="mb-3.5 flex items-start justify-between gap-3">
                         <div class="min-w-0">
                             <h2 class="flex items-center gap-2 text-body-lg font-semibold">

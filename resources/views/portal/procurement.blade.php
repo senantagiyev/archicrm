@@ -6,7 +6,7 @@
              siyahının sonuna sürüşmədən faylı götürə bilsin. Bizdə CSV-dir
              (Excel onu birbaşa açır), ona görə etiket də «CSV»dir. --}}
         <a href="{{ route('portal.procurement.export', $project) }}"
-           class="ui-btn inline-flex items-center gap-2 rounded-ds-lg bg-ink px-4 py-2.5 text-helper font-semibold text-white transition-colors hover:bg-ink/85">
+           class="ui-btn inline-flex items-center gap-2 rounded-ds-lg bg-accent-dark px-4 py-2.5 text-helper font-semibold text-white transition-colors hover:bg-accent-dark/85">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M12 3v12M7 11l5 5 5-5M4 20h16"/>
             </svg>
@@ -16,7 +16,7 @@
 
     {{-- Sürüşmə YALNIZ bu qutudadır: cədvəl 19 sütunludur və telefonda səhifənin
          özünü üfüqi sürüşdürsəydi, başlıq və menyu da kənara çıxardı. --}}
-    <div class="overflow-x-auto rounded-ds-xl border border-black/8 bg-white">
+    <div class="overflow-x-auto rounded-ds-xl border border-black/8 bg-card">
         <table class="w-full min-w-[1800px] text-body">
             <thead>
                 <tr class="border-b border-black/8 text-left text-helper font-semibold text-black/60">

@@ -44,6 +44,19 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ $title ? $title.' — ' : '' }}ARCHI</title>
+    {{-- Tema CSS-dən ƏVVƏL təyin olunur: sonra qoysaq səhifə bir an açıq
+         rənglə görünüb tündə keçərdi («flash of wrong theme»). Seçim yoxdursa
+         sistem ayarına uyulur. --}}
+    <script>
+        (() => {
+            try {
+                const saved = localStorage.getItem('archi-theme');
+                const dark = saved ? saved === 'dark'
+                    : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (dark) document.documentElement.dataset.theme = 'dark';
+            } catch (e) {}
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
@@ -52,7 +65,7 @@
 <body class="min-h-screen bg-gray-soft2 text-ink">
 
     {{-- ── Desktop: dark left sidebar (mockup) ─────────────────────────── --}}
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col bg-ink text-white lg:flex">
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col bg-sidebar text-white lg:flex">
         <div class="px-6 pb-5 pt-6">
             <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" /></a>
         </div>
@@ -93,7 +106,7 @@
     </aside>
 
     {{-- ── Mobile: dark top bar + scrollable nav ───────────────────────── --}}
-    <header class="bg-ink text-white lg:hidden">
+    <header class="bg-sidebar text-white lg:hidden">
         <div class="flex h-[60px] items-center justify-between px-4">
             <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" :sub="false" /></a>
             <div class="flex items-center gap-2">
@@ -131,7 +144,7 @@
     <div class="lg:pl-[240px]">
         {{-- Layihə başlığı: geri oxu · ad · istifadəçi. Ad mərkəzdən sola keçdi —
              tab, başlıq və kartlar eyni sol oxdan başlamalıdır. --}}
-        <div class="hidden border-b border-black/8 bg-white lg:block">
+        <div class="hidden border-b border-black/8 bg-card lg:block">
             <div class="{{ $container }} flex h-[64px] items-center gap-4">
                 @if ($project)
                     <a href="{{ route('portal.home') }}" aria-label="{{ t('portal.my_projects') }}"
@@ -161,9 +174,22 @@
 
                 <span class="flex-1"></span>
 
+                {{-- Tema keçidi. Sol paneldə deyil, başlıqdadır: sol panel hər iki
+                     temada tünddür, ona görə düymənin vəziyyəti orada oxunmazdı. --}}
+                <button type="button" data-theme-toggle
+                        class="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] text-ink/60 transition-colors hover:bg-neutral-soft hover:text-ink"
+                        aria-label="{{ t('portal.theme_toggle') }}" title="{{ t('portal.theme_toggle') }}">
+                    <svg data-theme-icon="light" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+                    </svg>
+                    <svg data-theme-icon="dark" hidden width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>
+                    </svg>
+                </button>
+
                 @auth('customer')
                     <a href="{{ route('portal.profile') }}" class="flex shrink-0 items-center gap-3 rounded-[10px] px-2 py-1 transition-colors hover:bg-neutral-soft">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-[12px] font-bold text-white">
+                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-accent-dark text-[12px] font-bold text-white">
                             {{ mb_strtoupper(mb_substr(auth('customer')->user()->name, 0, 1)) }}
                         </span>
                         <span class="text-[13px] font-semibold">{{ auth('customer')->user()->name }}</span>
@@ -174,7 +200,7 @@
 
         {{-- Layihə tabları (yalnız desktop — mobil variant yuxarıdakı header-dədir). --}}
         @if ($project)
-            <div class="hidden border-b border-black/8 bg-white lg:block">
+            <div class="hidden border-b border-black/8 bg-card lg:block">
                 {{-- Roomix-də tablar zolağın BÜTÜN ENİNƏ bərabər paylanır (ölçüldü:
                      aralıqlar ~98px, kənarlarda ~57px), sola yığılmır. Ona görə hər
                      tab `flex-1 basis-0` ilə boşluğu bölüşür və məzmunu mərkəzdədir.
@@ -224,6 +250,38 @@
             © {{ date('Y') }} ARCHI
         </footer>
     </div>
+
+    <script>
+        // Tema keçidi. Seçim `localStorage`-dadır, yəni serverə yazılmır və
+        // cihaza bağlı qalır — istifadəçi telefonda tünd, masaüstündə açıq
+        // işlədə bilir. Səhifə yüklənəndə vəziyyəti <head>-dəki skript qurur,
+        // burada yalnız ikon sinxronlaşdırılır və klik emal olunur.
+        (() => {
+            const root = document.documentElement;
+            const button = document.querySelector('[data-theme-toggle]');
+            if (!button) return;
+
+            const sync = () => {
+                const dark = root.dataset.theme === 'dark';
+                button.querySelector('[data-theme-icon="light"]').hidden = dark;
+                button.querySelector('[data-theme-icon="dark"]').hidden = !dark;
+                button.setAttribute('aria-pressed', dark ? 'true' : 'false');
+            };
+
+            button.addEventListener('click', () => {
+                const dark = root.dataset.theme === 'dark';
+                if (dark) {
+                    delete root.dataset.theme;
+                } else {
+                    root.dataset.theme = 'dark';
+                }
+                try { localStorage.setItem('archi-theme', dark ? 'light' : 'dark'); } catch (e) {}
+                sync();
+            });
+
+            sync();
+        })();
+    </script>
 
     @auth('customer')
     <script>

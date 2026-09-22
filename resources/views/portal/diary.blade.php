@@ -11,7 +11,7 @@
             $photos = collect($entry->photos ?? [])->filter()->values();
         @endphp
 
-        <article class="mb-4 rounded-ds-xl border border-black/8 bg-white px-5 py-4 last:mb-0">
+        <article class="mb-4 rounded-ds-xl border border-black/8 bg-card px-5 py-4 last:mb-0">
             <div class="mb-2 flex flex-wrap items-center gap-2 text-helper text-black/55">
                 <span class="font-semibold text-black/70">{{ $entry->published_at->format('d.m.Y H:i') }}</span>
                 @if ($entry->author)
@@ -38,7 +38,7 @@
             @endif
         </article>
     @empty
-        <div class="rounded-ds-xl border border-black/8 bg-white px-5 py-12 text-center">
+        <div class="rounded-ds-xl border border-black/8 bg-card px-5 py-12 text-center">
             <p class="text-body text-black/55">{{ t('portal.no_diary') }}</p>
         </div>
     @endforelse

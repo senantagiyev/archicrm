@@ -5,7 +5,7 @@
         <p class="mt-2 text-[14px] leading-relaxed text-black/60">{{ t('portal.brief_clarifications_intro') }}</p>
 
         @if ($comments->isEmpty())
-            <div class="mt-8 rounded-[16px] border border-black/8 bg-white p-10 text-center text-sm text-black/50">
+            <div class="mt-8 rounded-[16px] border border-black/8 bg-card p-10 text-center text-sm text-black/50">
                 {{ t('portal.brief_no_clarifications') }}
             </div>
         @else
@@ -17,7 +17,7 @@
                             ? route('portal.brief.section', array_filter([$project->id, $section->id, $comment->brief_room_id]))
                             : route('portal.brief', $project);
                     @endphp
-                    <div class="rounded-[16px] border border-yellow-line bg-white p-5">
+                    <div class="rounded-[16px] border border-yellow-line bg-card p-5">
                         <p class="text-[13px] font-semibold text-black/45">
                             {{ $comment->room?->label ?? $section?->getTranslation('name', app()->getLocale()) }}
                         </p>
@@ -33,7 +33,7 @@
                 @endforeach
             </div>
 
-            <div class="mt-8 rounded-[16px] border border-black/8 bg-white p-6">
+            <div class="mt-8 rounded-[16px] border border-black/8 bg-card p-6">
                 <p class="text-[13px] text-black/55">{{ t('portal.brief_readonly_note') }}</p>
                 <form method="post" action="{{ route('portal.brief.clarifications.send', $project) }}" class="mt-4">
                     @csrf

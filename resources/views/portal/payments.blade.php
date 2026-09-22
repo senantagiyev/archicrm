@@ -1,7 +1,7 @@
 <x-portal.shell :title="t('portal.nav_payments')" :project="$project" active="payments">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-heading font-semibold">{{ t('portal.nav_payments') }}</h1>
-        <div class="flex items-baseline gap-3 rounded-ds-lg border border-black/8 bg-white px-5 py-3">
+        <div class="flex items-baseline gap-3 rounded-ds-lg border border-black/8 bg-card px-5 py-3">
             <span class="text-helper font-medium text-black/60">{{ t('portal.debt') }}</span>
             <span class="text-title font-semibold {{ (float) $project->debt > 0 ? 'text-error' : 'text-ok' }}">
                 {{ number_format((float) $project->debt, 2, '.', ' ') }} ₼
@@ -9,7 +9,7 @@
         </div>
     </div>
 
-    <div class="overflow-x-auto rounded-ds-xl border border-black/8 bg-white">
+    <div class="overflow-x-auto rounded-ds-xl border border-black/8 bg-card">
         <table class="w-full text-body">
             <thead>
                 <tr class="border-b border-black/8 text-left text-helper font-semibold text-black/60">
