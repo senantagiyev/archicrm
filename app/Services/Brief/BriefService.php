@@ -439,6 +439,47 @@ class BriefService
         ));
     }
 
+    /**
+     * Roomix: «message your designer and they will reopen the brief».
+     *
+     * Göndərilmiş brifi bütövlükdə yenidən redaktəyə açır. `requestClarification`
+     * yalnız işarələnmiş sualları açır — bu isə müştəri «hər şeyi yenidən
+     * nəzərdən keçirmək istəyirəm» dedikdə lazımdır.
+     *
+     * Cavablar SİLİNMİR: mövcud versiya snapshot kimi qalır, müştəri isə
+     * düzəlişdən sonra brifi yenidən göndərəndə növbəti versiya yaranır.
+     */
+    public function reopen(Brief $brief, User $designer, ?string $note = null): void
+    {
+        DB::transaction(function () use ($brief, $designer, $note): void {
+            // Açılmamış dəqiqləşdirmə sorğuları mənasız qalır — brif onsuz da
+            // tam açılır; onları bağlayırıq ki, müştəridə iki rejim qarışmasın.
+            $brief->openComments()->update(['status' => 'resolved', 'resolved_at' => now()]);
+
+            $brief->forceFill([
+                'status' => BriefStatus::InProgress->value,
+                'submitted_at' => null,
+                'approved_at' => null,
+            ])->save();
+
+            $brief->sectionStates()->update(['status' => 'in_progress']);
+
+            $this->createVersion($brief, $designer, $note ?: 'Brif dizayner tərəfindən yenidən açıldı');
+        });
+
+        $project = $brief->project()->with('client.clientUsers')->first();
+
+        foreach ($project?->client?->clientUsers ?? [] as $clientUser) {
+            $clientUser->notify(new AutomationAlert(
+                'Brif yenidən açıldı',
+                '«'.$project->name.'» layihəsi üzrə brifiniz redaktə üçün yenidən açıldı — cavabları dəyişib təkrar göndərə bilərsiniz.',
+                route('portal.brief', $project),
+                ['brief_id' => $brief->id, 'project_id' => $brief->project_id],
+                'brief-reopened',
+            ));
+        }
+    }
+
     /** Spec 13.2 №7: baseline for design work; answers become read-only for the client. */
     public function approve(Brief $brief, User $designer): void
     {

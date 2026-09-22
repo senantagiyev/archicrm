@@ -137,6 +137,28 @@ class BriefReview extends Page
                     $this->service()->approve($this->brief(), auth()->user());
                     Notification::make()->success()->title('Brif təsdiqləndi')->send();
                 }),
+            // Roomix-dəki «they will reopen the brief»: müştəri çatda düzəliş
+            // istəyəndə dizayner brifi bütövlükdə redaktəyə qaytarır.
+            Action::make('reopen')
+                ->label('Brifi yenidən aç')
+                ->icon('heroicon-o-lock-open')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalDescription('Müştəri bütün cavabları yenidən redaktə edə biləcək. Mövcud cavablar silinmir — düzəlişdən sonra brif yeni versiya ilə təkrar göndəriləcək.')
+                ->schema([
+                    Textarea::make('note')
+                        ->label('Versiya qeydi')
+                        ->rows(2)
+                        ->maxLength(500)
+                        ->placeholder('Məsələn: müştəri otaqlar bölməsini dəyişmək istəyir'),
+                ])
+                ->visible(fn () => $this->canManageBrief() && $this->brief()->isLocked())
+                ->action(function (array $data) {
+                    abort_unless($this->canManageBrief(), 403);
+
+                    $this->service()->reopen($this->brief(), auth()->user(), $data['note'] ?? null);
+                    Notification::make()->success()->title('Brif müştəri üçün yenidən açıldı')->send();
+                }),
         ];
     }
 

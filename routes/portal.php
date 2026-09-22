@@ -49,6 +49,8 @@ Route::prefix('portal')->name('portal.')->group(function () {
             Route::post('/projects/{project}/brief-submit/{section}', [BriefController::class, 'submit'])->name('brief.submit');
             Route::post('/projects/{project}/brief-upload/{section}', [BriefController::class, 'upload'])->name('brief.upload');
             Route::post('/projects/{project}/brief-send', [BriefController::class, 'submitBrief'])->name('brief.send');
+            // Brifin içindən dizaynerə sual — cavabı dəyişmir, çata mesaj atır.
+            Route::post('/projects/{project}/brief-discuss/{section}', [BriefController::class, 'discuss'])->name('brief.discuss');
             Route::post('/projects/{project}/chat', [ChatController::class, 'send'])->name('chat.send');
             Route::post('/approvals/{approval}/decide', [ApprovalController::class, 'decide'])->name('approvals.decide');
         });

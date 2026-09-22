@@ -6,17 +6,23 @@ use App\Enums\BriefStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use App\Models\Brief;
+use App\Models\BriefQuestion;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
 use App\Rules\SafeUpload;
 use App\Services\Brief\BriefService;
+use App\Services\Chat\ChatService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class BriefController extends Controller
 {
     use ResolvesClientProjects;
 
-    public function __construct(private readonly BriefService $briefs) {}
+    public function __construct(
+        private readonly BriefService $briefs,
+        private readonly ChatService $chat,
+    ) {}
 
     /** Section map with per-section progress (TZ: proqres-naviqasiya). */
     public function index(int $project)
@@ -65,7 +71,54 @@ class BriefController extends Controller
             : collect();
         $editableQuestionIds = $brief->isLocked() ? $comments->keys()->all() : null;
 
-        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map', 'values', 'comments', 'editableQuestionIds'));
+        // Roomix-in yapışqan alt paneli üçün: «Bölmə N / M», bu bölmənin faizi
+        // və qonşu bölmələrə keçid. Sıra `sectionMap()`-dəkidir — otaq blokları
+        // da daxil, yəni «İrəli» istifadəçini otaqların içindən də keçirir.
+        $flat = $map->values();
+        $index = $flat->search(
+            fn (array $e) => $e['section']->id === $section->id && ($e['room']?->id) === ($room?->id)
+        );
+        $nav = [
+            'position' => $index === false ? null : $index + 1,
+            'total' => $flat->count(),
+            'progress' => $index === false ? 0 : $flat[$index]['progress'],
+            'prev' => $index > 0 ? $flat[$index - 1] : null,
+            'next' => $index !== false && $index + 1 < $flat->count() ? $flat[$index + 1] : null,
+        ];
+
+        return view('portal.brief.section', compact('project', 'brief', 'section', 'room', 'answers', 'map', 'values', 'comments', 'editableQuestionIds', 'nav'));
+    }
+
+    /**
+     * Roomix «Discuss with the designer» — bölmə səviyyəsində sual.
+     *
+     * Cavabı DƏYİŞMİR və brifi bloklamır: sadəcə layihə çatına bölməyə keçidli
+     * mesaj atır. Söhbət brifin içində gizli qalmasın deyə məhz çata gedir —
+     * dizayner onu digər mesajlarla bir yerdə görür.
+     */
+    public function discuss(Request $request, int $project, BriefSection $section)
+    {
+        $project = $this->clientProject($project);
+        $brief = $this->briefs->forProject($project);
+        $room = $this->resolveRoom($request, $brief);
+
+        abort_if($room && $room->brief_id !== $brief->id, 404);
+
+        $validated = $request->validate(['note' => ['nullable', 'string', 'max:2000']]);
+
+        $title = $room?->label ?? $section->getTranslation('name', app()->getLocale());
+
+        $body = t('portal.brief_discuss_message', ['section' => $title]);
+
+        if (filled($validated['note'] ?? null)) {
+            $body .= "\n\n".$validated['note'];
+        }
+
+        $body .= "\n".route('portal.brief.section', array_filter([$project->id, $section->id, $room?->id]));
+
+        $this->chat->send($project, Auth::guard('customer')->user(), $body);
+
+        return back()->with('status', t('portal.brief_discuss_sent'));
     }
 
     /** Whether the client may write this question right now (free edit, or flagged during clarification). */
@@ -244,7 +297,21 @@ class BriefController extends Controller
 
         $openComments = $brief->openComments()->count();
 
-        return view('portal.brief.sent', compact('project', 'brief', 'openComments'));
+        // Roomix-dəki «Quick summary» kartı: müştəri göndərdikdən sonra nəyin
+        // yola düşdüyünü bir baxışda görsün. Dəyərlər brifin öz cavablarındandır,
+        // ona görə ayrıca saxlama lazım deyil.
+        $values = $this->briefs->valuesByKey($brief);
+        $questions = BriefQuestion::whereIn('key', ['object_type', 'style_preferences'])->get()->keyBy('key');
+
+        $summary = array_filter([
+            t('portal.brief_sum_object_type') => $questions->get('object_type')?->displayValue($values['object_type'] ?? null),
+            t('portal.brief_sum_area') => filled($values['total_area_sqm'] ?? null) ? $values['total_area_sqm'].' m²' : null,
+            t('portal.brief_sum_address') => $values['object_address'] ?? null,
+            t('portal.brief_sum_styles') => (string) count((array) ($values['style_preferences'] ?? [])),
+            t('portal.brief_sum_client') => $values['contact_full_name'] ?? null,
+        ], fn ($v) => filled($v));
+
+        return view('portal.brief.sent', compact('project', 'brief', 'openComments', 'summary'));
     }
 
     /** Screen 13 — Needs Clarification: only the flagged questions are editable. */

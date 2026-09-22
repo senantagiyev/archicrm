@@ -634,6 +634,100 @@
             </form>
     </div>
 
+    {{-- Yapışqan alt panel (Roomix): solda «Bölmə N / M» və faiz, ortada
+         dizaynerlə müzakirə, sağda qonşu bölmələrə keçid. Brif kilidli olanda
+         da qalır — baxış rejimində naviqasiya və sual vermək yenə lazımdır.
+         `pb-24` əsas məzmunun altına boşluq qoyur ki, panel mətni örtməsin. --}}
+    @php
+        $entryUrl = fn (?array $entry) => $entry === null ? null : route(
+            'portal.brief.section',
+            array_filter([$project->id, $entry['section']->id, $entry['room']?->id]),
+        );
+        $entryTitle = fn (?array $entry) => $entry === null
+            ? null
+            : ($entry['room']?->label ?? $entry['section']->getTranslation('name', $locale));
+    @endphp
+
+    <div class="h-24" aria-hidden="true"></div>
+
+    <div class="fixed inset-x-0 bottom-0 z-40 border-t border-black/10 bg-white/95 backdrop-blur">
+        <div class="mx-auto flex w-full max-w-[1180px] flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 lg:px-8">
+            <div class="min-w-0 flex-1">
+                <p class="text-[13px] font-semibold">
+                    {{ t('portal.brief_section_position', ['position' => $nav['position'], 'total' => $nav['total']]) }}
+                </p>
+                <p class="text-[13px] text-black/50">{{ t('portal.brief_percent_filled', ['percent' => $nav['progress']]) }}</p>
+            </div>
+
+            <button type="button" data-discuss-open
+                class="flex shrink-0 items-center gap-2 rounded-ds px-3 py-2 text-[13px] font-semibold text-black/60 transition-colors hover:bg-neutral-soft hover:text-ink">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5"/></svg>
+                {{ t('portal.brief_discuss') }}
+            </button>
+
+            <div class="flex shrink-0 items-center gap-2">
+                @if ($nav['prev'])
+                    <a href="{{ $entryUrl($nav['prev']) }}" title="{{ $entryTitle($nav['prev']) }}"
+                        class="ui-btn ui-btn-outline h-10 px-4 text-[13px] font-semibold" data-hover="true">← {{ t('portal.brief_prev') }}</a>
+                @endif
+                @if ($nav['next'])
+                    <a href="{{ $entryUrl($nav['next']) }}" title="{{ $entryTitle($nav['next']) }}"
+                        class="ui-btn ui-btn-dark h-10 px-4 text-[13px] font-bold" data-hover="true">{{ t('portal.brief_next') }} →</a>
+                @else
+                    <a href="{{ route('portal.brief.summary', $project) }}"
+                        class="ui-btn ui-btn-dark h-10 px-4 text-[13px] font-bold" data-hover="true">{{ t('portal.brief_go_summary') }} →</a>
+                @endif
+            </div>
+        </div>
+    </div>
+
+    {{-- «Dizaynerlə müzakirə» — cavabı dəyişmir, çata keçidli mesaj göndərir. --}}
+    <div id="discussModal" hidden
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         role="dialog" aria-modal="true" aria-labelledby="discussTitle">
+        <form method="POST" action="{{ route('portal.brief.discuss', [$project->id, $section->id]) }}"
+              class="w-full max-w-md rounded-[18px] bg-white p-6">
+            @csrf
+            @if ($room)<input type="hidden" name="room_id" value="{{ $room->id }}">@endif
+
+            <h2 id="discussTitle" class="text-[17px] font-bold">
+                {{ t('portal.brief_discuss_title', ['section' => $room?->label ?? $section->getTranslation('name', $locale)]) }}
+            </h2>
+            <p class="mt-1.5 text-[13px] leading-relaxed text-black/55">{{ t('portal.brief_discuss_hint') }}</p>
+
+            <textarea name="note" rows="3" maxlength="2000"
+                placeholder="{{ t('portal.brief_discuss_placeholder') }}"
+                class="mt-4 w-full rounded-ds border border-black/20 px-3.5 py-2.5 text-sm outline-none focus:border-ink"></textarea>
+
+            <div class="mt-5 flex items-center justify-end gap-3">
+                <button type="button" data-discuss-close class="ui-btn ui-btn-outline h-10 px-4 text-[13px] font-semibold" data-hover="true">
+                    {{ t('portal.cancel') }}
+                </button>
+                <button type="submit" class="ui-btn ui-btn-primary h-10 px-5 text-[13px] font-bold" data-hover="true">
+                    {{ t('portal.brief_discuss_send') }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Modal seçimdən asılı deyil — brif kilidli olanda da sual vermək olur.
+        (() => {
+            const modal = document.getElementById('discussModal');
+            if (!modal) return;
+            const close = () => { modal.hidden = true; document.body.classList.remove('overflow-hidden'); };
+
+            document.querySelector('[data-discuss-open]')?.addEventListener('click', () => {
+                modal.hidden = false;
+                document.body.classList.add('overflow-hidden');
+                modal.querySelector('textarea')?.focus();
+            });
+            modal.querySelector('[data-discuss-close]')?.addEventListener('click', close);
+            modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !modal.hidden) close(); });
+        })();
+    </script>
+
     {{-- B patterni üçün nümunə qalereyası. Bir modal bütün variantlara xidmət
          edir: məzmun klikləndikdə `data-inspire` massivindən qurulur. --}}
     <div id="inspireModal" hidden
