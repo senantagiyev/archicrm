@@ -13,7 +13,9 @@ class ProjectController extends Controller
 
     public function index()
     {
-        $projects = $this->clientProjects()->latest()->get();
+        // Alt-layihə kartında valideynin adı göstərilir — əvvəlcədən yüklənməsə
+        // hər sətir üçün ayrıca sorğu gedərdi.
+        $projects = $this->clientProjects()->with('parent')->latest()->get();
 
         if ($projects->count() === 1) {
             return redirect()->route('portal.projects.show', $projects->first());

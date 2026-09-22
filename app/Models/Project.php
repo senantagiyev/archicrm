@@ -22,7 +22,7 @@ class Project extends Model
     use BelongsToTenant, HasFactory, LogsActivity, SoftDeletes;
 
     protected $fillable = [
-        'client_id', 'name', 'type', 'address', 'area',
+        'client_id', 'parent_project_id', 'name', 'type', 'address', 'area',
         'budget_plan', 'budget_fact', 'deadline', 'status',
         'readiness', 'debt', 'manager_user_id', 'client_response_days',
     ];
@@ -46,6 +46,27 @@ class Project extends Model
             ->logOnly(['name', 'status', 'deadline', 'budget_plan', 'manager_user_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    /**
+     * Roomix «Subproject» — layihənin təmir/tikinti mərhələsi.
+     *
+     * Alt-layihə də tam hüquqlu layihədir (öz çatı, mərhələləri, faylları və
+     * iştirakçıları var), sadəcə valideyninə bağlıdır.
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_project_id');
+    }
+
+    public function subprojects(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_project_id');
+    }
+
+    public function isSubproject(): bool
+    {
+        return $this->parent_project_id !== null;
     }
 
     public function client(): BelongsTo

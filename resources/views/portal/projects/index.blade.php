@@ -13,8 +13,22 @@
                     class="group rounded-ds-xl border border-black/8 bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_12px_34px_-18px_rgba(0,0,0,.28)]">
                     <div class="mb-3.5 flex items-start justify-between gap-3">
                         <div class="min-w-0">
-                            <h2 class="truncate text-body-lg font-semibold">{{ $project->name }}</h2>
-                            <p class="mt-1 truncate text-helper text-black/55">{{ $project->address ?: '—' }}</p>
+                            <h2 class="flex items-center gap-2 text-body-lg font-semibold">
+                                <span class="truncate">{{ $project->name }}</span>
+                                {{-- Alt-layihə eyni obyektin davamıdır; nişan olmadan
+                                     müştəri siyahıda iki ayrı layihə görür. --}}
+                                @if ($project->isSubproject())
+                                    <span class="shrink-0 rounded-pill bg-sel-bg px-2 py-0.5 text-helper font-semibold text-ink">
+                                        {{ t('portal.subproject') }}
+                                    </span>
+                                @endif
+                            </h2>
+                            <p class="mt-1 truncate text-helper text-black/55">
+                                @if ($project->isSubproject() && $project->parent)
+                                    {{ $project->parent->name }} ·
+                                @endif
+                                {{ $project->address ?: '—' }}
+                            </p>
                         </div>
                         <span class="shrink-0 rounded-pill bg-neutral-soft px-3 py-1 text-helper font-medium text-black/70">{{ $project->type->translatedLabel() }}</span>
                     </div>

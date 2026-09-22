@@ -171,3 +171,18 @@ dəqiqləşir, xüsusilə:
 - brifin **«Discuss with the designer»** funksiyası təsdiqləndi — bölmə səviyyəsindədir
   və çata keçidli mesaj göndərir (yuxarıdakı B1 bəndi);
 - brifdən **Texniki tapşırıq** sənədi doğur, versiyalanır və təsdiqə gedir.
+
+---
+
+## 11. Qəsdən saxlanılan fərqlər
+
+Aşağıdakılar Roomix-dən fərqlidir və **belə qalır** — səbəbləri ilə.
+
+| Fərq | Səbəb |
+|---|---|
+| Tapşırıqda **«Mərhələ» sahəsi məcburidir** (Roomix-də yoxdur) | Archi-də layihənin hazırlıq faizi mərhələ→tapşırıq zəncirindən hesablanır (`ReadinessService`). Mərhələsiz tapşırıq heç bir faizə töhfə vermir, yəni səssizcə itir. Modal layihə seçiləndə birinci mərhələni avtomatik doldurur — istifadəçi üçün əlavə addım yaranmır. |
+| Brifdə **«Format və büdcə» qrupu** (Roomix-də yoxdur) | Quick Brief → Premium keçidinin və risk analizinin daşıyıcısıdır. Bax: `database/seeders/brief/bank.php` başlığı. |
+| Obyekt bölməsində **«Obmer planı»** (Roomix-də yoxdur) | Fayl əlavəsini və R4 risk siqnalını qidalandırır. |
+| Fayllar tabında **«Voice» çipi yoxdur** | Səsli mesaj çatın funksiyasıdır; fayl kitabxanasında ayrıca kateqoriya kimi saxlanmır. Boş çip müştərini yanıldardı. |
+| Alt-layihə **yalnız iki səviyyə** | Roomix-də də praktikada bir səviyyədir; dərin ağac layihə siyahısını oxunmaz edir. |
+| İxrac **CSV**, `.xlsx` deyil | Yeni composer asılılığı əlavə etmək biznes qərarıdır. CSV UTF-8 BOM + `;` ayırıcı ilə Excel-də düzgün açılır. |
