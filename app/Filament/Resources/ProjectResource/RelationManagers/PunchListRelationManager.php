@@ -62,6 +62,7 @@ class PunchListRelationManager extends RelationManager
                 ->label('Foto')
                 ->image()
                 ->rules([SafeUpload::image()])
+                ->disk('public')
                 ->directory('punchlist')
                 ->columnSpanFull(),
         ])->columns(2);

@@ -36,6 +36,7 @@ class ProcurementItemsRelationManager extends RelationManager
                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                 ->maxSize(5120)
                 ->rules([SafeUpload::image()])
+                ->disk('public')
                 ->directory('procurement')
                 ->columnSpanFull(),
             Forms\Components\TextInput::make('name')

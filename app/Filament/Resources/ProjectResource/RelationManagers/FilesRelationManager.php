@@ -41,6 +41,7 @@ class FilesRelationManager extends RelationManager
                 ->maxSize(20480)
                 ->rules([SafeUpload::document()])
                 ->helperText('SVG və icra olunan fayllar qəbul edilmir.')
+                ->disk('public')
                 ->directory('project-files')
                 ->required()
                 ->columnSpanFull(),

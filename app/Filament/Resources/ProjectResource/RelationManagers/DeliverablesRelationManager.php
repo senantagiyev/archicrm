@@ -91,6 +91,7 @@ class DeliverablesRelationManager extends RelationManager
                             ->acceptedFileTypes(['application/pdf', 'image/jpeg', 'image/png', 'image/webp'])
                             ->maxSize(20480)
                             ->rules([SafeUpload::document()])
+                            ->disk('public')
                             ->directory('deliverables'),
                         Forms\Components\Textarea::make('change_summary')
                             ->label('Dəyişiklik qeydi')

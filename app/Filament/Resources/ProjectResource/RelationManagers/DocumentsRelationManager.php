@@ -41,6 +41,7 @@ class DocumentsRelationManager extends RelationManager
                 ->maxSize(20480)
                 ->rules([SafeUpload::document()])
                 ->helperText('İcazə verilən formatlar: PDF, Word, Excel, şəkil (JPG/PNG). SVG və icra olunan fayllar qəbul edilmir.')
+                ->disk('public')
                 ->directory('documents')
                 ->required()
                 ->columnSpanFull(),

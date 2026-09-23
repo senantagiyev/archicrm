@@ -40,6 +40,13 @@ class DiaryRelationManager extends RelationManager
                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
                 ->rules([SafeUpload::image()])
                 ->helperText('SVG və icra olunan fayllar qəbul edilmir.')
+                // Disk AÇIQ yazılmalıdır. Təyin edilməsə Filament `FILESYSTEM_DISK`
+                // defoltunu götürür — Laravel 12-də bu `local`-dır, yəni fayl
+                // `storage/app/private`-a düşür. Portal və heyət tərəfi isə hər
+                // yerdə `public` diskindən oxuyur: nəticədə paneldən yüklənən
+                // hər fayl müştəridə 404/500 verirdi. Yükləyən və oxuyan eyni
+                // diski göstərməlidir.
+                ->disk('public')
                 ->directory('diary-photos')
                 ->columnSpanFull(),
             Forms\Components\DateTimePicker::make('published_at')
