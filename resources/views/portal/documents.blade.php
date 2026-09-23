@@ -84,7 +84,7 @@
             <p class="truncate text-body font-semibold">{{ t('portal.nav_approvals') }}</p>
         </div>
         @if ($pendingApprovals > 0)
-            <span class="shrink-0 rounded-pill bg-yellow px-3 py-1 text-helper font-bold text-ink">
+            <span class="shrink-0 rounded-pill bg-yellow px-3 py-1 text-helper font-bold text-on-yellow">
                 {{ t('portal.project_your_turn') }} {{ $pendingApprovals }}
             </span>
         @endif

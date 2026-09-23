@@ -1,10 +1,22 @@
 @props([
-    'variant' => 'dark',   // dark = ink text (light bg), light = white text (dark bg)
+    // dark    — tünd mətn (açıq fon üzərində)
+    // light   — sabit ağ mətn (həmişə tünd qalan fon üzərində)
+    // sidebar — sol panelin öz tokeni; temaya görə çevrilir, çünki panel artıq
+    //           açıq temada ağdır və orada sabit ağ loqo görünməzdi
+    'variant' => 'dark',
     'sub' => true,          // show "architecture bureau" caption
 ])
 @php
-    $ink = $variant === 'light' ? '#ffffff' : '#111111';
-    $subColor = $variant === 'light' ? 'text-white/45' : 'text-black/40';
+    $ink = match ($variant) {
+        'light' => '#ffffff',
+        'sidebar' => 'var(--color-sidebar-ink)',
+        default => '#111111',
+    };
+    $subColor = match ($variant) {
+        'light' => 'text-white/45',
+        'sidebar' => 'text-sidebar-ink/45',
+        default => 'text-black/40',
+    };
 @endphp
 <span {{ $attributes->merge(['class' => 'inline-flex items-center gap-2.5 select-none']) }} aria-label="ARCHI architecture bureau">
     <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true" class="shrink-0">

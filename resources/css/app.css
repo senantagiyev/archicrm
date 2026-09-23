@@ -35,6 +35,13 @@
   --color-yellow-line: #ffe600;
   --color-sel-bg: #fffde0;
 
+  /* Brend sarısı HƏR İKİ temada eynidir, deməli onun üstündəki mətn də həmişə
+     tünd qalmalıdır. Əvvəl bu yerlərdə `text-ink` işlədilirdi; `--color-ink`
+     tünd temada açıq rəngə çevrildiyi üçün sarı düymə və sarı nişanların yazısı
+     ağ-üstə-sarı olub oxunmurdu. Bu token qəsdən tünd temada YENİDƏN TƏYİN
+     EDİLMİR. */
+  --color-on-yellow: #111111;
+
   /* base — the ARCHI "black" is #111111, not #000 */
   --color-ink: #111111;
   --color-ink-alt: #141414;
@@ -51,8 +58,14 @@
 
   /* Sol panel `--color-accent-dark`-dan AYRIDIR: tünd temada seçilmiş element
      kartdan AÇIQ olmalıdır ki, seçim görünsün, sol panel isə səhifədən TÜND
-     qalmalıdır. Eyni token ikisinə birdən xidmət edə bilmir. */
-  --color-sidebar: #111111;
+     qalmalıdır. Eyni token ikisinə birdən xidmət edə bilmir.
+
+     Panel ARTIQ TEMAYA TABEDİR: əvvəl hər iki temada #111111 idi və açıq
+     rejimdə səhifənin ortasında tünd zolaq kimi qalırdı. İndi açıq temada ağ
+     səthdir, tünd temada isə səhifədən də tünd. Mətn rəngi ayrıca tokendədir —
+     `text-white` sabit ağ olduğu üçün açıq panel üzərində görünməzdi. */
+  --color-sidebar: #ffffff;
+  --color-sidebar-ink: #111111;
 
   /* state */
   --color-green: #00a613;
@@ -105,8 +118,9 @@
   --color-card: #191b20;
   /* Kartdan AÇIQ: seçilmiş variant və tünd düymə tünd fonda itməməlidir. */
   --color-accent-dark: #3b414d;
-  /* Səhifədən TÜND: sol panel hər iki temada ən tünd səthdir. */
+  /* Səhifədən TÜND: tünd temada sol panel ən tünd səthdir. */
   --color-sidebar: #0c0d10;
+  --color-sidebar-ink: #eceef1;
   --color-gray-soft: #101216;
   --color-gray-soft2: #0e1013;
   --color-neutral-soft: #24272e;
@@ -214,7 +228,7 @@
 @layer components {
   /* ---- button (<x-ui.button>) — tone only; data-hover="false" = static ---- */
   .ui-btn                            { @apply flex shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-ds; }
-  .ui-btn-primary                    { @apply bg-yellow text-ink; }
+  .ui-btn-primary                    { @apply bg-yellow text-on-yellow; }
   .ui-btn-primary[data-hover="true"] { @apply transition-[filter] duration-150 hover:brightness-95; }
   .ui-btn-dark                       { @apply bg-accent-dark text-white; }
   .ui-btn-dark[data-hover="true"]    { @apply transition-[filter] duration-150 hover:brightness-110; }
@@ -224,6 +238,10 @@
   .ui-btn-ghost[data-hover="true"]   { @apply transition-colors duration-150 hover:bg-danger/10; }
   .ui-btn-danger                     { @apply border border-danger/80 bg-card text-danger; }
   .ui-btn-danger[data-hover="true"]  { @apply transition-colors duration-150 hover:border-danger hover:bg-danger/8; }
-  .ui-btn-on-ink                     { @apply border border-white/35 bg-transparent text-white/85; }
-  .ui-btn-on-ink[data-hover="true"]  { @apply transition-colors duration-150 hover:border-white/60 hover:bg-white/10; }
+  /* Sol panelin/mobil başlığın üzərindəki düymə. Əvvəl sabit ağ idi
+     (`border-white/35 text-white/85`) — panel açıq temada ağ səthə çevrildiyi
+     üçün belə düymə tamamilə görünməz olurdu. İndi panelin öz mətn tokenindən
+     gəlir və hər iki temada oxunur. */
+  .ui-btn-on-sidebar                    { @apply border border-sidebar-ink/35 bg-transparent text-sidebar-ink/85; }
+  .ui-btn-on-sidebar[data-hover="true"] { @apply transition-colors duration-150 hover:border-sidebar-ink/60 hover:bg-sidebar-ink/10; }
 }

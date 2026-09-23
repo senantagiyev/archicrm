@@ -234,7 +234,7 @@
                                                         {{ $isOn ? 'border-ink bg-accent-dark text-white' : 'border-black/20 bg-card hover:border-black/40' }}">
                                                     @if ($asRows)
                                                         <span class="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[4px] border text-[11px] leading-none
-                                                                     {{ $isOn ? 'border-yellow bg-yellow text-ink' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
+                                                                     {{ $isOn ? 'border-yellow bg-yellow text-on-yellow' : 'border-black/25' }}">@if ($isOn)✓@endif</span>
                                                     @endif
                                                     {{-- C patterni: metal kimi variantlarda rəngi sözlə izah etmək
                                                          çətindir — variantın öz çipi göstərilir. Rəngi olmayan
@@ -295,7 +295,7 @@
                                                     @endunless
                                                 </span>
                                                 <span data-card-check
-                                                    class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-yellow text-[12px] font-bold text-ink {{ $isOn ? '' : 'hidden' }}">✓</span>
+                                                    class="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-yellow text-[12px] font-bold text-on-yellow {{ $isOn ? '' : 'hidden' }}">✓</span>
                                                 <span class="block bg-card px-3 py-2.5 text-[14px] font-semibold">{{ $optLabel($option) }}</span>
                                             </button>
                                         @endforeach

@@ -55,7 +55,7 @@
                         <button name="locale" value="{{ $loc }}"
                             @if (app()->getLocale() === $loc) aria-current="true" @endif
                             class="flex items-center justify-between rounded-[12px] px-4 py-2.5 text-[14px] font-semibold transition-colors
-                                   {{ app()->getLocale() === $loc ? 'bg-yellow text-ink' : 'bg-neutral-soft text-black/55 hover:text-ink' }}">
+                                   {{ app()->getLocale() === $loc ? 'bg-yellow text-on-yellow' : 'bg-neutral-soft text-black/55 hover:text-ink' }}">
                             <span>{{ $localeLabel }}</span>
                             @if (app()->getLocale() === $loc)
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m20 6-11 11-5-5"/></svg>

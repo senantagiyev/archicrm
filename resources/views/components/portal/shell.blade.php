@@ -65,9 +65,9 @@
 <body class="min-h-screen bg-gray-soft2 text-ink">
 
     {{-- ── Desktop: dark left sidebar (mockup) ─────────────────────────── --}}
-    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col bg-sidebar text-white lg:flex">
+    <aside class="fixed inset-y-0 left-0 z-30 hidden w-[240px] flex-col border-r border-black/8 bg-sidebar text-sidebar-ink lg:flex">
         <div class="px-6 pb-5 pt-6">
-            <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" /></a>
+            <a href="{{ route('portal.home') }}"><x-archi-logo variant="sidebar" /></a>
         </div>
 
         {{-- Roomix ölçüləri: element 10px/16px padding, radius 12px, ikon-mətn 12px, mətn 16px. --}}
@@ -76,19 +76,19 @@
                 <a href="{{ $url }}"
                    @if ($navActive === $key) aria-current="page" @endif
                    class="relative flex items-center gap-3 rounded-[12px] px-4 py-2.5 text-[16px] transition-colors
-                          {{ $navActive === $key ? 'bg-yellow font-semibold text-ink' : 'font-medium text-white/70 hover:bg-white/8 hover:text-white' }}">
+                          {{ $navActive === $key ? 'bg-yellow font-semibold text-on-yellow' : 'font-medium text-sidebar-ink/70 hover:bg-sidebar-ink/8 hover:text-sidebar-ink' }}">
                     <svg width="20" height="20" class="shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $icon }}"/></svg>
                     <span class="truncate">{{ $label }}</span>
                 </a>
             @endforeach
         </nav>
 
-        <div class="border-t border-white/10 px-3 py-4">
+        <div class="border-t border-sidebar-ink/10 px-3 py-4">
             <form method="post" action="{{ route('locale.switch') }}" class="mb-3 flex items-center gap-1 px-4 text-[13px] font-semibold uppercase">
                 @csrf
                 @foreach (['az', 'ru', 'en'] as $loc)
                     <button name="locale" value="{{ $loc }}"
-                        class="rounded-ds px-2 py-1 {{ app()->getLocale() === $loc ? 'bg-white/15 text-white' : 'text-white/45 hover:text-white' }}">
+                        class="rounded-ds px-2 py-1 {{ app()->getLocale() === $loc ? 'bg-sidebar-ink/15 text-sidebar-ink' : 'text-sidebar-ink/45 hover:text-sidebar-ink' }}">
                         {{ strtoupper($loc) }}
                     </button>
                 @endforeach
@@ -96,7 +96,7 @@
             @auth('customer')
                 <form method="post" action="{{ route('portal.logout') }}">
                     @csrf
-                    <button class="flex w-full items-center gap-3 rounded-[12px] px-4 py-2.5 text-[16px] font-medium text-white/70 transition-colors hover:bg-white/8 hover:text-white">
+                    <button class="flex w-full items-center gap-3 rounded-[12px] px-4 py-2.5 text-[16px] font-medium text-sidebar-ink/70 transition-colors hover:bg-sidebar-ink/8 hover:text-sidebar-ink">
                         <svg width="20" height="20" class="shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                         {{ t('portal.logout') }}
                     </button>
@@ -106,31 +106,31 @@
     </aside>
 
     {{-- ── Mobile: dark top bar + scrollable nav ───────────────────────── --}}
-    <header class="bg-sidebar text-white lg:hidden">
+    <header class="border-b border-black/8 bg-sidebar text-sidebar-ink lg:hidden">
         <div class="flex h-[60px] items-center justify-between px-4">
-            <a href="{{ route('portal.home') }}"><x-archi-logo variant="light" :sub="false" /></a>
+            <a href="{{ route('portal.home') }}"><x-archi-logo variant="sidebar" :sub="false" /></a>
             <div class="flex items-center gap-2">
                 <form method="post" action="{{ route('locale.switch') }}" class="flex items-center gap-1 text-[11px] font-bold uppercase">
                     @csrf
                     @foreach (['az', 'ru', 'en'] as $loc)
                         <button name="locale" value="{{ $loc }}"
-                            class="rounded-ds px-1.5 py-1 {{ app()->getLocale() === $loc ? 'bg-yellow text-ink' : 'text-white/50' }}">{{ strtoupper($loc) }}</button>
+                            class="rounded-ds px-1.5 py-1 {{ app()->getLocale() === $loc ? 'bg-yellow text-on-yellow' : 'text-sidebar-ink/50' }}">{{ strtoupper($loc) }}</button>
                     @endforeach
                 </form>
                 @auth('customer')
                     <form method="post" action="{{ route('portal.logout') }}">
                         @csrf
-                        <button class="ui-btn ui-btn-on-ink h-8 px-3 text-[12px] font-semibold" data-hover="true">{{ t('portal.logout') }}</button>
+                        <button class="ui-btn ui-btn-on-sidebar h-8 px-3 text-[12px] font-semibold" data-hover="true">{{ t('portal.logout') }}</button>
                     </form>
                 @endauth
             </div>
         </div>
         {{-- Mobil: layihə daxilindəykən tablar, əks halda qlobal naviqasiya. --}}
-        <nav class="flex items-center gap-1 overflow-x-auto border-t border-white/10 px-2 py-2">
+        <nav class="flex items-center gap-1 overflow-x-auto border-t border-sidebar-ink/10 px-2 py-2">
             @foreach (($project ? $tabs : $nav) as $key => [$url, $label, $icon])
                 <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
                    class="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[14px] font-semibold
-                          {{ ($project ? $tabActive : $navActive) === $key ? 'bg-yellow text-ink' : 'text-white/65' }}">
+                          {{ ($project ? $tabActive : $navActive) === $key ? 'bg-yellow text-on-yellow' : 'text-sidebar-ink/65' }}">
                     {{ $label }}
                     @if ($key === 'chat')
                         <span data-chat-dot hidden class="absolute -right-0.5 -top-0.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
@@ -161,7 +161,7 @@
                          onun qərarını gözləyən açıq razılaşdırma varmı. --}}
                     @php $waiting = $project->pendingClientApprovalsCount(); @endphp
                     @if ($waiting > 0)
-                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-yellow px-3 py-1 text-[13px] font-bold text-ink">
+                        <span class="inline-flex shrink-0 items-center gap-1.5 rounded-pill bg-yellow px-3 py-1 text-[13px] font-bold text-on-yellow">
                             {{ t('portal.project_your_turn') }}
                             <span class="text-ink/60">{{ $waiting }}</span>
                         </span>

@@ -56,7 +56,7 @@
     @if ($pendingApprovals > 0)
         <a href="{{ route('portal.approvals', $project) }}"
            class="mt-5 flex items-center gap-4 rounded-ds-xl border border-yellow-line bg-sel-bg px-6 py-4 transition-transform hover:-translate-y-0.5">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow text-ink">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-yellow text-on-yellow">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
             </span>
             <div class="flex-1">
@@ -82,7 +82,7 @@
             <a href="{{ $url }}"
                class="group relative flex flex-col rounded-ds-xl border border-black/8 bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-black/20 hover:shadow-[0_10px_30px_-16px_rgba(0,0,0,.25)]">
                 @if ($key === 'approvals' && $pendingApprovals > 0)
-                    <span class="absolute right-4 top-4 flex h-6 min-w-6 items-center justify-center rounded-full bg-yellow px-1.5 text-helper font-semibold text-ink">{{ $pendingApprovals }}</span>
+                    <span class="absolute right-4 top-4 flex h-6 min-w-6 items-center justify-center rounded-full bg-yellow px-1.5 text-helper font-semibold text-on-yellow">{{ $pendingApprovals }}</span>
                 @endif
                 <span class="flex h-11 w-11 items-center justify-center rounded-ds-lg bg-neutral-soft text-ink transition-colors group-hover:bg-sel-bg">
                     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="{{ $icon }}"/></svg>
