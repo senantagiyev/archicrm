@@ -37,6 +37,8 @@ class TranslationSeeder extends Seeder
                 'download' => 'Yüklə|Скачать|Download',
                 'no_documents' => 'Sənəd yoxdur.|Документов нет.|No documents.',
                 'debt' => 'Qalıq borc|Остаток долга|Outstanding debt',
+                'debt_credit' => 'Artıq ödənilib|Переплата|Paid in advance',
+                'debt_settled' => 'Borc yoxdur|Долга нет|Nothing outstanding',
                 'payment_title' => 'Təyinat|Назначение|Purpose',
                 'amount' => 'Məbləğ|Сумма|Amount',
                 'plan_date' => 'Plan tarixi|Плановая дата|Planned date',

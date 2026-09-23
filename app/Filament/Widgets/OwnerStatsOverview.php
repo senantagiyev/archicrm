@@ -41,7 +41,12 @@ class OwnerStatsOverview extends StatsOverviewWidget
     {
         $activeProjects = Project::where('status', ProjectStatus::Active->value)->count();
 
-        $totalDebt = Project::whereNotIn('status', [ProjectStatus::Archived->value])->sum('debt');
+        // Yalnız MÜSBƏT borclar toplanır. `projects.debt` işarəlidir: qabaqcadan
+        // ödəniş almış layihənin borcu mənfi olur və sadə `sum()` onu başqa
+        // layihənin real borcundan çıxırdı — büro gözlədiyindən az borc görürdü.
+        $totalDebt = Project::whereNotIn('status', [ProjectStatus::Archived->value])
+            ->where('debt', '>', 0)
+            ->sum('debt');
 
         $overdueTasks = Task::whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
             ->whereDate('deadline', '<', today())

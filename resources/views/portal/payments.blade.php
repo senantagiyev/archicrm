@@ -1,10 +1,24 @@
 <x-portal.shell :title="t('portal.nav_payments')" :project="$project" active="payments">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-heading font-semibold">{{ t('portal.nav_payments') }}</h1>
+        @php
+            // `projects.debt` işarəli kəmiyyətdir: razılaşdırılmış smeta və
+            // komplektasiya MƏNFİ təsdiqlənmiş ödənişlər. Mənfi nəticə borc
+            // deyil — müştəri hələ rəsmiləşdirilməmiş işin qabağına pul verib.
+            // «Qalıq borc −222 ₼» yazmaq müştərini çaşdırırdı: etiket artıq
+            // rəqəmin işarəsinə görə seçilir, ekrana isə həmişə müsbət məbləğ
+            // çıxır.
+            $debt = round((float) $project->debt, 2);
+            [$debtLabel, $debtTone] = match (true) {
+                $debt > 0 => [t('portal.debt'), 'text-error'],
+                $debt < 0 => [t('portal.debt_credit'), 'text-ok'],
+                default => [t('portal.debt_settled'), 'text-ok'],
+            };
+        @endphp
         <div class="flex items-baseline gap-3 rounded-ds-lg border border-black/8 bg-card px-5 py-3">
-            <span class="text-helper font-medium text-black/60">{{ t('portal.debt') }}</span>
-            <span class="text-title font-semibold {{ (float) $project->debt > 0 ? 'text-error' : 'text-ok' }}">
-                {{ number_format((float) $project->debt, 2, '.', ' ') }} ₼
+            <span class="text-helper font-medium text-black/60">{{ $debtLabel }}</span>
+            <span class="text-title font-semibold {{ $debtTone }}">
+                {{ number_format(abs($debt), 2, '.', ' ') }} ₼
             </span>
         </div>
     </div>
