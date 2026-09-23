@@ -387,7 +387,19 @@ class Attention extends Page
     {
         $ids = $this->accessibleProjectIds();
 
-        return $ids === null ? $query : $query->whereIn('project_id', $ids);
+        if ($ids !== null) {
+            $query->whereIn('project_id', $ids);
+        }
+
+        // Layihənin özü də yaşayan və aktual olmalıdır:
+        //  — layihə soft-delete olunur, mərhələ/tapşırıq/ödəniş isə yox, yəni
+        //    silinmiş layihənin işi burada diri qalırdı. `whereHas` layihənin
+        //    qlobal SoftDeletes skopunu işə salır (`stages:mark-overdue` əmri də
+        //    eyni qorumadan istifadə edir);
+        //  — arxiv statusu «bu layihə ilə daha işləmirik» deməkdir, ona görə onun
+        //    gecikmiş işi «bu gün nəyə diqqət lazımdır» sualının cavabı deyil.
+        return $query->whereHas('project', fn (Builder $project) => $project
+            ->where('status', '!=', ProjectStatus::Archived->value));
     }
 
     /** Eyni məhdudiyyətin `projects` cədvəlinin öz üzərində variantı. */

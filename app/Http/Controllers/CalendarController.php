@@ -38,7 +38,14 @@ class CalendarController extends Controller
             return response()->json([]);
         }
 
-        $scope = fn ($query) => $projectIds === null ? $query : $query->whereIn('project_id', $projectIds);
+        // `whereHas('project')` layihənin SoftDeletes skopunu işə salır: silinmiş
+        // layihənin mərhələ və tapşırıqları cascade olunmadığına görə diri qalır
+        // və təqvimdə görünməyə davam edirdi.
+        $scope = function ($query) use ($projectIds) {
+            $query->whereHas('project');
+
+            return $projectIds === null ? $query : $query->whereIn('project_id', $projectIds);
+        };
         $adminPath = config('app.admin_path');
         $events = [];
 

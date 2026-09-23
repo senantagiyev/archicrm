@@ -20,9 +20,35 @@ class TimeEntryPolicy
         return $this->allowsOn($user, $timeEntry, AccessLevel::View);
     }
 
-    public function create(User $user): bool
+    /**
+     * @param  int|null  $forUserId  qeydin yazılacağı işçi; Filament «Yarat»
+     *                               düyməsi üçün boş gəlir (hələ heç kim
+     *                               seçilməyib), formanın validasiyası isə onu
+     *                               həmişə ötürür
+     */
+    public function create(User $user, ?int $forUserId = null): bool
     {
-        return AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Edit);
+        if (! AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Edit)) {
+            return false;
+        }
+
+        return $forUserId === null || $this->mayLogFor($user, $forUserId);
+    }
+
+    /**
+     * Başqasının adına saat yazmaq səlahiyyəti.
+     *
+     * Niyə matrisdən oxunur: siyahı da (`TimeEntryResource::getEloquentQuery`)
+     * məhz `requiresOwnProject` ilə `user_id`-yə görə daralır. Sahiblik yalnız
+     * view/update/delete-də yoxlanıldığı üçün dizayner vizualizatorun adına
+     * 8 saat (400 AZN) yaza bilirdi, sonra həmin qeydi nə görür, nə silə bilirdi
+     * — yəni yad işçiyə maya dəyəri yazılır və geri alına bilmirdi. İndi
+     * yalnız matrisdə «yalnız öz layihələri» qeydi OLMAYAN rollar (sahibkar,
+     * mühasib) başqasının adına yaza bilər.
+     */
+    public function mayLogFor(User $user, int $forUserId): bool
+    {
+        return ! AccessMatrix::requiresOwnProject($user) || $forUserId === $user->id;
     }
 
     public function update(User $user, TimeEntry $timeEntry): bool

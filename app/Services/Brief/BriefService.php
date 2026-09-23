@@ -464,6 +464,11 @@ class BriefService
 
             $brief->sectionStates()->update(['status' => 'in_progress']);
 
+            // `submit()` faizi 100-ə qaldırmışdı. Yenidən hesablamasaq, qismən
+            // doldurulmuş brif yenidən açılandan sonra da müştəriyə «100%
+            // dolduruldu» yazır, bölmələrin özü isə 13%, 0% göstərir.
+            $this->recalculateProgress($brief);
+
             $this->createVersion($brief, $designer, $note ?: 'Brif dizayner tərəfindən yenidən açıldı');
         });
 
@@ -702,9 +707,11 @@ class BriefService
     {
         $project = $brief->project;
 
-        $version = 1 + $project->documents()
-            ->where('type', DocumentType::TechnicalSpec->value)
-            ->count();
+        // Nömrə brifin öz sayğacındadır, mövcud sənədlərin SAYINDAN deyil:
+        // saya baxanda v2-ni silmək növbəti sənədə yenidən «v2» adı verirdi və
+        // tarixçədə eyni nömrəli iki texniki tapşırıq qalırdı.
+        $brief->increment('technical_spec_version');
+        $version = (int) $brief->refresh()->technical_spec_version;
 
         $pdf = Pdf::loadView('portal.brief.technical-spec', [
             'brief' => $brief,

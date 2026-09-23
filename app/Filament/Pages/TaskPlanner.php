@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\AccessLevel;
 use App\Enums\Domain;
 use App\Enums\TaskStatus;
+use App\Filament\Resources\TaskResource;
 use App\Models\Project;
 use App\Models\Stage;
 use App\Models\Task;
@@ -88,13 +89,15 @@ class TaskPlanner extends Page
 
         $query = Task::query()
             ->with(['project', 'assignee'])
-            ->whereIn('status', array_map(fn (TaskStatus $s) => $s->value, $this->statuses()));
+            ->whereIn('status', array_map(fn (TaskStatus $s) => $s->value, $this->statuses()))
+            // Tapşırıqlar soft-delete olunmur, ona görə silinmiş layihənin
+            // tapşırıqları planda diri qalırdı — `stages:mark-overdue` əmrindəki
+            // ilə eyni qoruma: layihəsi qalmayan iş planlaşdırılmır.
+            ->whereHas('project');
 
-        // Resursdakı ilə eyni məhdudiyyət: «yalnız öz layihələri» rolları başqa
-        // işçinin tapşırığını nə cədvəldə, nə də burada görməməlidir.
-        if ($user && AccessMatrix::requiresOwnProject($user)) {
-            $query->where('assignee_user_id', $user->id);
-        }
+        // Resursdakı ilə HƏRFƏN eyni məhdudiyyət — görünürlük qaydası
+        // TaskResource-da bir yerdə saxlanılır ki, iki ekran ayrılmasın.
+        $query = TaskResource::scopeToVisibleProjects($query, $user);
 
         if ($this->scope === 'mine' && $user) {
             $query->where('assignee_user_id', $user->id);

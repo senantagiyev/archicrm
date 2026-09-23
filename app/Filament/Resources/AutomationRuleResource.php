@@ -79,10 +79,20 @@ class AutomationRuleResource extends Resource
                         $tenantId = auth()->user()?->tenant_id;
 
                         if ($record->tenant_id === null && $tenantId !== null) {
-                            AutomationRule::updateOrCreate(
-                                ['tenant_id' => $tenantId, 'code' => $record->code],
-                                $record->only(['name', 'trigger', 'priority', 'conditions', 'actions']) + ['enabled' => $state],
-                            );
+                            // `forceFill` — `$fillable`-dan asılı olmayaraq
+                            // studiya sahibliyi mütləq yazılsın. Bu sətir
+                            // sükutla atılanda override yerinə İKİNCİ platforma
+                            // sətri yaranırdı və bir studiyanın açarı bütün
+                            // platformanın bildirişlərini söndürürdü.
+                            $override = AutomationRule::query()
+                                ->where('tenant_id', $tenantId)
+                                ->where('code', $record->code)
+                                ->first() ?? new AutomationRule;
+
+                            $override->forceFill(
+                                $record->only(['name', 'trigger', 'priority', 'conditions', 'actions'])
+                                + ['tenant_id' => $tenantId, 'code' => $record->code, 'enabled' => $state]
+                            )->save();
                         } else {
                             $record->update(['enabled' => $state]);
                         }

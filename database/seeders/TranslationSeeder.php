@@ -53,6 +53,8 @@ class TranslationSeeder extends Seeder
                 'approved_ok' => 'Pozisiya razılaşdırıldı.|Позиция согласована.|Item approved.',
                 'rejected_ok' => 'Pozisiya rədd edildi, şərhiniz göndərildi.|Позиция отклонена, комментарий отправлен.|Item rejected, your comment was sent.',
                 'reject_comment_required' => 'Rədd edərkən şərh məcburidir.|При отклонении комментарий обязателен.|A comment is required when rejecting.',
+                'variant_invalid' => 'Seçilmiş variant bu razılaşdırmaya aid deyil.|Выбранный вариант не относится к этому согласованию.|The chosen option does not belong to this approval.',
+                'variant_required' => 'Təsdiqləmək üçün variantlardan birini seçin.|Чтобы согласовать, выберите один из вариантов.|Pick one of the options to approve.',
                 'nav_brief' => 'Brif|Бриф|Brief',
                 'brief_intro' => 'Xəyalınızdakı interyeri anlamağımız üçün sualları cavablandırın. İstənilən bölmədən başlaya bilərsiniz — cavablar avtomatik saxlanılır.|Ответьте на вопросы, чтобы мы поняли интерьер вашей мечты. Начните с любого раздела — ответы сохраняются автоматически.|Answer the questions so we understand your dream interior. Start anywhere — answers save automatically.',
                 'brief_total_progress' => 'Ümumi doldurulma|Общий прогресс|Overall progress',
@@ -210,6 +212,7 @@ class TranslationSeeder extends Seeder
                 'brief_swatch_accent' => 'Akcent|Акцент|Accent',
                 // Lifecycle (Screens 12–13) + Screen 02 validation
                 'brief_area_error' => 'Dizayn-layihə üçün sahə ümumi sahədən çox ola bilməz.|Площадь под дизайн-проект не может превышать общую площадь.|The design area cannot exceed the total area.',
+                'brief_value_error' => 'Cavab bu suala uyğun deyil — səhifəni yeniləyib yenidən cəhd edin.|Ответ не соответствует вопросу — обновите страницу и попробуйте снова.|That answer does not fit this question — reload the page and try again.',
                 'brief_designer_asks' => 'Dizayner soruşur|Дизайнер спрашивает|Designer asks',
                 'brief_needs_clar_title' => 'Dəqiqləşdirmə lazımdır|Нужны уточнения|Clarification needed',
                 'brief_needs_clar_body' => 'Dizayner :count sual üzrə dəqiqləşdirmə istəyib. Yalnız həmin sualları redaktə edə bilərsiniz.|Дизайнер запросил уточнения по :count вопросам. Изменять можно только их.|The designer asked for clarification on :count question(s). Only those can be edited.',

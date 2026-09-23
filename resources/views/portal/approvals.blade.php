@@ -1,6 +1,12 @@
 <x-portal.shell :title="t('portal.nav_approvals')" :project="$project" active="documents">
     <h1 class="mb-6 text-heading font-semibold">{{ t('portal.nav_approvals') }}</h1>
 
+    @php
+        // Arxivlənmiş layihə portalda oxunur, amma yazılmır: `decide()` 403
+        // qaytarır. Düymələr göstərilsəydi, müştəri basıb xəta alardı.
+        $decidable = $project->status !== \App\Enums\ProjectStatus::Archived;
+    @endphp
+
     <div class="space-y-4">
         @forelse ($approvals as $approval)
             <div class="rounded-ds-xl border border-black/8 bg-card p-6">
@@ -30,7 +36,7 @@
                         @endif
                     </div>
 
-                    @if ($approval->status === \App\Enums\ApprovalStatus::Pending)
+                    @if ($decidable && $approval->status === \App\Enums\ApprovalStatus::Pending)
                         <div class="flex items-center gap-2">
                             {{-- Variantlı razılaşdırmada tək «Təsdiqlə» düyməsi yoxdur:
                                  seçim aşağıdakı kartlardan gedir, çünki hansının
@@ -76,7 +82,7 @@
                                     <p class="mt-1 text-helper leading-relaxed text-black/60">{{ $variant['note'] }}</p>
                                 @endif
 
-                                @if ($approval->status === \App\Enums\ApprovalStatus::Pending)
+                                @if ($decidable && $approval->status === \App\Enums\ApprovalStatus::Pending)
                                     <form method="post" action="{{ route('portal.approvals.decide', $approval) }}" class="mt-3">
                                         @csrf
                                         <input type="hidden" name="decision" value="approve">
@@ -93,7 +99,7 @@
                     </div>
                 @endif
 
-                @if ($approval->status === \App\Enums\ApprovalStatus::Pending)
+                @if ($decidable && $approval->status === \App\Enums\ApprovalStatus::Pending)
                     <form method="post" action="{{ route('portal.approvals.decide', $approval) }}"
                         data-reject-form hidden class="mt-4 border-t border-black/8 pt-4">
                         @csrf

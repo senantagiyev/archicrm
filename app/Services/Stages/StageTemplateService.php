@@ -31,6 +31,12 @@ class StageTemplateService
                 'status' => StageStatus::NotStarted,
                 'date_plan_start' => $planStart,
                 'date_plan_end' => $planEnd,
+                // Çəki yazılmasaydı hamısı defolt 1 olurdu: 60 günlük «Müəllif
+                // nəzarəti» ilə 3 günlük «Təhvil» layihənin hazırlıq faizinə
+                // eyni pay verirdi. Şablonun plan müddəti işin həcmi üçün
+                // əlimizdəki yeganə göstəricidir; müddət verilməyibsə çəki 1
+                // qalır — yəni əvvəlki davranış.
+                'weight' => max(1, (int) ($item->default_duration_days ?? 1)),
             ]);
 
             if ($planEnd !== null) {

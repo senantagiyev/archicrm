@@ -178,9 +178,19 @@ class PurchaseOrderResource extends Resource
         $user = auth()->user();
 
         if ($user && AccessMatrix::requiresOwnProject($user)) {
-            $query->whereHas('project', fn (Builder $project) => $project
-                ->where('manager_user_id', $user->id)
-                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+            // Layihəsiz (lump-sum) sifariş studiya səviyyəli qeyddir —
+            // yoxlanılacaq üzvlük yoxdur, ona görə `ScopesProjectDomain` onu
+            // qəsdən buraxır (`$projectId === null` → icazə). `whereHas` isə
+            // NULL layihəni kənarlaşdırdığı üçün siyahı policy ilə ziddiyyətə
+            // düşürdü: Komplektləşdirici üçün `can('view')`/`can('update')`
+            // true, amma qeyd nə siyahıda görünürdü, nə birbaşa URL-dən açılırdı.
+            // Nested where şərtdir — `orWhereNull` başqa filtrlərlə yan-yana
+            // qalsa scope-u tamamilə açardı.
+            $query->where(fn (Builder $scoped) => $scoped
+                ->whereNull('project_id')
+                ->orWhereHas('project', fn (Builder $project) => $project
+                    ->where('manager_user_id', $user->id)
+                    ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id))));
         }
 
         return $query;

@@ -43,6 +43,14 @@
                 <div class="border-b border-gray-200 px-5 py-3 dark:border-white/10">
                     <p class="text-sm font-bold text-gray-950 dark:text-white">{{ $active->name }}</p>
                     <p class="text-[12px] text-gray-500">{{ $active->client?->name }}</p>
+                    {{-- Bu lent müştəri portalındakı çatla EYNİ lentdir: burada
+                         yazılan hər mesaj dərhal müştəriyə görünür. Sistemdə
+                         «daxili mesaj» anlayışı yoxdur, ona görə xəbərdarlıq
+                         başlığın altında, göz önündə dayanır. --}}
+                    <p class="mt-1.5 inline-flex items-center gap-1.5 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700 ring-1 ring-amber-200 dark:bg-amber-400/10 dark:text-amber-300 dark:ring-amber-400/20">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+                        Bu yazışmanı müştəri görür — daxili qeydlər üçün istifadə etməyin.
+                    </p>
                 </div>
 
                 <div id="chatThread" class="flex-1 space-y-3 overflow-y-auto p-5"

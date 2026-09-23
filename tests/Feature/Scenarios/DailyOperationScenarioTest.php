@@ -8,6 +8,7 @@ use App\Models\Stage;
 use App\Models\Task;
 use App\Notifications\TaskDeadlineSoon;
 use App\Services\Portal\InvitationService;
+use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\StudioWorld;
@@ -85,14 +86,22 @@ class DailyOperationScenarioTest extends TestCase
         $this->studio->task->forceFill(['deadline' => $warningDay])->save();
         $this->studio->user('designer')->delete(); // soft delete — the employee left
 
-        $liveTask = Task::create([
-            'project_id' => $this->studio->project->id,
-            'stage_id' => $this->studio->stage->id,
-            'title' => 'Canlı tapşırıq',
-            'status' => 'todo',
-            'deadline' => $warningDay,
-            'assignee_user_id' => $this->studio->user('project_manager')->id,
-        ]);
+        // Tapşırıq studiyanın konteksti ilə yaradılır — prodda hər sətir belə
+        // yaranır (panel `SetTenant`-dan keçir və `tenant_id` möhürlənir).
+        // Kontekstsiz yaradılan sətir `tenant_id = null` alırdı; əmr isə artıq
+        // studiya-studiya gəzdiyi üçün belə «heç kimin» sətri heç bir keçidə
+        // düşmürdü və test səhv səbəbdən qırılırdı.
+        $liveTask = app(TenantContext::class)->actingAs(
+            $this->studio->tenant->id,
+            fn () => Task::create([
+                'project_id' => $this->studio->project->id,
+                'stage_id' => $this->studio->stage->id,
+                'title' => 'Canlı tapşırıq',
+                'status' => 'todo',
+                'deadline' => $warningDay,
+                'assignee_user_id' => $this->studio->user('project_manager')->id,
+            ]),
+        );
 
         $this->artisan('tasks:notify-deadlines')->assertSuccessful();
 

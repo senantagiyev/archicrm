@@ -53,7 +53,12 @@ class ChatController extends Controller
     public function unread()
     {
         $viewer = Auth::guard('customer')->user();
-        $projectIds = $viewer->client->projects()->pluck('id')->all();
+
+        // Trait-dən KEÇİR: bu endpoint hər portal səhifəsində arxa planda
+        // pollinq edir, ona görə arxivlənmiş (soft-delete olunmuş) müştəridə
+        // `$viewer->client` null olanda fasiləsiz 500 və log zibili verirdi.
+        // Trait həmin qəza üçün 403 qaytarır, həm də qaralama layihələri süzür.
+        $projectIds = $this->clientProjects()->pluck('id')->all();
 
         $counts = $this->chat->unreadCounts($viewer, $projectIds);
 
@@ -62,7 +67,8 @@ class ChatController extends Controller
 
     public function send(Request $request, int $project)
     {
-        $project = $this->clientProject($project);
+        // Yazma: arxivlənmiş layihədə yazışma bağlıdır (oxumaq olar).
+        $project = $this->writableClientProject($project);
 
         // Səsli mesaj brauzerdən audio blob kimi gəlir — icazəli tiplər
         // fayl əlavəsindən fərqlidir, ona görə tip əvvəlcədən oxunur.

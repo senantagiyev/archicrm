@@ -45,13 +45,31 @@ class TaskResource extends Resource
     {
         // Table closures read project/stage/assignee — eager load against the N+1 guard.
         $query = parent::getEloquentQuery()->with(['project', 'stage', 'assignee']);
-        $user = auth()->user();
 
-        if ($user && AccessMatrix::requiresOwnProject($user)) {
-            $query->where('assignee_user_id', $user->id);
+        return static::scopeToVisibleProjects($query, auth()->user());
+    }
+
+    /**
+     * Tapşırıq sorğusunu istifadəçinin görə bildiyi LAYİHƏLƏRLƏ məhdudlaşdırır.
+     *
+     * Burada əvvəl `assignee_user_id = me` filtri vardı; o filtr iki tərəfdən də
+     * səhv nəticə verirdi — layihə meneceri matrisdə Mərhələ/Tapşırıq = Tam
+     * olduğu halda öz layihəsində dizaynerə verdiyi tapşırığı görmürdü, əvəzində
+     * üzvü olmadığı layihənin tapşırığı ona təyin ediləndə görünürdü. Şərt indi
+     * ExpenseResource/MeetingResource ilə eynidir: layihənin meneceri ya üzvü.
+     *
+     * Metod `public static`-dır ki, TaskPlanner və MyTasksWidget eyni şərti
+     * təkrar yazmasın — görünürlük qaydası bir yerdə saxlanılır.
+     */
+    public static function scopeToVisibleProjects(Builder $query, ?User $user): Builder
+    {
+        if ($user === null || ! AccessMatrix::requiresOwnProject($user)) {
+            return $query;
         }
 
-        return $query;
+        return $query->whereHas('project', fn (Builder $project) => $project
+            ->where('manager_user_id', $user->id)
+            ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
     }
 
     public static function form(Schema $form): Schema

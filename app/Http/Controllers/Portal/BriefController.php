@@ -19,6 +19,18 @@ class BriefController extends Controller
 {
     use ResolvesClientProjects;
 
+    /** `sanitiseAnswer()` uyğun gəlməyən cavabı bu nişanla qaytarır — `null` real cavabdır. */
+    private const INVALID_ANSWER = "\0invalid";
+
+    /** Mətn hədləri: əvvəl heç bir hədd yox idi, 200 000 simvol da qəbul olunurdu. */
+    private const TEXT_MAX = 1000;
+
+    private const TEXTAREA_MAX = 5000;
+
+    private const LIST_MAX = 200;
+
+    private const COMPOSITE_MAX = 20000;
+
     public function __construct(
         private readonly BriefService $briefs,
         private readonly ChatService $chat,
@@ -38,6 +50,24 @@ class BriefController extends Controller
         $brief->load('rooms');
 
         $map = $this->briefs->sectionMap($brief);
+
+        // `progress` keşlənmiş sütundur. Kilidi açılmış brifdə o, göndəriş
+        // anındakı 100%-i daşıya bilər (bu baq düzəldilib, amma ondan ƏVVƏL
+        // yenidən açılmış briflər bazada həmin köhnə rəqəmlə qalıb). Xəritə
+        // onsuz da burada hesablanır, ona görə fərq görünəndə sütunu bir dəfə
+        // düzəldirik — müştəri «100% dolduruldu» yazısını boş bölmələrlə yan-yana
+        // görməsin.
+        if (! $brief->isLocked()) {
+            $total = $map->sum(fn ($entry) => $entry['question_count']);
+            $answered = $map->sum(fn ($entry) => $entry['answered_count']);
+            $actual = $total > 0 ? (int) round($answered / $total * 100) : 0;
+
+            if ((int) $brief->progress !== $actual) {
+                $this->briefs->recalculateProgress($brief);
+                $brief->refresh();
+            }
+        }
+
         $openComments = $brief->openComments()->count();
 
         return view('portal.brief.index', compact('project', 'brief', 'map', 'openComments'));
@@ -48,6 +78,7 @@ class BriefController extends Controller
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
 
+        $this->assertSectionBelongsToBrief($brief, $section);
         abort_if($room && $room->brief_id !== $brief->id, 404);
         abort_if($section->isRoomSection() && ! $room, 404);
 
@@ -137,6 +168,7 @@ class BriefController extends Controller
     {
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
+        $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
 
         $validated = $request->validate([
@@ -145,12 +177,28 @@ class BriefController extends Controller
             'delegated' => ['required', 'boolean'],
         ]);
 
+        // Otaq bölməsinin cavabı otaqsız yazılsaydı, sətir `brief_room_id = null`
+        // ilə yaranıb bütün otaqlara aid ÜMUMİ təbəqəyə düşürdü — `section()`
+        // eyni yoxlamanı artıq edir, autosave isə etmirdi.
+        abort_if($section->isRoomSection() && ! $room, 404);
+
         $question = $section->questions()->findOrFail($validated['question_id']);
 
         // Locked brief: only questions flagged for clarification may change (Screen 13).
         abort_unless($this->canEdit($brief, $question->id, $room), 403);
 
-        $value = $validated['value'];
+        // «Dizaynerin ixtiyarına» yalnız bankda bu güzəşt verilmiş suallarda
+        // mümkündür. Yoxlama olmadan müştəri İSTƏNİLƏN məcburi sualı (ünvan,
+        // əlaqə) boş qoyub həvalə kimi bağlaya, brifi isə tam sayıla bilərdi.
+        if ($validated['delegated'] && ! $question->allows_designer_choice) {
+            return response()->json(['ok' => false, 'error' => t('portal.brief_value_error')], 422);
+        }
+
+        $value = $this->sanitiseAnswer($question, $validated['value']);
+
+        if ($value === self::INVALID_ANSWER) {
+            return response()->json(['ok' => false, 'error' => t('portal.brief_value_error')], 422);
+        }
 
         // Part 10 №16 exclusive_override: «Dizaynerin ixtiyarına» cancels sibling picks.
         if (is_array($value) && array_is_list($value) && in_array('designer', $value, true) && count($value) > 1) {
@@ -183,7 +231,7 @@ class BriefController extends Controller
         // Dynamic Room Setup (spec Ə11): the inventory answer materialises the
         // per-room accordions immediately, so the client sees them on return.
         if ($question->type === 'room_inventory') {
-            $this->briefs->syncRooms($brief, (array) ($validated['value'] ?? []));
+            $this->briefs->syncRooms($brief, (array) ($value ?? []));
         }
 
         // Mark the section in progress (unless already submitted).
@@ -202,7 +250,10 @@ class BriefController extends Controller
     {
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
+        $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
+
+        abort_if($section->isRoomSection() && ! $room, 404);
 
         $validated = $request->validate([
             'question_id' => ['required', 'integer'],
@@ -235,7 +286,14 @@ class BriefController extends Controller
     {
         $project = $this->clientProject($project);
         $brief = $this->briefs->forProject($project);
+        $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
+
+        // Kilidli brifdə bölmə göndərmək cavabları dəyişmirdi, amma bölmənin
+        // `submitted_at` damğasını yenidən yazır və menecerə hər dəfə yeni
+        // «bölmə göndərildi» bildirişi göndərirdi.
+        abort_if($brief->isLocked(), 403);
+
         $section->load('questions');
 
         $answers = $brief->answers()
@@ -375,5 +433,102 @@ class BriefController extends Controller
         $roomId = $request->input('room_id');
 
         return $roomId ? $brief->rooms()->findOrFail($roomId) : null;
+    }
+
+    /**
+     * Bölmə marşrut bağlaması QLOBALDIR — `{section}` istənilən şablonun
+     * bölməsini gətirə bilirdi. Yoxlama olmadan müştəri öz layihəsinin URL-inə
+     * yad şablonun bölmə id-sini yazıb həmin bölməni açır və ora cavab yazırdı:
+     * sətir bazada qalırdı, heç bir ekranda görünmürdü.
+     */
+    private function assertSectionBelongsToBrief(Brief $brief, BriefSection $section): void
+    {
+        abort_if($section->brief_template_id !== $brief->brief_template_id, 404);
+    }
+
+    /**
+     * Cavabın sualın tipinə uyğunluğunu yoxlayır və uyğun gəlməyəndə
+     * `INVALID_ANSWER` qaytarır.
+     *
+     * Əvvəl `value` sadəcə `nullable` idi — yəni brauzerə müdaxilə edən şəxs
+     * (və ya səhv işləyən skript) istənilən sualın cavabına istənilən mətni,
+     * massivi və ya variant siyahısında olmayan açarı yaza bilirdi. Belə dəyər
+     * sonra olduğu kimi dizaynerin ekranına, brif PDF-inə və texniki tapşırığa
+     * düşürdü — yəni baza da, sənəd də mənasız məlumatla dolurdu.
+     *
+     * Yoxlama `section.blade.php`-dəki `collect()` funksiyasının qaytardığı
+     * formaları əks etdirir; tanınmayan tip üçün yalnız ölçü həddi tətbiq
+     * olunur ki, yeni sual tipi əlavə edəndə bu metod sükutla maneə olmasın.
+     */
+    private function sanitiseAnswer(BriefQuestion $question, mixed $value): mixed
+    {
+        if ($value === null || $value === '' || $value === []) {
+            return $value;
+        }
+
+        $allowed = $this->allowedOptionValues($question);
+        $picked = fn ($item) => is_scalar($item)
+            && ($allowed === [] || in_array((string) $item, $allowed, true));
+
+        return match ($question->type) {
+            'text' => is_string($value) && mb_strlen($value) <= self::TEXT_MAX ? $value : self::INVALID_ANSWER,
+            'textarea' => is_string($value) && mb_strlen($value) <= self::TEXTAREA_MAX ? $value : self::INVALID_ANSWER,
+            'number' => is_numeric($value) ? $value : self::INVALID_ANSWER,
+            'date' => is_string($value) && strtotime($value) !== false ? $value : self::INVALID_ANSWER,
+            'boolean', 'consent' => is_scalar($value) && in_array((string) $value, ['0', '1'], true)
+                ? (string) $value
+                : self::INVALID_ANSWER,
+            'select', 'image_select' => $picked($value) ? (string) $value : self::INVALID_ANSWER,
+            'multiselect', 'image_multiselect' => is_array($value)
+                && array_is_list($value)
+                && count($value) <= self::LIST_MAX
+                && collect($value)->every($picked)
+                    ? array_values(array_map('strval', $value))
+                    : self::INVALID_ANSWER,
+            // Açar — variantın özü, dəyər isə yalnız bəyənmə/bəyənməmədir.
+            'image_rating' => is_array($value)
+                && ! array_is_list($value)
+                && collect($value)->keys()->every($picked)
+                && collect($value)->every(fn ($v) => is_scalar($v) && in_array((string) $v, ['like', 'dislike'], true))
+                    ? $value
+                    : self::INVALID_ANSWER,
+            default => $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER,
+        };
+    }
+
+    /**
+     * Sualın qəbul etdiyi variant açarları. Bankda variantlar ya düz siyahıdır,
+     * ya da `std_or_custom`-da olduğu kimi `items` altındadır.
+     *
+     * @return list<string>
+     */
+    private function allowedOptionValues(BriefQuestion $question): array
+    {
+        $options = $question->options ?? [];
+        $rows = is_array($options) && ! array_is_list($options)
+            ? ($options['items'] ?? [])
+            : $options;
+
+        $values = [];
+
+        foreach ((array) $rows as $option) {
+            if (is_array($option) && isset($option['value']) && is_scalar($option['value'])) {
+                $values[] = (string) $option['value'];
+            }
+        }
+
+        // «Dizaynerin ixtiyarına» variant siyahısında yazılmır — onu skript
+        // `designer` açarı kimi göndərir.
+        if ($values !== [] && $question->allows_designer_choice) {
+            $values[] = 'designer';
+        }
+
+        return $values;
+    }
+
+    /** Tərkibi sərbəst olan tiplərdə (matris, repeater, büdcə) yalnız ölçü həddi. */
+    private function withinSizeLimit(mixed $value): bool
+    {
+        return mb_strlen((string) json_encode($value)) <= self::COMPOSITE_MAX;
     }
 }

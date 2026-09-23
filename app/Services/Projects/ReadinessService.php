@@ -20,9 +20,13 @@ class ReadinessService
             ->selectRaw('count(*) as total, sum(case when status = ? then 1 else 0 end) as done', [TaskStatus::Done->value])
             ->first();
 
-        $readiness = ($counts->total ?? 0) > 0
-            ? (int) round($counts->done / $counts->total * 100)
-            : ($stage->status === StageStatus::Done ? 100 : 0);
+        // Bitmiş mərhələ hər iki ekranda 100%-dir. Əvvəl yalnız layihə hesabı
+        // `Done`-u 100 sayırdı, mərhələ sütunu isə tapşırıq payını göstərirdi:
+        // yarısı bağlanmamış, amma bitmiş elan edilmiş mərhələ bir ekranda 50%,
+        // o birində 100% yazırdı.
+        $readiness = $stage->status === StageStatus::Done
+            ? 100
+            : (($counts->total ?? 0) > 0 ? (int) round($counts->done / $counts->total * 100) : 0);
 
         if ($stage->readiness !== $readiness) {
             $stage->forceFill(['readiness' => $readiness])->saveQuietly();
@@ -48,10 +52,15 @@ class ReadinessService
         if ($stages->isEmpty()) {
             $readiness = 0;
         } else {
-            $totalWeight = max(1, $stages->sum('weight'));
+            // Bütün çəkilər 0 olanda `max(1, …)` məxrəci 1 edirdi, surət isə
+            // sıfıra vururdu — tam bitmiş layihə 0% göstərirdi. Belə halda
+            // çəkilər mənasızdır, ona görə bərabər paya keçirik.
+            $weight = fn (Stage $s) => $stages->sum('weight') > 0 ? (int) $s->weight : 1;
+            $totalWeight = $stages->sum($weight);
+
             $readiness = (int) round(
-                $stages->sum(fn (Stage $s) => ($s->status === StageStatus::Done ? 100 : $s->readiness) * $s->weight)
-                / $totalWeight
+                $stages->sum(fn (Stage $s) => ($s->status === StageStatus::Done ? 100 : $s->readiness) * $weight($s))
+                / max(1, $totalWeight)
             );
         }
 

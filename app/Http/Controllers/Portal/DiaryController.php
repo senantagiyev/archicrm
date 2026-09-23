@@ -45,6 +45,40 @@ class DiaryController extends Controller
         abort_if($path === null, 404);
         abort_unless(Storage::disk('public')->exists($path), 404);
 
-        return Storage::disk('public')->response($path);
+        return $this->imageResponse($path);
+    }
+
+    /**
+     * Şəkil cavabı — `nosniff` və tip ağ siyahısı ilə.
+     *
+     * Fayl tətbiqin ÖZ origin-indən `inline` verilir. Uzantı yoxlamasından
+     * keçib diskə HTML və ya SVG düşsə, brauzer onu portal origin-ində SƏNƏD
+     * kimi açar və içindəki skript müştərinin sessiyası ilə işləyərdi. Ona görə:
+     *  • `X-Content-Type-Options: nosniff` — brauzer məzmuna baxıb tipi
+     *    «təxmin etmir», yalnız bizim verdiyimiz `Content-Type`-a inanır;
+     *  • ağ siyahı — yalnız rastr şəkil tipləri inline gedir. SVG QƏSDƏN
+     *    siyahıda yoxdur: onun içində <script> ola bilər. Siyahıdan kənar hər
+     *    şey `attachment` kimi verilir, yəni brauzerdə icra olunmur.
+     *
+     * Eyni məntiq `ProcurementController::imageResponse()`-dadır — iki marşrut
+     * da `public` diskindən müştəriyə fayl verir.
+     */
+    private function imageResponse(string $path)
+    {
+        $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
+
+        $inline = in_array($mime, [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp',
+        ], true);
+
+        return Storage::disk('public')->response(
+            $path,
+            null,
+            [
+                'Content-Type' => $inline ? $mime : 'application/octet-stream',
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            $inline ? 'inline' : 'attachment',
+        );
     }
 }

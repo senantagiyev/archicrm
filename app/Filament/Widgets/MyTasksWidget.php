@@ -21,13 +21,29 @@ class MyTasksWidget extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Mənim tapşırıqlarım (bu həftə)')
-            ->query(fn (): Builder => Task::query()
-                ->where('assignee_user_id', auth()->id())
-                ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
-                ->whereDate('deadline', '<=', today()->endOfWeek())
-                ->with(['project', 'stage'])
-                ->orderBy('deadline'))
+            // Başlıq məzmunu dürüst təsvir edir: siyahıya tarixsiz tapşırıqlar da
+            // düşür, ona görə «bu həftə» tək başına yanlış oxunardı.
+            ->heading('Mənim tapşırıqlarım (bu həftə və tarixsiz)')
+            ->query(fn (): Builder => TaskResource::scopeToVisibleProjects(
+                Task::query()
+                    ->where('assignee_user_id', auth()->id())
+                    ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
+                    // Son tarixi olmayan tapşırıq da mənim işimdir: `whereDate`
+                    // tək başına NULL-ı kəsirdi, halbuki TaskPlanner-in sürətli
+                    // forması və ApprovalService::createRevisionTask() məhz
+                    // tarixsiz tapşırıq yaradır — yəni sistem öz yaratdığı işi
+                    // dashboard-da gizlədirdi.
+                    ->where(fn (Builder $q) => $q
+                        ->whereNull('deadline')
+                        ->orWhereDate('deadline', '<=', today()->endOfWeek()))
+                    // Silinmiş layihənin tapşırığı «bu həftəki işim» deyil.
+                    ->whereHas('project')
+                    ->with(['project', 'stage'])
+                    // Tarixi olanlar öncə: sadə orderBy NULL-ları başa qoyardı.
+                    ->orderByRaw('deadline is null')
+                    ->orderBy('deadline'),
+                auth()->user(),
+            ))
             ->columns([
                 Tables\Columns\TextColumn::make('title')
                     ->label('Tapşırıq')
@@ -51,6 +67,6 @@ class MyTasksWidget extends TableWidget
             ])
             ->recordUrl(fn (Task $record) => TaskResource::getUrl('edit', ['record' => $record]))
             ->paginated([5, 10])
-            ->emptyStateHeading('Bu həftə tapşırığınız yoxdur');
+            ->emptyStateHeading('Açıq tapşırığınız yoxdur');
     }
 }

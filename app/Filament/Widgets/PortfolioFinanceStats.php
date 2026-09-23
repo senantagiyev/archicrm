@@ -2,8 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\StaffRole;
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Services\Finance\ProfitabilityService;
+use App\Support\AccessMatrix;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -17,11 +19,25 @@ class PortfolioFinanceStats extends StatsOverviewWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * İcazə rolun adından yox, matrisdən oxunur — bu vidjetin sahibi olan
+     * Profitability səhifəsi ilə EYNİ şərt (Profitability::canAccess).
+     * Sabit `role === accountant` yoxlaması iki tərəfə də yanlış idi: bütün
+     * domenləri bağlanmış, amma bazada `role='accountant'` qalmış istifadəçi
+     * portfel gəlirini görməyə davam edirdi, matrisdə Ödənişlər = Tam verilmiş
+     * xüsusi rol isə vidjeti heç görmürdü — rol konstruktoru burada ölü idi.
+     *
+     * Analitika = Baxış + Ödənişlər = Tam cütü məhz sahibkar və mühasibi
+     * ayırır: layihə menecerinin Analitika = Baxış icazəsi öz layihələri
+     * üzrədir və onun Ödənişlər səviyyəsi yalnız Baxışdır.
+     */
     public static function canView(): bool
     {
-        $role = auth()->user()?->role;
+        $user = auth()->user();
 
-        return auth()->user()?->isOwner() || $role === StaffRole::Accountant;
+        return $user !== null
+            && AccessMatrix::allows($user, Domain::Analytics, AccessLevel::View)
+            && AccessMatrix::allows($user, Domain::Payments, AccessLevel::Full);
     }
 
     protected function getStats(): array

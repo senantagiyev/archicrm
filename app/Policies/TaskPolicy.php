@@ -32,20 +32,47 @@ class TaskPolicy
 
     public function delete(User $user, Task $task): bool
     {
-        return $this->allowsOn($user, $task, AccessLevel::Full)
-            || $user->id === $task->author_user_id;
+        if ($this->allowsOn($user, $task, AccessLevel::Full)) {
+            return true;
+        }
+
+        // «Öz yaratdığım tapşırıq» güzəşti qalır, amma yalnız üzv olduğum
+        // layihədə: əks halda 2-ci tapıntı (yad layihənin tapşırığı açıqdır)
+        // silmə istiqamətində olduğu kimi qalardı.
+        return $user->id === $task->author_user_id
+            && $this->belongsToVisibleProject($user, $task);
     }
 
+    /**
+     * «Yalnız öz layihələri» rolları üçün hədd LAYİHƏ ÜZVLÜYÜdür, icraçı olmaq yox.
+     *
+     * Əvvəl burada `assignee_user_id` yoxlanırdı və bu, hər iki istiqamətdə səhv
+     * cavab verirdi:
+     *  — layihə meneceri matrisdə Mərhələ/Tapşırıq = Tam olmasına baxmayaraq öz
+     *    layihəsində dizaynerə verdiyi tapşırığı aça bilmirdi (Attention-dakı
+     *    keçid onda 404 verirdi);
+     *  — üzvü OLMADIĞI layihənin tapşırığı kiməsə təyin ediləndə isə həmin adam
+     *    layihəni aça bilmədiyi halda tapşırığı görüb redaktə edirdi.
+     * İndi şərt bütün digər layihə-əsaslı modullarla (ExpenseResource,
+     * MeetingResource) eynidir. Silinmiş layihədə `project` null qayıdır —
+     * orfan tapşırıq da bağlıdır.
+     */
     private function allowsOn(User $user, Task $task, AccessLevel $minimum): bool
     {
         if (! AccessMatrix::allows($user, Domain::StagesTasks, $minimum)) {
             return false;
         }
 
-        if (AccessMatrix::requiresOwnProject($user)) {
-            return $user->id === $task->assignee_user_id;
+        return $this->belongsToVisibleProject($user, $task);
+    }
+
+    /** Tapşırığın layihəsi istifadəçiyə açıqdırmı (matrisin «öz layihələri» şərti). */
+    private function belongsToVisibleProject(User $user, Task $task): bool
+    {
+        if (! AccessMatrix::requiresOwnProject($user)) {
+            return true;
         }
 
-        return true;
+        return $task->project?->hasMember($user) ?? false;
     }
 }

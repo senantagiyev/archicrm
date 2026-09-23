@@ -2,8 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Models\Project;
 use App\Services\Chat\ChatService;
+use App\Support\AccessMatrix;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 
@@ -26,6 +29,25 @@ class ChatCenter extends Page
     protected string $view = 'filament.chat-center';
 
     public ?int $projectId = null;
+
+    /**
+     * Söhbətlər layihə üzrə qurulur və siyahı `staffProjectIds()` ilə onsuz da
+     * kəsilir, amma TZ §5.20 icazənin server qatında tətbiqini tələb edir: bütün
+     * domenləri boş olan rol bu ekranı da 200 ilə açmamalıdır.
+     *
+     * Domen Layihələr, səviyyə Baxış — çat layihə danışığıdır, layihəni görmək
+     * hüququ olmayanın burada işi yoxdur. Standart altı rolun hamısında Layihələr
+     * ən azı Baxış səviyyəsindədir (mühasib = Baxış), yəni mövcud davranış
+     * dəyişmir; konkret layihə açılarkən əlavə `can('view', $project)` yoxlaması
+     * mount()-da qalır.
+     */
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null
+            && AccessMatrix::allows($user, Domain::Projects, AccessLevel::View);
+    }
 
     public static function getNavigationBadge(): ?string
     {

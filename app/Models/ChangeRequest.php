@@ -40,12 +40,17 @@ class ChangeRequest extends Model
                 // Derived from the highest number issued, not from count(): with
                 // count(), deleting CR-7-002 made the next create re-issue
                 // CR-7-003 on top of the live one.
-                $last = static::withoutGlobalScopes()
+                // `orderByDesc('id')` sətirin yalnız SONUNCU QALANINI görürdü:
+                // aradan bir CR silinəndə növbəti yazı diri sətrin nömrəsini
+                // təkrar verirdi. Nömrə sətir adının içində saxlandığına görə ən
+                // böyüyünü SQL-də yox, sonluğu ayıraraq tapırıq — bir layihədə
+                // CR sayı azdır. (Sonuncu nömrə silinərsə, o nömrə yenidən
+                // işlənir; tam monoton sayğac ayrıca sütun tələb edir.)
+                $seq = 1 + (int) static::withoutGlobalScopes()
                     ->where('project_id', $cr->project_id)
-                    ->orderByDesc('id')
-                    ->value('number');
-
-                $seq = $last && preg_match('/(\d+)$/', $last, $m) ? ((int) $m[1]) + 1 : 1;
+                    ->pluck('number')
+                    ->map(fn ($number) => preg_match('/(\d+)$/', (string) $number, $m) ? (int) $m[1] : 0)
+                    ->max();
 
                 $cr->number = 'CR-'.$cr->project_id.'-'.str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
             }

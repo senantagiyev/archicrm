@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\SafeStaffRole;
 use App\Enums\StaffRole;
 use App\Models\Concerns\BelongsToTenant;
 use Database\Factories\UserFactory;
@@ -32,7 +33,11 @@ class User extends Authenticatable implements FilamentUser
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'role' => StaffRole::class,
+            // Enum cast-ının özü bazadakı yad sətirdə `ValueError` atır — yəni
+            // köhnəlmiş və ya əl ilə redaktə edilmiş `role` dəyəri istifadəçiyə
+            // icazə rəddi yox, 500 səhifəsi verirdi. `SafeStaffRole` belə dəyəri
+            // `null` edir; rolsuz istifadəçi isə heç bir domendə heç nə görmür.
+            'role' => SafeStaffRole::class,
             'is_active' => 'boolean',
             'is_platform_admin' => 'boolean',
         ];

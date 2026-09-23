@@ -29,6 +29,21 @@ class Payment extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $payment): void {
+            // `Expense.php:41` ilə eyni qoruma: `minValue(0.01)` yalnız
+            // `PaymentsRelationManager.php:38` formasındadır, yəni idxal, konsol
+            // və API yolu açıq idi. Mənfi ödəniş `ProfitabilityService`-də
+            // gəliri (`SUM(amount)`) azaldır — 1 000 + (−400) = 600 — və layihənin
+            // borc rəqəmini pozur. Sıfır da qəbul edilmir: məbləğsiz ödəniş
+            // sətri heç bir maliyyə hadisəsini ifadə etmir.
+            if ((float) $payment->amount <= 0) {
+                throw new \RuntimeException('Ödənişin məbləği sıfırdan böyük olmalıdır.');
+            }
+        });
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

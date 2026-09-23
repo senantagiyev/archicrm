@@ -134,7 +134,37 @@ class ProcurementController extends Controller
         abort_if($record->photo_path === null, 404);
         abort_unless(Storage::disk('public')->exists($record->photo_path), 404);
 
-        return Storage::disk('public')->response($record->photo_path);
+        return $this->imageResponse($record->photo_path);
+    }
+
+    /**
+     * Şəkil cavabı — `nosniff` və tip ağ siyahısı ilə
+     * (`DiaryController::imageResponse()` ilə eyni məntiq).
+     *
+     * Fayl tətbiqin ÖZ origin-indən `inline` verilir: diskə HTML/SVG düşsə,
+     * brauzer onu portal origin-ində sənəd kimi açar və içindəki skript
+     * müştərinin sessiyası ilə işləyərdi. `nosniff` brauzerə tipi təxmin
+     * etməyi qadağan edir, ağ siyahı isə yalnız rastr şəkilləri inline
+     * buraxır (SVG qəsdən yoxdur — içində <script> ola bilər); qalanı
+     * `attachment` kimi endirilir və icra olunmur.
+     */
+    private function imageResponse(string $path)
+    {
+        $mime = Storage::disk('public')->mimeType($path) ?: 'application/octet-stream';
+
+        $inline = in_array($mime, [
+            'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif', 'image/bmp',
+        ], true);
+
+        return Storage::disk('public')->response(
+            $path,
+            null,
+            [
+                'Content-Type' => $inline ? $mime : 'application/octet-stream',
+                'X-Content-Type-Options' => 'nosniff',
+            ],
+            $inline ? 'inline' : 'attachment',
+        );
     }
 
     /**

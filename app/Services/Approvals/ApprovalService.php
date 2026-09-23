@@ -97,6 +97,14 @@ class ApprovalService
         ?ClientUser $decidedBy = null,
         ?string $chosenVariant = null,
     ): Approval {
+        // Qərar bir dəfə verilir. Yoxlama olmadan təsdiqlənmiş razılaşdırmanı
+        // «rədd edilmiş»ə çevirmək mümkün idi — həm subyektin statusu geri
+        // qayıdır, həm də yenidən düzəliş tapşırığı yaranırdı. Yeni dövrə
+        // lazımdırsa, dizayner `request()` ilə növbəti versiyanı göndərir.
+        if ($approval->status !== ApprovalStatus::Pending) {
+            throw new InvalidArgumentException('Bu razılaşdırma üzrə qərar artıq verilib.');
+        }
+
         if (! $approved && blank($comment)) {
             throw new InvalidArgumentException('Rədd edərkən şərh məcburidir.');
         }

@@ -16,6 +16,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Support\AccessMatrix;
 use Filament\Pages\Dashboard as BaseDashboard;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -31,6 +32,11 @@ class Dashboard extends BaseDashboard
     protected static ?string $title = 'İdarəetmə Paneli';
 
     protected string $view = 'filament.pages.dashboard';
+
+    /** @var array<int, int>|null Görünən layihə id-ləri (null = məhdudiyyət yoxdur). */
+    private ?array $visibleProjectIds = null;
+
+    private bool $visibleProjectIdsResolved = false;
 
     /** Hide the default page title — the view renders its own welcome header. */
     public function getHeading(): string
@@ -77,12 +83,25 @@ class Dashboard extends BaseDashboard
         $user = auth()->user();
         $tiles = [];
 
-        $overdueTasks = Task::whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
-            ->whereDate('deadline', '<', today())->count();
+        // Rəqəm də «öz layihələrim» üzrə olmalıdır: gecikmə sayı yad layihələrin
+        // tapşırıqlarını da sayanda dizayner üçün mənasız, üstəlik studiyanın
+        // ümumi vəziyyəti barədə məlumat sızdıran bir göstəriciyə çevrilirdi.
+        $overdueTasks = $this->scoped(
+            Task::query()
+                ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
+                ->whereDate('deadline', '<', today())
+        )->count();
 
         if ($this->mayRead(Domain::Projects)) {
-            $activeProjects = Project::where('status', ProjectStatus::Active->value)->count();
-            $newProjectsWeek = Project::where('created_at', '>=', now()->subWeek())->count();
+            // Sayğac da «öz layihələrim» üzrədir: studiyanın ümumi layihə sayı
+            // iki layihədə işləyən dizayner üçün həm yanıltıcıdır, həm də büro
+            // haqqında ona aid olmayan göstəricidir.
+            $activeProjects = $this->scopeProjects(
+                Project::query()->where('status', ProjectStatus::Active->value)
+            )->count();
+            $newProjectsWeek = $this->scopeProjects(
+                Project::query()->where('created_at', '>=', now()->subWeek())
+            )->count();
 
             $tiles[] = ['label' => 'Aktiv layihələr', 'value' => (string) $activeProjects, 'hint' => "+{$newProjectsWeek} bu həftə", 'tone' => 'ink'];
         }
@@ -127,7 +146,11 @@ class Dashboard extends BaseDashboard
 
         for ($i = 5; $i >= 0; $i--) {
             $m = now()->startOfMonth()->subMonths($i);
-            $count = Project::whereYear('created_at', $m->year)->whereMonth('created_at', $m->month)->count();
+            // Qrafik də tile-lar və siyahılarla eyni toplumu göstərməlidir —
+            // əks halda dizayner 2 layihə görür, sütunlar isə 14-ü sayır.
+            $count = $this->scopeProjects(
+                Project::query()->whereYear('created_at', $m->year)->whereMonth('created_at', $m->month)
+            )->count();
             $out[] = ['label' => $months[$m->month], 'value' => $count];
         }
 
@@ -147,7 +170,7 @@ class Dashboard extends BaseDashboard
         $slices = [];
         $total = 0;
         foreach ($palette as $value => [$label, $color]) {
-            $count = Project::where('status', $value)->count();
+            $count = $this->scopeProjects(Project::query()->where('status', $value))->count();
             if ($count > 0) {
                 $slices[] = ['label' => $label, 'value' => $count, 'color' => $color];
                 $total += $count;
@@ -157,20 +180,84 @@ class Dashboard extends BaseDashboard
         return ['total' => $total, 'slices' => $slices];
     }
 
-    /** @return Collection<int, Project> */
+    /**
+     * «Son layihələr» siyahısı. Burada layihənin ADI və müştərisi görünür, ona
+     * görə tile-lardakı domen yoxlaması kifayət etmir: dizayner/vizualizator
+     * Layihələr = Redaktə səviyyəsinə malikdir, amma bu səviyyə yalnız ÖZ
+     * layihələrinə aiddir (matrisdəki «own projects» şərti).
+     *
+     * @return Collection<int, Project>
+     */
     public function recentProjects()
     {
-        return Project::with('client')->latest()->limit(5)->get();
+        return $this->scopeProjects(Project::query()->with('client')->latest())
+            ->limit(5)
+            ->get();
     }
 
-    /** @return Collection<int, Task> */
+    /**
+     * Tapşırıq BAŞLIQLARI göstərilir — müştərinin şikayət etdiyi sızma məhz
+     * budur. Siyahı eyni «öz layihələrim» filtri ilə kəsilir.
+     *
+     * @return Collection<int, Task>
+     */
     public function todayTasks()
     {
-        return Task::with('project')
-            ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
-            ->whereDate('deadline', '<=', today())
+        return $this->scoped(
+            Task::query()
+                ->with('project')
+                ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
+                ->whereDate('deadline', '<=', today())
+        )
             ->orderBy('deadline')
             ->limit(6)
             ->get();
+    }
+
+    /**
+     * Layihəyə bağlı modelləri istifadəçinin görə bildiyi layihələrlə
+     * məhdudlaşdırır (Attention ekranı ilə eyni məntiq). Studiya izolyasiyası
+     * BelongsToTenant qlobal skopundan gəlir; bu isə matrisin «öz layihələri»
+     * şərtidir — biri studiyanı, digəri layihəni kəsir, bir-birini əvəz etmir.
+     */
+    private function scoped(Builder $query): Builder
+    {
+        $ids = $this->accessibleProjectIds();
+
+        return $ids === null ? $query : $query->whereIn('project_id', $ids);
+    }
+
+    /** Eyni məhdudiyyətin `projects` cədvəlinin öz üzərində variantı. */
+    private function scopeProjects(Builder $query): Builder
+    {
+        $ids = $this->accessibleProjectIds();
+
+        return $ids === null ? $query : $query->whereKey($ids);
+    }
+
+    /**
+     * @return array<int, int>|null null = bütün layihələr (sahibkar, mühasib)
+     */
+    private function accessibleProjectIds(): ?array
+    {
+        // Bir səhifə açılışında stats(), recentProjects() və todayTasks() eyni
+        // siyahını soruşur — bir dəfə hesablanır.
+        if ($this->visibleProjectIdsResolved) {
+            return $this->visibleProjectIds;
+        }
+
+        $this->visibleProjectIdsResolved = true;
+        $user = auth()->user();
+
+        if ($user === null || ! AccessMatrix::requiresOwnProject($user)) {
+            return $this->visibleProjectIds = null;
+        }
+
+        return $this->visibleProjectIds = Project::query()
+            ->where(fn (Builder $q) => $q
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $m) => $m->whereKey($user->id)))
+            ->pluck('id')
+            ->all();
     }
 }

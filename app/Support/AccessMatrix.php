@@ -159,6 +159,16 @@ class AccessMatrix
      */
     private static function resolve(User $user): array
     {
+        // Deaktiv edilmiş işçi heç bir domendə heç nə görmür. Əvvəl `is_active`
+        // yalnız panelə giriş qapısında (`User::canAccessPanel()`) yoxlanılırdı,
+        // policy qatı isə onu oxumurdu — yəni panel-xarici marşrutlar (fayl
+        // endirmə, işçi çatı, təqvim feed-i) deaktiv hesab üçün də açıq qalırdı.
+        // Yalnız AÇIQ `false` sayılır: yeni yaradılmış, hələ bazadan oxunmamış
+        // modeldə sütun yaddaşda boş olur, bazadakı defolt isə `true`-dur.
+        if ($user->is_active === false) {
+            return ['levels' => [], 'own' => true];
+        }
+
         // The tenant is part of the key: roles resolve per studio (a studio's own
         // copy shadows the platform-wide row), so caching on the role alone would
         // serve studio A's matrix to studio B inside one process — which the

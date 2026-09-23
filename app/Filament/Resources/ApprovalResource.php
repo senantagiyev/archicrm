@@ -6,6 +6,7 @@ use App\Enums\ApprovalStatus;
 use App\Filament\Resources\ApprovalResource\Pages;
 use App\Models\Approval;
 use App\Models\Project;
+use App\Support\AccessMatrix;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -86,7 +87,22 @@ class ApprovalResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->with(['approvable', 'project', 'requestedBy']);
+        $query = parent::getEloquentQuery()->with(['approvable', 'project', 'requestedBy']);
+        $user = auth()->user();
+
+        // Digər layihə-əsaslı resurslarda (Expense, Invoice, Meeting,
+        // PurchaseOrder) bu filtr var idi, burada yox — nəticədə «yalnız öz
+        // layihəsi» rolları üzvü olmadıqları layihənin razılaşdırmalarını
+        // siyahıda görürdü. Razılaşdırmanın arxasında büdcə sətri və məbləğ
+        // dayanır, yəni bu həm də pul məlumatının sızmasıdır. `view()` policy-si
+        // sətri düzgün bağlayırdı, siyahı isə policy-dən keçmir.
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
     }
 
     public static function getPages(): array

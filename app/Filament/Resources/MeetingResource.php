@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\MeetingResource\Pages;
 use App\Models\Meeting;
 use App\Models\Project;
+use App\Models\User;
 use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
@@ -39,7 +40,7 @@ class MeetingResource extends Resource
             Section::make('Görüş məlumatları')->columns(2)->schema([
                 Forms\Components\Select::make('project_id')
                     ->label('Layihə')
-                    ->options(fn () => Project::query()->orderBy('name')->pluck('name', 'id'))
+                    ->options(fn () => static::scopedProjectQuery()->orderBy('name')->pluck('name', 'id'))
                     ->searchable()
                     ->required()
                     ->native(false),
@@ -54,6 +55,9 @@ class MeetingResource extends Resource
                     ->native(false),
                 Forms\Components\DateTimePicker::make('ends_at')
                     ->label('Bitmə vaxtı')
+                    // Bitmə başlanğıcdan əvvəl olanda görüş təqvimə mənfi
+                    // uzunluqlu hadisə kimi düşürdü.
+                    ->after('starts_at')
                     ->seconds(false)
                     ->native(false),
                 Forms\Components\TextInput::make('location')
@@ -63,6 +67,31 @@ class MeetingResource extends Resource
                     ->label('Onlayn keçid')
                     ->url()
                     ->maxLength(191),
+            ]),
+
+            // `participants` və `recording_link` sütunları əvvəldən mövcud idi və
+            // proqramla yazılırdı, amma formada heç bir sahəsi yox idi — modulun
+            // məqsədinin iki hissəsi (iştirakçılar və protokol) admin paneldən
+            // ümumiyyətlə əlçatmaz idi.
+            Section::make('İştirakçılar və protokol')->columns(2)->schema([
+                Forms\Components\Select::make('participants')
+                    ->label('İştirakçılar')
+                    ->multiple()
+                    // Ad yox, `users.id` saxlanılır: işçinin adı dəyişəndə köhnə
+                    // görüşün iştirakçısı itmir.
+                    ->options(fn () => User::query()
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->pluck('name', 'id'))
+                    ->searchable()
+                    ->native(false)
+                    ->columnSpanFull(),
+                Forms\Components\TextInput::make('recording_link')
+                    ->label('Protokol / yazı keçidi')
+                    ->url()
+                    ->maxLength(191)
+                    ->helperText('Görüşün protokolu və ya video yazısına keçid.')
+                    ->columnSpanFull(),
             ]),
 
             Section::make()->schema([
@@ -92,12 +121,29 @@ class MeetingResource extends Resource
                 Tables\Columns\TextColumn::make('location')
                     ->label('Yer')
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('participants')
+                    // `state()` (formatStateUsing yox): xam dəyər massivdir, onu
+                    // olduğu kimi versək Filament hər element üçün ayrıca sətir
+                    // çəkir və id-ləri göstərir. Burada hazır ad sətri qaytarılır.
+                    ->state(fn (Meeting $record) => implode(', ', $record->participantNames()) ?: '—')
+                    ->label('İştirakçılar')
+                    ->wrap()
+                    ->toggleable(),
+                Tables\Columns\TextColumn::make('recording_link')
+                    ->label('Protokol')
+                    ->url(fn (Meeting $record) => $record->recording_link)
+                    ->openUrlInNewTab()
+                    ->formatStateUsing(fn (?string $state) => filled($state) ? 'Keçid' : '—')
+                    ->toggleable(),
             ])
             ->defaultSort('starts_at', 'desc')
             ->filters([
+                // Filtr də siyahı ilə eyni məhdudiyyətə tabedir: əks halda
+                // «yalnız öz layihələri» rolu görmədiyi layihələrin adlarını
+                // filtr siyahısında oxuyurdu.
                 Tables\Filters\SelectFilter::make('project_id')
                     ->label('Layihə')
-                    ->options(fn () => Project::orderBy('name')->pluck('name', 'id')),
+                    ->options(fn () => static::scopedProjectQuery()->orderBy('name')->pluck('name', 'id')),
             ])
             ->actions([
                 Actions\EditAction::make(),
@@ -126,6 +172,31 @@ class MeetingResource extends Resource
 
         if ($user && AccessMatrix::requiresOwnProject($user)) {
             $query->whereHas('project', fn (Builder $project) => $project
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
+        }
+
+        return $query;
+    }
+
+    /**
+     * Cari istifadəçinin görə bildiyi layihələr.
+     *
+     * Forma dropdown-u `Project::query()` idi — scope yox idi, halbuki siyahı
+     * (getEloquentQuery) daraldılırdı. «Yalnız öz layihələri» rolu üzv olmadığı
+     * layihəyə görüş yaradırdı, sonra isə onu nə siyahıda görürdü, nə redaktə
+     * edirdi — yaradıb itirirdi. Filament Select seçilmiş dəyəri `options()`
+     * siyahısına görə yoxladığı üçün bu, həm də serverdə validasiyadır.
+     */
+    protected static function scopedProjectQuery(): Builder
+    {
+        $query = Project::query();
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            // Qruplaşdırma vacibdir: `orWhere` başqa şərtlərlə (tenant scope)
+            // qarışmasın.
+            $query->where(fn (Builder $project) => $project
                 ->where('manager_user_id', $user->id)
                 ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
         }

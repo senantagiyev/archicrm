@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\ClientSource;
 use App\Enums\ClientStatus;
 use App\Enums\LeadStatus;
 use App\Filament\Resources\LeadResource;
@@ -72,7 +73,7 @@ class LeadModuleTest extends TestCase
         $this->assertSame(LeadStatus::Won, $lead->fresh()->status);
     }
 
-    public function test_convert_to_client_ignores_invalid_lead_source(): void
+    public function test_convert_to_client_keeps_an_invalid_lead_source_as_other(): void
     {
         $lead = Lead::create([
             'first_name' => 'Nigar',
@@ -82,8 +83,11 @@ class LeadModuleTest extends TestCase
 
         $client = LeadResource::convertToClient($lead)->fresh();
 
-        // Etibarsız mənbə enum cast-ı pozmamaq üçün null saxlanılır.
-        $this->assertNull($client->source);
+        // Sərbəst mətn kanalı enum-a uyğun gəlmir, amma müştəri «mənbəsiz»
+        // qalmamalıdır: enum `other` olur, orijinal mətn isə qeydlərdə saxlanılır
+        // ki, marketinq atribusiyası itməsin.
+        $this->assertSame(ClientSource::Other, $client->source);
+        $this->assertStringContainsString('sərbəst mətn mənbə', (string) $client->notes);
         $this->assertSame('Nigar', $client->name);
     }
 }

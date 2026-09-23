@@ -24,8 +24,19 @@ class AutomationRule extends Model
 
     use LogsActivity;
 
+    /**
+     * `tenant_id` QƏSDƏN buradadır: copy-on-write override-i
+     * `updateOrCreate(['tenant_id' => …, 'code' => …], …)` ilə yaradılır,
+     * `updateOrCreate()` isə `firstOrNew()` + `fill()` işlədir və `fill()`
+     * `$fillable`-dan kənar açarı SƏSSİZCƏ atır. Onsuz studiya override-i
+     * əvəzinə ikinci `tenant_id = NULL` platforma sətri yaranırdı
+     * ((tenant_id, code) unikal indeksi NULL-ları fərqli saydığı üçün insert
+     * keçirdi) və `AutomationEngine::isEnabled()` `pluck('enabled','code')`
+     * ilə oxuduğu üçün SONUNCU sətir qalib gəlirdi — yəni beta studiyasının
+     * «söndür» qərarı alfa-nın bildirişlərini də söndürürdü.
+     */
     protected $fillable = [
-        'code', 'name', 'trigger', 'priority', 'enabled', 'conditions', 'actions',
+        'tenant_id', 'code', 'name', 'trigger', 'priority', 'enabled', 'conditions', 'actions',
     ];
 
     protected function casts(): array

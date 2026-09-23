@@ -66,6 +66,10 @@ class InvoiceResource extends Resource
                     ->maxLength(64),
                 Forms\Components\Select::make('status')
                     ->label('Status')
+                    // «Qismən ödənilib»/«Ödənilib» artıq ödənilmiş məbləğdən
+                    // avtomatik çıxarılır; «Qaralama» və «Ləğv edilib» isə
+                    // avtomatik keçidə düşmür.
+                    ->helperText('Ödəniş statusları ödənilmiş məbləğə görə avtomatik yenilənir.')
                     ->options(collect(InvoiceStatus::cases())->mapWithKeys(fn ($s) => [$s->value => $s->label()]))
                     ->default(InvoiceStatus::Draft->value)
                     ->required()
@@ -85,29 +89,52 @@ class InvoiceResource extends Resource
                     ->default('AZN')
                     ->required()
                     ->maxLength(3),
+                // `total` artıq əl ilə yazılmır — SEÇİM: oxunaqlı (disabled +
+                // dehydrated(false)) edildi. Səbəb: sahə formadan ümumiyyətlə
+                // göndərilmədiyi üçün model onu `subtotal + tax` kimi yenidən
+                // hesablayır və operatorun yanlış rəqəmi ilə modelin hesabladığı
+                // rəqəm arasında «hansı qalib gəldi?» sualı heç yaranmır.
+                // Aşağıdakı `afterStateUpdated` isə yekunu DƏRHAL ekranda
+                // göstərir ki, istifadəçi nəticəni saxlamadan əvvəl görsün.
                 Forms\Components\TextInput::make('subtotal')
                     ->label('Ara cəm')
                     ->numeric()
                     ->default(0)
                     ->minValue(0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Get $get, Set $set) => $set(
+                        'total',
+                        round((float) $get('subtotal') + (float) $get('tax'), 2),
+                    ))
                     ->prefix(fn (Get $get) => $get('currency')),
                 Forms\Components\TextInput::make('tax')
                     ->label('Vergi')
                     ->numeric()
                     ->default(0)
                     ->minValue(0)
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(fn (Get $get, Set $set) => $set(
+                        'total',
+                        round((float) $get('subtotal') + (float) $get('tax'), 2),
+                    ))
                     ->prefix(fn (Get $get) => $get('currency')),
                 Forms\Components\TextInput::make('total')
                     ->label('Ümumi məbləğ')
+                    ->helperText('Ara cəm + vergi — avtomatik hesablanır.')
                     ->numeric()
                     ->default(0)
-                    ->minValue(0)
+                    ->disabled()
+                    ->dehydrated(false)
                     ->prefix(fn (Get $get) => $get('currency')),
                 Forms\Components\TextInput::make('paid_amount')
                     ->label('Ödənilmiş məbləğ')
+                    ->helperText('Ümumi məbləğdən çox ola bilməz.')
                     ->numeric()
                     ->default(0)
                     ->minValue(0)
+                    // Artıq ödənişi formada da dayandırırıq ki, istifadəçi model
+                    // istisnası əvəzinə sahənin altında normal xəta mesajı görsün.
+                    ->maxValue(fn (Get $get) => (float) $get('total'))
                     ->prefix(fn (Get $get) => $get('currency')),
             ]),
 

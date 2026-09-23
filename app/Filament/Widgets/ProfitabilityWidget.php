@@ -2,11 +2,13 @@
 
 namespace App\Filament\Widgets;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Enums\ProjectStatus;
-use App\Enums\StaffRole;
 use App\Filament\Resources\ProjectResource;
 use App\Models\Project;
 use App\Services\Finance\ProfitabilityService;
+use App\Support\AccessMatrix;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -19,12 +21,19 @@ class ProfitabilityWidget extends TableWidget
 
     protected int|string|array $columnSpan = 'full';
 
+    /**
+     * Cədvəl BÜTÜN layihələrin mənfəət/marjasını sətir-sətir açır — portfel
+     * səviyyəli maliyyə. Şərt Profitability səhifəsindəki ilə eynidir
+     * (Analitika = Baxış + Ödənişlər = Tam) ki, səhifə açılıb vidjet boş
+     * qalmasın və əksinə. Rol adına baxmaq matris konstruktorunu yan keçirdi.
+     */
     public static function canView(): bool
     {
-        $role = auth()->user()?->role;
+        $user = auth()->user();
 
-        return auth()->user()?->isOwner()
-            || $role === StaffRole::Accountant;
+        return $user !== null
+            && AccessMatrix::allows($user, Domain::Analytics, AccessLevel::View)
+            && AccessMatrix::allows($user, Domain::Payments, AccessLevel::Full);
     }
 
     public function table(Table $table): Table

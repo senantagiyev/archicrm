@@ -46,8 +46,20 @@ class TimeEntryResource extends Resource
                 ->afterStateUpdated(fn (Set $set) => $set('stage_id', null)),
             Forms\Components\Select::make('user_id')
                 ->label('İşçi')
-                ->options(fn () => User::where('is_active', true)->orderBy('name')->pluck('name', 'id'))
+                // Dropdown yalnız icazə verilən işçiləri göstərir…
+                ->options(fn () => static::assignableUsers())
                 ->default(fn () => auth()->id())
+                // …UI-nin gizlətməsi isə TƏK BAŞINA kifayət deyil: Livewire
+                // state-i müştəridən gəlir, ona görə eyni qayda serverdə
+                // validasiya kimi də yoxlanılır (həm yaratmada, həm redaktədə —
+                // scope-lu rol mövcud qeydi başqasının adına köçürə bilməsin).
+                ->rule(static fn (): \Closure => static function (string $attribute, $value, \Closure $fail): void {
+                    $actor = auth()->user();
+
+                    if ($actor && $value !== null && ! $actor->can('mayLogFor', [TimeEntry::class, (int) $value])) {
+                        $fail('Yalnız öz adınıza vaxt qeyd edə bilərsiniz.');
+                    }
+                })
                 ->searchable()->required()->native(false),
             Forms\Components\Select::make('stage_id')
                 ->label('Mərhələ')
@@ -123,5 +135,26 @@ class TimeEntryResource extends Resource
         }
 
         return $query;
+    }
+
+    /**
+     * «İşçi» seçimi üçün siyahı.
+     *
+     * Siyahı ekranı da (`getEloquentQuery`) məhz `requiresOwnProject` ilə
+     * daralır — forma bundan geniş olsa, istifadəçi görə bilmədiyi (və silə
+     * bilmədiyi) qeyd yarada bilir. Ona görə scope-lu rol üçün seçim yalnız
+     * özüdür.
+     *
+     * @return array<int, string>
+     */
+    private static function assignableUsers(): array
+    {
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            return [$user->id => $user->name];
+        }
+
+        return User::where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
     }
 }

@@ -39,10 +39,30 @@ class Translation extends Model
         foreach (['az', 'ru', 'en'] as $locale) {
             Cache::forget("translations.{$group}.{$locale}");
         }
+
+        static::forgetLoadedLines();
+    }
+
+    /**
+     * Keşi silmək tək başına kifayət etmirdi: Laravel tərcüməçisi oxuduğu
+     * qrupları həmin sorğu boyu yaddaşında (`$loaded`) saxlayır və loader-i bir
+     * daha çağırmır. Ona görə redaktoru saxlayan Livewire sorğusu KÖHNƏ mətni
+     * render edirdi — dəyişiklik yalnız növbəti sorğuda görünürdü və redaktor
+     * «getmədi» deyib eyni sətri təkrar-təkrar saxlayırdı.
+     */
+    private static function forgetLoadedLines(): void
+    {
+        $translator = app('translator');
+
+        if (method_exists($translator, 'setLoaded')) {
+            $translator->setLoaded([]);
+        }
     }
 
     public static function clearCache(): void
     {
+        static::forgetLoadedLines();
+
         foreach (static::distinct()->pluck('group') as $group) {
             foreach (['az', 'ru', 'en'] as $locale) {
                 Cache::forget("translations.{$group}.{$locale}");

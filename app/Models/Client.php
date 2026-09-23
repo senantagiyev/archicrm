@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ClientSource;
 use App\Enums\ClientStatus;
+use App\Enums\ProjectStatus;
 use App\Models\Concerns\BelongsToTenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +38,37 @@ class Client extends Model
             ->logOnly(['name', 'status', 'responsible_user_id', 'phone', 'email'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
+    }
+
+    protected static function booted(): void
+    {
+        // `projects.client_id` `cascadeOnDelete`-dir, amma müştəri SoftDeletes
+        // işlədir — soft delete FK-nı heç vaxt işə salmır. Nəticə: müştəri
+        // siyahıdan yox olurdu, layihəsi isə "aktiv" qalırdı; ödəniş qrafiki,
+        // əlaqə jurnalı və portal girişi sahibsiz işləməyə davam edirdi.
+        // Supplier::booted() etalonundakı kimi silmə qabaqcadan bloklanır.
+        static::deleting(function (self $client): void {
+            $liveProjects = $client->projects()
+                ->whereNotIn('status', [ProjectStatus::Done->value, ProjectStatus::Archived->value])
+                ->count();
+
+            if ($liveProjects > 0) {
+                throw new \RuntimeException(
+                    "Bu müştərinin {$liveProjects} tamamlanmamış layihəsi var — əvvəlcə layihələri bitirin, arxivləyin və ya başqa müştəriyə köçürün."
+                );
+            }
+        });
+
+        // Tamamlanmış/arxiv layihəsi olan müştərini silmək olar, amma onun portal
+        // hesabı açıq qalmamalıdır: `client_users` ayrıca soft-delete edən
+        // cədvəldir və burada da FK kaskadı işə düşmür, yəni silinmiş müştərinin
+        // istifadəçisi portala girməkdə davam edirdi.
+        //
+        // Bərpa qəsdən simmetrik deyil: ayrıca ləğv edilmiş hesablar müştəri
+        // bərpa olunanda dirilməməlidir — sahib onları yenidən dəvət edir.
+        static::deleted(function (self $client): void {
+            $client->clientUsers()->get()->each->delete();
+        });
     }
 
     public function responsible(): BelongsTo

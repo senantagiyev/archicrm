@@ -176,6 +176,19 @@ class LeadResource extends Resource
                     ->action(function (Lead $record) {
                         $client = static::convertToClient($record);
 
+                        // Konversiya artıq idempotentdir: təkrar çağırışda yeni
+                        // sətir yaranmır, mövcud müştəri qaytarılır. Operator bunu
+                        // bilməlidir — əks halda «düymə işləmədi» deyə yenidən basır.
+                        if (! $client->wasRecentlyCreated) {
+                            Notification::make()
+                                ->title('Bu lid artıq çevrilib')
+                                ->body("Lid \"{$client->name}\" müştərisinə bağlıdır — ikinci müştəri yaradılmadı.")
+                                ->warning()
+                                ->send();
+
+                            return;
+                        }
+
                         Notification::make()
                             ->title('Müştəri yaradıldı')
                             ->body("\"{$client->name}\" müştəri kimi əlavə olundu.")
@@ -188,12 +201,48 @@ class LeadResource extends Resource
 
     /**
      * Bir liddən müştəri yaradır və lidin statusunu "Qazanılıb" edir.
+     *
+     * İdempotentdir: eyni lid ikinci dəfə çevriləndə yeni sətir yaranmır, artıq
+     * bağlanmış müştəri qaytarılır. Çağıran tərəf `wasRecentlyCreated` ilə iki
+     * halı ayırd edir.
      */
     public static function convertToClient(Lead $lead): Client
     {
-        // lead_source sərbəst mətndir; yalnız etibarlı ClientSource dəyəri olduqda
-        // ötürülür, əks halda null — enum cast pozulmasın.
-        $source = ClientSource::tryFrom((string) $lead->lead_source)?->value;
+        // Təkrar konversiyanın qarşısı. `status` adi fillable sahədir — operator
+        // "Qazanılıb"-ı geri çevirəndə düymə yenidən görünür, əvvəllər isə bu,
+        // `clients` cədvəlində eyni adlı ikinci sətir demək idi. İndi maneə
+        // statusda yox, `leads.client_id` izindədir.
+        if ($lead->client_id) {
+            $existing = Client::find($lead->client_id);
+
+            if ($existing) {
+                // Lid onsuz da çevrilib: status əl ilə geri çevrilmişdisə,
+                // həqiqətə uyğun vəziyyətə qaytarılır — amma YENİ müştəri yox.
+                if ($lead->status !== LeadStatus::Won) {
+                    $lead->forceFill(['status' => LeadStatus::Won->value])->save();
+                }
+
+                return $existing;
+            }
+
+            // Bağlı müştəri silinibsə, lid dalanda qalmamalıdır: aşağıda yenisi
+            // yaradılır və iz yenilənir.
+        }
+
+        // lead_source sərbəst mətndir, ClientSource isə enum. Əvvəllər uyğun
+        // gəlməyən mənbə (məs. "tiktok-reklam") səssizcə `null`-a düşürdü və
+        // marketinq atribusiyası tamamilə itirdi.
+        $source = ClientSource::tryFrom((string) $lead->lead_source);
+        $notes = $lead->notes;
+
+        if (! $source && filled($lead->lead_source)) {
+            // Enum-a hər yeni kanal üçün case əlavə etmirik: sərbəst mətn
+            // mənbələri sonsuzdur, enum isə hesabat filtrinin lüğətidir. Ona görə
+            // `other` seçilir (müştəri «mənbəsiz» qalmır), orijinal mətn isə
+            // qeydin başına yazılır ki, atribusiya insan üçün itməsin.
+            $source = ClientSource::Other;
+            $notes = trim('Lid mənbəyi: '.$lead->lead_source.(filled($notes) ? PHP_EOL.$notes : ''));
+        }
 
         $client = Client::create([
             'name' => trim("{$lead->first_name} {$lead->last_name}"),
@@ -202,14 +251,19 @@ class LeadResource extends Resource
             'email' => $lead->email,
             'whatsapp' => $lead->whatsapp,
             'telegram' => $lead->telegram,
-            'source' => $source,
+            'source' => $source?->value,
             'status' => ClientStatus::Client->value,
             'responsible_user_id' => $lead->responsible_user_id,
             'first_contact_at' => $lead->first_contact_date,
-            'notes' => $lead->notes,
+            'notes' => $notes,
         ]);
 
-        $lead->update(['status' => LeadStatus::Won->value]);
+        // `client_id` `Lead::$fillable`-da deyil (iz texniki sahədir, formadan
+        // doldurulmur), ona görə `forceFill` ilə yazılır.
+        $lead->forceFill([
+            'client_id' => $client->id,
+            'status' => LeadStatus::Won->value,
+        ])->save();
 
         return $client;
     }

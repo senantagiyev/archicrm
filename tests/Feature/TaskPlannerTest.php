@@ -126,14 +126,30 @@ class TaskPlannerTest extends TestCase
     }
 
     /**
-     * «Yalnız öz layihələri» rolları üçün «bütün studiya» filtri də
-     * genişlənmir — resursdakı məhdudiyyət burada da qüvvədədir.
+     * «Yalnız öz layihələri» rolları üçün «bütün studiya» filtri genişlənmir:
+     * planlaşdırıcı üzv olduğu layihənin BÜTÜN tapşırıqlarını göstərir (komanda
+     * lövhəsi budur), üzvü olmadığı layihəninkini isə göstərmir.
+     *
+     * Əvvəl filtr icraçıya baxırdı — nəticədə layihə meneceri öz layihəsinin
+     * lövhəsini boş görürdü, üzvü olmadığı layihədə ona təyin edilən tapşırıq isə
+     * açıq qalırdı.
      */
-    public function test_own_project_roles_never_see_colleagues_tasks(): void
+    public function test_planner_shows_the_whole_board_of_own_projects_only(): void
     {
         $this->makeTask($this->alfa, 'Dizaynerin tapşırığı');
         $this->makeTask($this->alfa, 'Sahibkarın tapşırığı', [
             'assignee_user_id' => $this->alfa->user('owner')->id,
+        ]);
+
+        // Dizayner `otherProject`-in üzvü deyil, tapşırıq isə ona təyin edilib.
+        $foreignStage = app(TenantContext::class)->actingAs(
+            $this->alfa->tenant->id,
+            fn () => $this->alfa->otherProject->stages()->create(['name' => 'Eskiz', 'position' => 1]),
+        );
+
+        $this->makeTask($this->alfa, 'Yad layihənin tapşırığı', [
+            'project_id' => $this->alfa->otherProject->id,
+            'stage_id' => $foreignStage->id,
         ]);
 
         $response = $this->actingAs($this->alfa->user('designer'))
@@ -141,7 +157,8 @@ class TaskPlannerTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Dizaynerin tapşırığı', false);
-        $response->assertDontSee('Sahibkarın tapşırığı', false);
+        $response->assertSee('Sahibkarın tapşırığı', false);
+        $response->assertDontSee('Yad layihənin tapşırığı', false);
     }
 
     // ------------------------------------------------------- yeni tapşırıq modalı

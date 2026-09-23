@@ -83,7 +83,16 @@ class MultiTenancyTest extends TestCase
         $this->assertNull($found);
     }
 
-    public function test_project_member_sees_only_tasks_assigned_to_them(): void
+    /**
+     * Tapşırıq görünürlüyü LAYİHƏ ÜZVLÜYÜNƏ bağlıdır, icraçıya yox.
+     *
+     * Əvvəl filtr `assignee_user_id = me` idi və bu, layihə menecerini öz
+     * layihəsinin lövhəsindən kəsirdi (matrisdə onun «Mərhələ/Tapşırıq»
+     * səviyyəsi Tam-dır), üstəlik başqa layihədə ona təyin edilən tapşırığı
+     * layihənin özü bağlı olsa belə açırdı. İndi qayda bütün digər
+     * layihə-əsaslı modullarla (Xərc, Faktura, Görüş, Satınalma) eynidir.
+     */
+    public function test_project_member_sees_every_task_of_that_project(): void
     {
         $tenant = $this->tenant('task-scope');
 
@@ -91,6 +100,7 @@ class MultiTenancyTest extends TestCase
             $owner = User::create(['name' => 'Owner', 'email' => 'owner@scope.az', 'password' => 'secret123', 'role' => 'owner']);
             $designer = User::create(['name' => 'Designer', 'email' => 'designer@scope.az', 'password' => 'secret123', 'role' => 'designer']);
             $other = User::create(['name' => 'Other', 'email' => 'other@scope.az', 'password' => 'secret123', 'role' => 'designer']);
+            $stranger = User::create(['name' => 'Stranger', 'email' => 'stranger@scope.az', 'password' => 'secret123', 'role' => 'designer']);
             $client = Client::create(['name' => 'Client', 'status' => 'client']);
             $project = Project::create([
                 'client_id' => $client->id, 'name' => 'Project', 'type' => 'apartment',
@@ -104,10 +114,17 @@ class MultiTenancyTest extends TestCase
             auth()->login($designer);
             $visibleTaskIds = TaskResource::getEloquentQuery()->pluck('id')->all();
 
-            $this->assertSame([$ownTask->id], $visibleTaskIds);
+            $this->assertEqualsCanonicalizing([$ownTask->id, $otherTask->id], $visibleTaskIds);
             $this->assertTrue($designer->can('update', $ownTask));
-            $this->assertFalse($designer->can('view', $otherTask));
-            $this->assertFalse($designer->can('update', $otherTask));
+            $this->assertTrue($designer->can('view', $otherTask));
+
+            // Üzvü olmayan işçi üçün eyni lövhə bağlıdır — hətta tapşırıq ona
+            // təyin edilsə belə.
+            $strangerTask = Task::create(['project_id' => $project->id, 'stage_id' => $stage->id, 'title' => 'Stranger', 'status' => 'todo', 'assignee_user_id' => $stranger->id]);
+
+            auth()->login($stranger);
+            $this->assertSame([], TaskResource::getEloquentQuery()->pluck('id')->all());
+            $this->assertFalse($stranger->can('view', $strangerTask));
         });
     }
 }

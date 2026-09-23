@@ -2,8 +2,10 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\StaffRole;
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Services\Finance\ProfitabilityService;
+use App\Support\AccessMatrix;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -22,11 +24,20 @@ class CashForecastWidget extends StatsOverviewWidget
         return 'Pul axını proqnozu';
     }
 
+    /**
+     * Gözlənilən pul daxilolmaları — açıq maliyyə məlumatıdır, ona görə şərt
+     * Profitability səhifəsi və PortfolioFinanceStats ilə eynidir: matrisdən
+     * Analitika = Baxış + Ödənişlər = Tam. Sabit rol adı burada da həm xüsusi
+     * rolu bağlayır, həm də köhnə `role` sütunu ilə qalmış istifadəçiyə
+     * icazəsiz giriş verirdi.
+     */
     public static function canView(): bool
     {
-        $role = auth()->user()?->role;
+        $user = auth()->user();
 
-        return auth()->user()?->isOwner() || $role === StaffRole::Accountant;
+        return $user !== null
+            && AccessMatrix::allows($user, Domain::Analytics, AccessLevel::View)
+            && AccessMatrix::allows($user, Domain::Payments, AccessLevel::Full);
     }
 
     protected function getStats(): array

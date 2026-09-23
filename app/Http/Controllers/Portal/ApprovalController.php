@@ -10,6 +10,7 @@ use App\Services\Approvals\ApprovalService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ApprovalController extends Controller
 {
@@ -35,18 +36,45 @@ class ApprovalController extends Controller
     public function decide(Request $request, Approval $approval, ApprovalService $service)
     {
         // Scoping: the approval must belong to one of this customer's projects.
-        $this->clientProject($approval->project_id);
+        // Qərar YAZAN əməliyyatdır — arxivlənmiş layihədə bağlıdır.
+        $this->writableClientProject($approval->project_id);
 
         abort_unless($approval->status === ApprovalStatus::Pending, 403);
+
+        // Variantın özü deyil, yalnız AÇARI qəbul edilir. Açarın mövcudluğunu
+        // servis də yoxlayır, amma o, `InvalidArgumentException` atır — yəni
+        // yad açar istifadəçiyə 500 kimi qayıdırdı. Siyahı validasiyaya
+        // BURADA, razılaşdırmanın öz variantlarına qarşı verilir: nəticə 422 və
+        // anlaşılan mesaj olur. Servisdəki yoxlama son sədd kimi yerində qalır
+        // (razılaşdırma servisə portaldan başqa yerlərdən də gəlir).
+        $allowedVariants = collect($approval->variants ?? [])
+            ->pluck('key')
+            ->filter(fn ($key) => is_string($key) && $key !== '')
+            ->values()
+            ->all();
+
+        $variantRules = ['nullable', 'string', 'max:64'];
+
+        // Variantlı razılaşdırmanı təsdiq etmək = birini seçmək (servisdəki
+        // qayda ilə eyni), ona görə təsdiqdə açar məcburidir.
+        if ($approval->hasVariants()) {
+            array_unshift($variantRules, 'required_if:decision,approve');
+        }
+
+        // Siyahı varsa açar yalnız oradan ola bilər; siyahı yoxdursa
+        // razılaşdırma adi bəli/xeyrdir və açar onsuz da istifadə olunmur.
+        if ($allowedVariants !== []) {
+            $variantRules[] = Rule::in($allowedVariants);
+        }
 
         $validated = $request->validate([
             'decision' => ['required', 'in:approve,reject'],
             'comment' => ['required_if:decision,reject', 'nullable', 'string', 'max:2000'],
-            // Variantın özü deyil, yalnız AÇARI qəbul edilir; hansının
-            // mövcud olduğunu servis razılaşdırmanın öz siyahısına görə yoxlayır.
-            'variant' => ['nullable', 'string', 'max:64'],
+            'variant' => $variantRules,
         ], [
             'comment.required_if' => t('portal.reject_comment_required'),
+            'variant.in' => t('portal.variant_invalid'),
+            'variant.required_if' => t('portal.variant_required'),
         ]);
 
         $service->decide(
