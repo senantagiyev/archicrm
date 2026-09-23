@@ -180,8 +180,20 @@
   textarea {
     font-family: inherit;
     border: revert;
-    background-color: revert;
     border-radius: revert;
+  }
+
+  /* `background-color: revert` BURADA OLA BİLMƏZ. Bu blok yuxarıdakı səth
+     qaydasından sonra gəldiyi üçün fonu brauzerin standartına — ağa — qaytarırdı;
+     mətnin rəngi isə `--color-ink` olaraq qalırdı. Açıq temada bu görünmürdü
+     (ağ fon + tünd mətn), tünd temada isə mətn sahəsi ağ qutuya çevrilir və
+     yazılan mətn ağ-üstə-ağ olub itirdi.
+     Native görünüş yalnız aşağıdakı üç tip üçün bərpa olunur — onların fonunu
+     brauzerin özü çəkir (checkbox işarəsi, fayl seçmə düyməsi). */
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='file'] {
+    background-color: revert;
   }
 
   :focus-visible {
