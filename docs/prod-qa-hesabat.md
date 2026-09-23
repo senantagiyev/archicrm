@@ -70,6 +70,17 @@ Digər: mərhələ şablonu bütün mərhələlərə eyni çəki verirdi; bütü
 
 ## Deploy qeydləri
 
+> **MƏCBURİ: hər deploy-un SONUNDA `systemctl reload php8.4-fpm`.**
+> Serverdə `opcache.validate_timestamps = 0`-dır (FPM), yəni PHP-FPM diskdəki
+> dəyişmiş faylları ÖZÜ oxumur — köhnə kompilyasiya olunmuş nüsxəni verməyə
+> davam edir. 23.09.2026 deploy-undan sonra paneldəki 500 xətası məhz bundan idi:
+> `bootstrap/cache/routes-v7.php` yenilənmişdi, amma FPM əvvəlki deploy-dan
+> qabaqkı marşrut cədvəlini (115 əvəzinə 94 marşrut) saxlayırdı, ona görə
+> «Diqqət tələb edir» və «Tapşırıq planı» səhifələrinin marşrutu yox idi və
+> sidebar `route()` çağırışında qəzaya uğrayırdı. CLI-da (`route:list`, `tinker`)
+> hər şey düzgün görünürdü, çünki CLI-da opcache sönülüdür — səhvi yalnız
+> FPM-in içindən (`cgi-fcgi`) etmək olur.
+
 1. **Üç yeni miqrasiya:** `leads.client_id`, platforma avtomatlaşdırma sətirlərinin dedupe-u, `briefs.technical_spec_version`.
 2. **`TranslationSeeder` yenidən işlədilməlidir** — üç yeni açar (`brief_value_error`, `variant_invalid`, `variant_required`).
 3. Prodda yoxlanılmalı: `select count(*) from tasks where tenant_id is null` — belə sətirlər studiya-studiya gəzən `tasks:notify-deadlines` keçidlərinə düşmür (lokalda 0-dır).
