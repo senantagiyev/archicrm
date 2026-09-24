@@ -23,16 +23,16 @@ class ApprovalRequested extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('RazÄ±laÅŸdÄ±rma tÉ™lÉ™b olunur â€” '.$this->approval->project?->name)
-            ->line('Sizin qÉ™rarÄ±nÄ±z gÃ¶zlÉ™nilir: '.$this->approval->subjectLabel())
-            ->line($this->approval->respond_by ? 'Cavab mÃ¼ddÉ™ti: '.$this->approval->respond_by->format('d.m.Y') : '')
-            ->action('Bax vÉ™ qÉ™rar ver', url('/portal/projects/'.$this->approval->project_id.'/approvals'));
+            ->subject('Razılaşdırma tələb olunur — '.$this->approval->project?->name)
+            ->line('Sizin qərarınız gözlənilir: '.$this->approval->subjectLabel())
+            ->line($this->approval->respond_by ? 'Cavab müddəti: '.$this->approval->respond_by->format('d.m.Y') : '')
+            ->action('Bax və qərar ver', url('/portal/projects/'.$this->approval->project_id.'/approvals'));
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
-            'title' => 'RazÄ±laÅŸdÄ±rma tÉ™lÉ™b olunur',
+            'title' => 'Razılaşdırma tələb olunur',
             'body' => $this->approval->subjectLabel(),
             'approval_id' => $this->approval->id,
             'project_id' => $this->approval->project_id,

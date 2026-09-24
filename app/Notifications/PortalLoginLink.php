@@ -21,8 +21,8 @@ class PortalLoginLink extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Archi CRM â€” giriÅŸ linki')
-            ->line('Portala daxil olmaq Ã¼Ã§Ã¼n linkÉ™ kliklÉ™yin. Link 30 dÉ™qiqÉ™ etibarlÄ±dÄ±r.')
+            ->subject('Archi CRM — giriş linki')
+            ->line('Portala daxil olmaq üçün linkə klikləyin. Link 30 dəqiqə etibarlıdır.')
             ->action('Daxil ol', $this->link);
     }
 }

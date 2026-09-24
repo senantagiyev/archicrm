@@ -62,19 +62,19 @@ class TenantResource extends Resource
                     ->label('Aktiv')
                     ->default(true),
             ]),
-            Section::make('Ä°lk studiya sahibi')->columns(2)->visible(fn (string $operation): bool => $operation === 'create')->schema([
+            Section::make('İlk studiya sahibi')->columns(2)->visible(fn (string $operation): bool => $operation === 'create')->schema([
                 Forms\Components\TextInput::make('owner_name')
-                    ->label('Sahibin adÄ±, soyadÄ±')
+                    ->label('Sahibin adı, soyadı')
                     ->required()
                     ->maxLength(191),
                 Forms\Components\TextInput::make('owner_email')
-                    ->label('Sahibin e-poÃ§tu')
+                    ->label('Sahibin e-poçtu')
                     ->email()
                     ->required()
                     ->unique('users', 'email')
                     ->maxLength(191),
                 Forms\Components\TextInput::make('owner_password')
-                    ->label('Ä°lkin ÅŸifrÉ™')
+                    ->label('İlkin şifrə')
                     ->password()
                     ->revealable()
                     ->required()

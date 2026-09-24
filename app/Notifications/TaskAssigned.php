@@ -23,18 +23,18 @@ class TaskAssigned extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Yeni tapÅŸÄ±rÄ±q: '.$this->task->title)
-            ->line("SizÉ™ yeni tapÅŸÄ±rÄ±q tÉ™yin edildi: {$this->task->title}")
-            ->line('LayihÉ™: '.$this->task->project?->name)
+            ->subject('Yeni tapşırıq: '.$this->task->title)
+            ->line("Sizə yeni tapşırıq təyin edildi: {$this->task->title}")
+            ->line('Layihə: '.$this->task->project?->name)
             ->line($this->task->deadline ? 'Son tarix: '.$this->task->deadline->format('d.m.Y') : '')
-            ->action('TapÅŸÄ±rÄ±ÄŸa bax', TaskResource::getUrl());
+            ->action('Tapşırığa bax', TaskResource::getUrl());
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
-            'title' => 'Yeni tapÅŸÄ±rÄ±q tÉ™yin edildi',
-            'body' => $this->task->title.' â€” '.$this->task->project?->name,
+            'title' => 'Yeni tapşırıq təyin edildi',
+            'body' => $this->task->title.' — '.$this->task->project?->name,
             'task_id' => $this->task->id,
             'project_id' => $this->task->project_id,
         ];

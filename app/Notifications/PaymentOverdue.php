@@ -23,17 +23,17 @@ class PaymentOverdue extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Ã–dÉ™niÅŸ gecikir â€” '.$this->payment->project?->name)
-            ->line("\"{$this->payment->title}\" Ã¶dÉ™niÅŸinin plan tarixi keÃ§ib.")
-            ->line('MÉ™blÉ™ÄŸ: '.number_format((float) $this->payment->amount, 2).' â‚¼')
-            ->action('LayihÉ™yÉ™ bax', ProjectResource::getUrl('edit', ['record' => $this->payment->project_id]));
+            ->subject('Ödəniş gecikir — '.$this->payment->project?->name)
+            ->line("\"{$this->payment->title}\" ödənişinin plan tarixi keçib.")
+            ->line('Məbləğ: '.number_format((float) $this->payment->amount, 2).' ₼')
+            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->payment->project_id]));
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
-            'title' => 'Ã–dÉ™niÅŸ gecikir',
-            'body' => $this->payment->title.' â€” '.$this->payment->project?->name.' ('.number_format((float) $this->payment->amount, 2).' â‚¼)',
+            'title' => 'Ödəniş gecikir',
+            'body' => $this->payment->title.' — '.$this->payment->project?->name.' ('.number_format((float) $this->payment->amount, 2).' ₼)',
             'project_id' => $this->payment->project_id,
         ];
     }

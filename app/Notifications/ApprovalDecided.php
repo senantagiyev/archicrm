@@ -24,22 +24,22 @@ class ApprovalDecided extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $verdict = $this->approval->status === ApprovalStatus::Approved ? 'razÄ±laÅŸdÄ±' : 'rÉ™dd etdi';
+        $verdict = $this->approval->status === ApprovalStatus::Approved ? 'razılaşdı' : 'rədd etdi';
 
         return (new MailMessage)
-            ->subject('RazÄ±laÅŸdÄ±rma qÉ™rarÄ± â€” '.$this->approval->project?->name)
-            ->line("SifariÅŸÃ§i {$verdict}: ".$this->approval->subjectLabel())
-            ->line($this->approval->comment ? 'ÅžÉ™rh: '.$this->approval->comment : '')
-            ->action('LayihÉ™yÉ™ bax', ProjectResource::getUrl('edit', ['record' => $this->approval->project_id]));
+            ->subject('Razılaşdırma qərarı — '.$this->approval->project?->name)
+            ->line("Sifarişçi {$verdict}: ".$this->approval->subjectLabel())
+            ->line($this->approval->comment ? 'Şərh: '.$this->approval->comment : '')
+            ->action('Layihəyə bax', ProjectResource::getUrl('edit', ['record' => $this->approval->project_id]));
     }
 
     public function toDatabase(object $notifiable): array
     {
         return [
             'title' => $this->approval->status === ApprovalStatus::Approved
-                ? 'Pozisiya razÄ±laÅŸdÄ±rÄ±ldÄ±'
-                : 'Pozisiya rÉ™dd edildi',
-            'body' => $this->approval->subjectLabel().($this->approval->comment ? ' â€” '.$this->approval->comment : ''),
+                ? 'Pozisiya razılaşdırıldı'
+                : 'Pozisiya rədd edildi',
+            'body' => $this->approval->subjectLabel().($this->approval->comment ? ' — '.$this->approval->comment : ''),
             'approval_id' => $this->approval->id,
             'project_id' => $this->approval->project_id,
         ];
