@@ -12,6 +12,7 @@ use App\Enums\SpecificationCategory;
 use App\Enums\SpecificationStatus;
 use App\Enums\StageStatus;
 use App\Enums\TaskStatus;
+use App\Exceptions\PortalInvitationException;
 use App\Filament\Resources\ApprovalResource;
 use App\Filament\Resources\ClientResource\Pages\CreateClient;
 use App\Filament\Resources\ProjectResource\Pages\CreateProject;
@@ -39,6 +40,7 @@ use App\Services\Brief\BriefRiskDetector;
 use App\Services\Brief\BriefService;
 use App\Services\Chat\ChatService;
 use App\Services\Finance\ProfitabilityService;
+use App\Services\Portal\InvitationService;
 use App\Services\Stages\StageTemplateService;
 use App\Support\AccessMatrix;
 use App\Support\TenantContext;
@@ -541,6 +543,74 @@ class ClientJourneyScenarioTest extends TestCase
             'subtotal' => -4000,
             'tax' => 0,
         ]);
+    }
+
+    /**
+     * Silinmiş portal hesabı e-poçtu HƏMİŞƏLİK girov saxlayırdı.
+     *
+     * `client_users.email` qlobal unikaldır və yoxlama silinmiş sətirləri də
+     * sayırdı. Nəticə: studiya müştərini və portal hesabını silirdi, sonra eyni
+     * ünvanı yeni müştəriyə verə bilmirdi — panel isə silinmiş müştərinin
+     * hesabını bərpa etmək üçün heç bir yol vermir. Çıxılmaz vəziyyət.
+     */
+    public function test_a_dead_portal_account_releases_its_email(): void
+    {
+        app(TenantContext::class)->set($this->tenant->id);
+
+        [$oldClient, $oldPortalUser] = app(TenantContext::class)->actingAs($this->tenant->id, function (): array {
+            $client = Client::create(['name' => 'Köhnə müştəri', 'status' => 'client']);
+
+            $user = ClientUser::create([
+                'client_id' => $client->id,
+                'name' => 'Köhnə əlaqə',
+                'email' => 'eyni@example.test',
+            ]);
+
+            return [$client, $user];
+        });
+
+        $newClient = app(TenantContext::class)->actingAs(
+            $this->tenant->id,
+            fn () => Client::create(['name' => 'Yeni müştəri', 'status' => 'client']),
+        );
+
+        $service = app(InvitationService::class);
+
+        // 1) Hesab diridir → ünvan həqiqətən işlənir.
+        try {
+            $service->invite($newClient, 'Yeni əlaqə', 'eyni@example.test');
+            $this->fail('Diri hesabın e-poçtu başqa müştəriyə verildi.');
+        } catch (PortalInvitationException) {
+            // Gözlənilən.
+        }
+
+        // 2) Hesab silinib, müştəri yerindədir → bərpa yolu var, rədd edilir.
+        $oldPortalUser->delete();
+
+        try {
+            $service->invite($newClient, 'Yeni əlaqə', 'eyni@example.test');
+            $this->fail('Bərpa oluna bilən hesabın e-poçtu səssizcə əlindən alındı.');
+        } catch (PortalInvitationException $e) {
+            $this->assertStringContainsString('bərpa', mb_strtolower($e->getMessage()));
+        }
+
+        // 3) Müştəri də silinib → əlaqə bitib, ünvan azad olunmalıdır.
+        $oldClient->projects()->get()->each->delete();
+        $oldClient->delete();
+
+        $invited = app(TenantContext::class)->actingAs(
+            $this->tenant->id,
+            fn () => $service->invite($newClient, 'Yeni əlaqə', 'eyni@example.test'),
+        );
+
+        $this->assertSame('eyni@example.test', $invited->email);
+        $this->assertSame($newClient->id, $invited->client_id);
+
+        // Köhnə sətir SİLİNMİR — `approvals.client_user_id` ona istinad edir;
+        // yalnız e-poçtu unikal indeksdən çıxarılır.
+        $tombstone = ClientUser::withTrashed()->withoutGlobalScopes()->find($oldPortalUser->id);
+        $this->assertNotNull($tombstone, 'Ölü sətir silinməməlidir — audit izi itir.');
+        $this->assertStringEndsWith('@portal.invalid', $tombstone->email);
     }
 
     /**

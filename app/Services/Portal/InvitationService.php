@@ -56,18 +56,56 @@ class InvitationService
      * `client_users.email` is globally unique, so an address already used by
      * another client (or another studio) would fail with a raw 1062. Refuse it
      * with something a person can act on instead.
+     *
+     * ÖLÜ hesab ünvanı girov saxlamamalıdır. Əvvəl yoxlama sadəcə
+     * `withTrashed()->exists()` idi: portal hesabı silinən kimi onun e-poçtu
+     * BİR DAHA istifadə edilə bilmirdi — müştəri də silinsə belə. Panel isə
+     * silinmiş müştərinin portal hesabını bərpa etmək üçün heç bir yol
+     * vermir, yəni istifadəçi çıxılmaz vəziyyətə düşürdü: «başqa ünvan
+     * istifadə edin» yazılır, amma öz e-poçtunu geri qaytarmaq mümkün olmur.
+     *
+     * Qayda indi ünvanın DİRİ olub-olmamasına baxır:
+     *  • hesab silinməyibsə — ünvan həqiqətən işlənir, rədd;
+     *  • hesab silinib, amma müştərisi yerindədirsə — bərpa yolu var, rədd;
+     *  • hesab da, müştərisi də silinibsə — əlaqə tamamilə bitib, ünvan azad
+     *    edilir.
+     *
+     * Azad etmək üçün ölü sətir SİLİNMİR: `approvals.client_user_id` ona
+     * istinad edir (kimin təsdiqlədiyi audit məlumatıdır), ona görə yalnız
+     * e-poçt sahəsi unikal indeksdən çıxarılır. `.invalid` RFC 2606-ya görə
+     * heç vaxt real domen olmayacaq, yəni o ünvana səhvən məktub getməz.
      */
     private function guardAgainstForeignAccount(string $email): void
     {
-        $taken = ClientUser::withTrashed()
+        $holders = ClientUser::withTrashed()
             ->withoutGlobalScopes()
             ->where('email', $email)
-            ->exists();
+            ->get();
 
-        if ($taken) {
-            throw new PortalInvitationException(
-                'Bu e-poçt artıq başqa bir müştərinin portal hesabına bağlıdır. Başqa ünvan istifadə edin.'
-            );
+        if ($holders->isEmpty()) {
+            return;
+        }
+
+        foreach ($holders as $holder) {
+            if (! $holder->trashed()) {
+                throw new PortalInvitationException(
+                    'Bu e-poçt artıq başqa bir müştərinin portal hesabına bağlıdır. Başqa ünvan istifadə edin.'
+                );
+            }
+
+            $client = Client::withTrashed()->withoutGlobalScopes()->find($holder->client_id);
+
+            if ($client && ! $client->trashed()) {
+                throw new PortalInvitationException(
+                    'Bu e-poçt «'.$client->name.'» müştərisinin ləğv edilmiş portal hesabına bağlıdır. '
+                    .'Ya həmin hesabı bərpa edin, ya da başqa ünvan istifadə edin.'
+                );
+            }
+        }
+
+        // Bura yalnız bütün daşıyıcılar ölü olduqda gəlinir.
+        foreach ($holders as $holder) {
+            $holder->forceFill(['email' => 'azad-edilib+'.$holder->getKey().'@portal.invalid'])->saveQuietly();
         }
     }
 
