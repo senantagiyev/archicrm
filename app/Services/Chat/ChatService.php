@@ -130,6 +130,14 @@ class ChatService
     /** Project ids a staff member's chat covers (same scoping as ProjectResource). */
     public function staffProjectIds(User $user): array
     {
+        // Deaktiv edilmiş işçi heç bir layihəyə aid deyil. Mesajların MƏTNİ
+        // onsuz da bağlı idi, amma oxunmamış SAYĞAC bu siyahıdan qidalanır:
+        // sessiyası açıq qalmış işçi işdən çıxandan sonra da studiyada nə qədər
+        // yeni yazışma getdiyini görməyə davam edirdi.
+        if ($user->is_active === false) {
+            return [];
+        }
+
         $query = Project::query();
 
         if (AccessMatrix::requiresOwnProject($user)) {

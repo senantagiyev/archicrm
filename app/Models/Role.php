@@ -31,6 +31,24 @@ class Role extends Model
      * ordering is what makes copy-on-write work: edit a built-in role inside a
      * studio and that studio gets its own copy, without touching anyone else's.
      */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $role): void {
+            // `users.role_id` FK `nullOnDelete`-dir, yəni rolu silmək onu daşıyan
+            // işçiləri SƏSSİZCƏ baza roluna qaytarır — məhdudlaşdırıcı xüsusi
+            // rolu silmək məhdudiyyəti silir, işçi isə birdən-birə daha çox
+            // görməyə başlayır. Modeldə saxlanılır ki, konsol və idxal yolu da
+            // eyni qaydadan keçsin.
+            $holders = User::where('role_id', $role->getKey())->count();
+
+            if ($holders > 0) {
+                throw new \RuntimeException(
+                    'Bu rol '.$holders.' işçiyə təyin olunub. Əvvəlcə onlara başqa rol verin, sonra silin.'
+                );
+            }
+        });
+    }
+
     public function scopeForTenant(Builder $query, ?int $tenantId): Builder
     {
         return $query
@@ -42,6 +60,9 @@ class Role extends Model
     {
         $value = $this->levels[$domain->value] ?? 0;
 
-        return AccessLevel::from((int) $value);
+        // `AccessMatrix::resolve()` ilə eyni qayda: bazadakı yad dəyər (əl ilə
+        // redaktə, idxal, silinmiş səviyyə) icazəni BAĞLAMALIDIR, sorğunu
+        // qırmamalıdır. `from()` belə halda ValueError atırdı.
+        return AccessLevel::tryFrom((int) $value) ?? AccessLevel::None;
     }
 }

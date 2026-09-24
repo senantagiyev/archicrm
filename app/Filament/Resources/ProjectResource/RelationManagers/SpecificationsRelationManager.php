@@ -57,7 +57,13 @@ class SpecificationsRelationManager extends RelationManager
                     ->description(fn ($record) => trim(($record->brand ?? '').' '.($record->model ?? ''))),
                 Tables\Columns\TextColumn::make('category')
                     ->label('Kateqoriya')->badge()->color('gray')
-                    ->formatStateUsing(fn (SpecificationCategory $c) => $c->label()),
+                    // Parametr mütləq `$state` adlanmalıdır: Filament closure
+                    // arqumentlərini ƏVVƏLCƏ ADA görə ötürür. `$c` heç nəyə
+                    // uyğun gəlmirdi, ona görə tipə görə konteynerdən həll
+                    // olunmağa çalışılır və enum-u `new` etməyə cəhd edilirdi —
+                    // nəticədə bir dənə sətir olan kimi bu tab 500 verirdi
+                    // («Target [SpecificationCategory] is not instantiable»).
+                    ->formatStateUsing(fn (SpecificationCategory $state) => $state->label()),
                 Tables\Columns\TextColumn::make('room')->label('Otaq')->toggleable(),
                 Tables\Columns\TextColumn::make('client_price')->label('Müştəri qiyməti')->money('AZN'),
                 Tables\Columns\TextColumn::make('quantity')->label('Miqdar')->numeric(2),

@@ -14,6 +14,8 @@ use App\Models\Payment;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\TimeEntry;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * TZ v2.0 §7.26 / §8.24 — profitability and finance forecast computed online from
@@ -24,7 +26,7 @@ class ProfitabilityService
     /** @var array<int,array> Per-request memo so a table row is computed once, not per column. */
     private array $cache = [];
 
-    /** @return array{revenue: float, labor_cost: float, expenses: float, purchases: float, cost: float, gross_profit: float, margin: float|null, uncosted_minutes: int, uncosted_procurement: float, projected_revenue: float} */
+    /** @return array{revenue: float, labor_cost: float, expenses: float, purchases: float, cost: float, gross_profit: float, margin: float|null, uncosted_minutes: int, invalid_time_entries: int, uncosted_procurement: float, projected_revenue: float} */
     public function forProject(Project $project): array
     {
         if (isset($this->cache[$project->id])) {
@@ -35,9 +37,7 @@ class ProfitabilityService
             ->where('status', PaymentStatus::Paid->value)
             ->sum('amount');
 
-        $laborCost = (float) $project->timeEntries()
-            ->selectRaw('COALESCE(SUM(duration_minutes * hourly_cost_snapshot) / 60, 0) as c')
-            ->value('c');
+        $laborCost = self::labourCost($project->timeEntries());
 
         // Rejected claims are money the studio refused to pay; including them
         // inflated cost and understated every margin on the report.
@@ -55,9 +55,22 @@ class ProfitabilityService
         // Hours logged by someone whose rate is 0 contribute nothing, which
         // silently reads as a higher margin. Surface them so the report can say
         // so instead of quietly flattering the project.
+        //
+        // Yalnız MÜSBƏT müddətlər: mənfi müddətli sətir «tarifsiz iş» deyil,
+        // pozulmuş məlumatdır və aşağıda ayrıca sayılır.
         $uncostedMinutes = (int) $project->timeEntries()
-            ->where(fn ($query) => $query->whereNull('hourly_cost_snapshot')->orWhere('hourly_cost_snapshot', 0))
+            ->where('duration_minutes', '>', 0)
+            ->where(fn ($query) => $query->whereNull('hourly_cost_snapshot')->orWhere('hourly_cost_snapshot', '<=', 0))
             ->sum('duration_minutes');
+
+        // Mənfi müddətli vaxt qeydi maya dəyərini AZALDIR: −600 dəqiqə real
+        // 600 dəqiqəni tam silir və marja 100% görünür. `TimeEntry::booted()`
+        // belə sətri yalnız `started_at`+`ended_at` cütü olduqda tutur, ona görə
+        // hesabat onu maya dəyərindən kənarda saxlayır və SAYINI bildirir —
+        // səssizcə atmaq da məlumatı gizlətmək olardı.
+        $invalidTimeEntries = (int) $project->timeEntries()
+            ->where('duration_minutes', '<', 0)
+            ->count();
 
         // Procurement billed to the client with nothing recorded on the paying
         // side. The report cannot invent that cost, but it must not present the
@@ -81,6 +94,7 @@ class ProfitabilityService
             'gross_profit' => $grossProfit,
             'margin' => self::margin($revenue, $grossProfit),
             'uncosted_minutes' => $uncostedMinutes,
+            'invalid_time_entries' => $invalidTimeEntries,
             'uncosted_procurement' => $uncostedProcurement,
             'projected_revenue' => round((float) ($project->budget_plan ?? 0), 2),
         ];
@@ -94,6 +108,37 @@ class ProfitabilityService
     public static function margin(float $revenue, float $grossProfit): ?float
     {
         return $revenue > 0 ? round($grossProfit / $revenue * 100, 1) : null;
+    }
+
+    /**
+     * Əmək maya dəyəri: dəqiqə × tarif cəmi SQL-də, 60-a bölmə isə PHP-də.
+     *
+     * NİYƏ BÖLMƏ SQL-DƏN ÇIXARILDI: `SUM(duration_minutes * hourly_cost_snapshot) / 60`
+     * ifadəsində hər iki operand tam ədəd olduqda SQLite TAM BÖLMƏ edir.
+     * `hourly_cost_snapshot` `decimal(10,2)` sütunudur, yəni NUMERIC affinity
+     * daşıyır və 37.00 kimi dəyər itkisiz tam ədəd kimi saxlanılır. Nəticədə
+     * 50 dəqiqə × 37 ₼ = 1850, sonra 1850 / 60 → 30 (30.83 yerinə), 100 000
+     * dəqiqə × 25 ₼ → 41 666 (41 666.67 yerinə). Qəpiklər səssizcə kəsilirdi və
+     * marja həmişə OLDUĞUNDAN YUXARI çıxırdı — məhz «hesabat düzgün verirmi?»
+     * sualının cavabı. Bölməni PHP-yə çıxarmaq davranışı DB-dən asılı olmayan
+     * edir (MySQL-də dəqiq onluq bölmə, SQLite-da tam bölmə fərqi qalmır).
+     *
+     * Yalnız MÜSBƏT müddət və MÜSBƏT tarif toplanır: tarifsiz saatlar
+     * `uncosted_minutes`, mənfi müddətlər `invalid_time_entries` kimi ayrıca
+     * bildirilir, maya dəyərini isə heç biri azaltmır.
+     *
+     * @param  Builder<TimeEntry>|HasMany<TimeEntry, Project>  $query
+     */
+    private static function labourCost($query): float
+    {
+        $minuteValue = (float) $query
+            ->clone()
+            ->where('duration_minutes', '>', 0)
+            ->where('hourly_cost_snapshot', '>', 0)
+            ->selectRaw('COALESCE(SUM(duration_minutes * hourly_cost_snapshot), 0) as c')
+            ->value('c');
+
+        return round($minuteValue / 60, 2);
     }
 
     /**
@@ -119,9 +164,10 @@ class ProfitabilityService
             ->where('status', PaymentStatus::Paid->value)
             ->sum('amount');
 
-        $labor = (float) $live(TimeEntry::query())
-            ->selectRaw('COALESCE(SUM(duration_minutes * hourly_cost_snapshot) / 60, 0) as c')
-            ->value('c');
+        // Eyni tam-bölmə tələsi portfel kartında da vardı — `labourCost()`
+        // izahına bax: bölmə PHP-də aparılır, mənfi müddətlər maya dəyərini
+        // azaltmır.
+        $labor = self::labourCost($live(TimeEntry::query()));
 
         $expenses = (float) $live(Expense::query())
             ->whereIn('status', ExpenseStatus::costBearing())

@@ -103,9 +103,15 @@ class BriefOptionImagesTest extends TestCase
     }
 
     /**
-     * `std_or_custom` sualında `options` siyahı deyil, konfiqdir — repeater
-     * `options.items`-ə bağlanır. Form bu iki halı qarışdırsa, ekran ağ açılır,
-     * ona görə hər iki forma yüklənib sətirlərini göstərməlidir.
+     * `std_or_custom` sualında `options` siyahı deyil, konfiqdir; adi sualda isə
+     * `options` özü variant siyahısıdır. Form bu iki halı qarışdırsa, ekran ağ
+     * açılır, ona görə hər iki forma yüklənib sətirlərini göstərməlidir.
+     *
+     * Repeater-lər `options`-a BİRBAŞA bağlanmır: iki repeater-in state yolu
+     * (`options` və `options.items`) üst-üstə düşdüyü üçün `std_or_custom`
+     * sualında sətirlər ümumiyyətlə hidratlaşmırdı. Hər repeater-in öz açarı var
+     * (`option_rows` / `option_cards`) — çevirmə `EditBriefQuestion`-un
+     * fill/save hook-larındadır.
      */
     public function test_edit_form_opens_for_both_option_shapes(): void
     {
@@ -122,12 +128,15 @@ class BriefOptionImagesTest extends TestCase
         $heights = BriefQuestion::where('key', 'furniture_heights')->firstOrFail();
         Livewire::test(EditBriefQuestion::class, ['record' => $heights->getKey()])
             ->assertOk()
-            ->assertFormFieldExists('options.items');
+            ->assertFormFieldExists('option_rows')
+            // Sətirlər həqiqətən açılmalıdır — boş repeater şəkil yükləməyə imkan vermir.
+            ->assertCount('data.option_rows', count($heights->options['items']));
 
         $styles = BriefQuestion::where('key', 'style_preferences')->firstOrFail();
         Livewire::test(EditBriefQuestion::class, ['record' => $styles->getKey()])
             ->assertOk()
-            ->assertFormFieldExists('options');
+            ->assertFormFieldExists('option_cards')
+            ->assertCount('data.option_cards', count($styles->options));
     }
 
     /**

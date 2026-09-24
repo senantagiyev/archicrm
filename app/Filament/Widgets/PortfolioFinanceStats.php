@@ -62,7 +62,10 @@ class PortfolioFinanceStats extends StatsOverviewWidget
                 ->description('Vaxtı keçmiş qalıq')
                 ->color($p['overdue'] > 0 ? 'danger' : 'gray'),
             Stat::make('Xərc', $fmt($p['cost']))
-                ->description('Əmək + xərclər — bütün dövr')
+                // Satınalma sifarişləri də bu kartın içindədir
+                // (`portfolio()['cost']`), köhnə «Əmək + xərclər» yazısı isə
+                // kartı aşağıdaki cədvəllə tutuşduranı çaşdırırdı.
+                ->description('Əmək + xərclər + satınalma — bütün dövr')
                 ->color('gray'),
             Stat::make('Mənfəət', $fmt($p['gross_profit']))
                 // null margin = no revenue to measure against; «0%» would read as

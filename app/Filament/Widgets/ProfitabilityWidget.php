@@ -55,7 +55,11 @@ class ProfitabilityWidget extends TableWidget
                     ->state(fn (Project $r) => $svc->forProject($r)['revenue'])
                     ->money('AZN'),
                 Tables\Columns\TextColumn::make('cost')
-                    ->label('Xərc (əmək+xərclər)')
+                    // Etiket satınalmanı da saymalıdır: `forProject()['cost']`
+                    // əmək + xərclər + satınalma sifarişlərinin cəmidir, köhnə
+                    // «əmək+xərclər» başlığı isə mühasibi sətri yanlış
+                    // tutuşdurmağa vadar edirdi.
+                    ->label('Xərc (əmək+xərclər+satınalma)')
                     ->state(fn (Project $r) => $svc->forProject($r)['cost'])
                     ->money('AZN'),
                 Tables\Columns\TextColumn::make('gross_profit')
@@ -72,7 +76,9 @@ class ProfitabilityWidget extends TableWidget
                         $row = $svc->forProject($r);
                         $value = $row['margin'] === null ? '—' : $row['margin'].'%';
 
-                        $incomplete = $row['uncosted_minutes'] > 0 || $row['uncosted_procurement'] > 0;
+                        $incomplete = $row['uncosted_minutes'] > 0
+                            || $row['uncosted_procurement'] > 0
+                            || $row['invalid_time_entries'] > 0;
 
                         return $incomplete ? $value.' *' : $value;
                     })
@@ -87,6 +93,14 @@ class ProfitabilityWidget extends TableWidget
                         if ($row['uncosted_procurement'] > 0) {
                             $notes[] = number_format($row['uncosted_procurement'], 2).' ₼ komplektasiya müştəriyə fakturalanıb, '
                                 .'amma nə satınalma sifarişi, nə xərc kimi maya dəyəri yazılmayıb.';
+                        }
+
+                        // Mənfi müddətli qeyd maya dəyərindən çıxarılıb, amma
+                        // bunu susmaqla keçmək olmaz: sətir düzəldilməlidir,
+                        // yoxsa həmin saatlar heç vaxt xərc kimi görünməyəcək.
+                        if ($row['invalid_time_entries'] > 0) {
+                            $notes[] = $row['invalid_time_entries'].' vaxt qeydi mənfi müddətlə yazılıb və '
+                                .'maya dəyərinə daxil edilməyib — qeydlər düzəldilməlidir.';
                         }
 
                         return $notes === [] ? null : 'Diqqət: '.implode(' ', $notes);

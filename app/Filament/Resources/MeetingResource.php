@@ -15,6 +15,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Validation\Rule;
 
 class MeetingResource extends Resource
 {
@@ -79,10 +80,18 @@ class MeetingResource extends Resource
                     ->multiple()
                     // Ad yox, `users.id` saxlanılır: işçinin adı dəyişəndə köhnə
                     // görüşün iştirakçısı itmir.
-                    ->options(fn () => User::query()
-                        ->where('is_active', true)
-                        ->orderBy('name')
-                        ->pluck('name', 'id'))
+                    ->options(fn () => static::participantOptions())
+                    // `options()` closure ilə verildiyi üçün Filament avtomatik
+                    // `in` qaydası ƏLAVƏ ETMİR — yəni siyahının daralması
+                    // təkbaşına yalnız UI-dır. Əl ilə qurulmuş Livewire yükü
+                    // (və ya gələcək API) BAŞQA STUDİYANIN `users.id`-sini
+                    // iştirakçı massivinə yazdıra bilirdi: görüşdə heç vaxt
+                    // adı açılmayan «#123» iştirakçı görünür və qeyd yad
+                    // studiyanın identifikatoru ilə çirklənirdi. Ona görə qayda
+                    // serverdə AÇIQ verilir.
+                    // `nestedRecursiveRules` — qayda MASSİVİN ÖZÜNƏ deyil, hər
+                    // elementinə tətbiq olunur (çoxseçimli sahədə dəyər massivdir).
+                    ->nestedRecursiveRules([fn () => Rule::in(array_keys(static::participantOptions()))])
                     ->searchable()
                     ->native(false)
                     ->columnSpanFull(),
@@ -188,6 +197,26 @@ class MeetingResource extends Resource
      * edirdi — yaradıb itirirdi. Filament Select seçilmiş dəyəri `options()`
      * siyahısına görə yoxladığı üçün bu, həm də serverdə validasiyadır.
      */
+    /**
+     * İştirakçı ola biləcək işçilər — həm seçim siyahısı, həm də validasiya
+     * mənbəyi. İkisi BİR yerdən oxunmalıdır, əks halda siyahı daralır, qayda isə
+     * köhnə qalır (məhz bu uyğunsuzluq yad studiyanın id-sinin yazılmasına
+     * imkan verirdi).
+     *
+     * `User` `BelongsToTenant` işlədir, yəni qlobal scope sorğunu cari studiya
+     * ilə onsuz da məhdudlaşdırır; burada yalnız aktivlik və sıra əlavə olunur.
+     *
+     * @return array<int, string>
+     */
+    protected static function participantOptions(): array
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
+    }
+
     protected static function scopedProjectQuery(): Builder
     {
         $query = Project::query();

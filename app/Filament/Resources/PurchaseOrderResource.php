@@ -74,13 +74,18 @@ class PurchaseOrderResource extends Resource
                         Forms\Components\TextInput::make('name')
                             ->label('Ad')
                             ->required(),
+                        // Pozisiya məbləğləri başlıq cəmini YENİDƏN QURUR
+                        // (`PurchaseOrder::booted()`), ona görə mənfi say və ya
+                        // qiymət ara cəmi aşağı çəkir və maya dəyərini azaldır.
                         Forms\Components\TextInput::make('qty')
                             ->label('Say')
                             ->numeric()
+                            ->minValue(0)
                             ->default(1),
                         Forms\Components\TextInput::make('price')
                             ->label('Qiymət')
                             ->numeric()
+                            ->minValue(0)
                             ->prefix('AZN'),
                     ])
                     ->columns(['default' => 1, 'sm' => 3])
@@ -88,20 +93,37 @@ class PurchaseOrderResource extends Resource
                     ->default([]),
             ])->collapsible(),
 
+            // MƏNFİ MƏBLƏĞ QADAĞASI: satınalma sifarişi rentabellik hesabatında
+            // BİRBAŞA maya dəyəridir (`ProfitabilityService::forProject()` →
+            // `purchases`). Mənfi ara cəm və ya vergi maya dəyərini azaldır və
+            // marjanı süni şişirdir — 5 000-lik sifarişin yanına −4 000 yazılsa
+            // xərc 1 000 görünür. `InvoiceResource` (`minValue(0)`) və
+            // `ExpenseResource` (`minValue(0.01)`) ilə eyni üslub.
             Section::make('Məbləğlər')->columns(3)->schema([
                 Forms\Components\TextInput::make('subtotal')
                     ->label('Ara cəm')
+                    ->helperText('Pozisiya əlavə edilibsə, ara cəm onlardan hesablanır.')
                     ->numeric()
+                    ->minValue(0)
                     ->prefix('AZN')
                     ->default(0),
                 Forms\Components\TextInput::make('tax')
                     ->label('Vergi')
                     ->numeric()
+                    ->minValue(0)
                     ->prefix('AZN')
                     ->default(0),
+                // `total` OXUNAQLI: modeldəki `saving()` hook-u onu hər halda
+                // `subtotal + tax` kimi yenidən yazır, ona görə sərbəst input
+                // yalnız operatoru aldadırdı — yazdığı rəqəm səssizcə itirdi.
+                // `InvoiceResource`-dakı `total` ilə eyni həll.
                 Forms\Components\TextInput::make('total')
                     ->label('Yekun')
+                    ->helperText('Ara cəm + vergi — avtomatik hesablanır.')
                     ->numeric()
+                    ->minValue(0)
+                    ->disabled()
+                    ->dehydrated(false)
                     ->prefix('AZN')
                     ->default(0),
             ]),

@@ -84,11 +84,22 @@ class BriefQuestionResource extends Resource
             // «Mebel hündürlükləri» kimi suallarda variantlar `options.items`
             // altındadır — onları ayrıca repeater idarə edir, çünki `options`
             // özü siyahı deyil, konfiqdir.
+            //
+            // DİQQƏT — repeater-lər `options`-a BİRBAŞA bağlanmır. Əvvəl biri
+            // `options`, digəri `options.items` yolunda idi, yəni state yolları
+            // üst-üstə düşürdü. Filament gizli bölmənin komponentlərini də
+            // hidratlaşdırır, ona görə `std_or_custom` sualında `options`
+            // repeater-i bütün `items` siyahısını BİR sətrin içinə yığır,
+            // `options.items` repeater-i isə sətirsiz qalırdı — nəticədə sətirlərə
+            // şəkil yükləmək ümumiyyətlə mümkün deyildi (fayl diskə düşür, bazaya
+            // düşmür). İndi hər repeater-in öz açarı var (`option_rows` /
+            // `option_cards`), `options`-a çevirmə isə `EditBriefQuestion`-un
+            // fill/save hook-larındadır.
             Section::make('Sətirlərin nümunə şəkilləri')
                 ->description('Hər sətir üçün bir neçə nümunə şəkli — müştəri sətrin solundakı kiçik şəklə basaraq onları modalda görür.')
                 ->visible(fn (?BriefQuestion $record) => static::isItemised($record))
                 ->schema([
-                    Forms\Components\Repeater::make('options.items')
+                    Forms\Components\Repeater::make('option_rows')
                         ->label('')
                         ->addable(false)
                         ->deletable(false)
@@ -112,6 +123,14 @@ class BriefQuestionResource extends Resource
                                 ->maxSize(2048)
                                 ->maxFiles(6)
                                 ->rules([SafeUpload::image()])
+                                // Hidratlaşmada Filament defolt olaraq hər yolu diskdə
+                                // YOXLAYIR və tapmadığını state-dən atır. Bu ekran üçün
+                                // təhlükəlidir: diskə müvəqqəti çatmayanda sualı açıb
+                                // saxlamaq bütün şəkil istinadlarını silərdi. İstinadı
+                                // qorumaq önizləmədəki ölçü/tip məlumatından vacibdir —
+                                // seeder-in `mergeOptionImages()` məntiqi də eyni qaydaya
+                                // söykənir.
+                                ->fetchFileInformation(false)
                                 ->helperText('Birinci şəkil sətrin yanındakı kiçik önizləmə kimi görünür.'),
                         ]),
                 ]),
@@ -124,7 +143,7 @@ class BriefQuestionResource extends Resource
                 })
                 ->visible(fn (?BriefQuestion $record) => ! static::isItemised($record))
                 ->schema([
-                    Forms\Components\Repeater::make('options')
+                    Forms\Components\Repeater::make('option_cards')
                         ->label('')
                         ->addable(false)
                         ->deletable(false)
@@ -147,6 +166,9 @@ class BriefQuestionResource extends Resource
                                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                                 ->maxSize(2048)
                                 ->rules([SafeUpload::image()])
+                                // Səbəb yuxarıdakı ilə eynidir: mövcud istinad disk
+                                // yoxlaması uğursuz olduğu üçün silinməməlidir.
+                                ->fetchFileInformation(false)
                                 ->visible(fn (?BriefQuestion $record) => ! $record?->supports_inspiration)
                                 ->helperText('4:3 nisbətdə ən yaxşı görünür.'),
 
@@ -162,6 +184,7 @@ class BriefQuestionResource extends Resource
                                 ->maxSize(2048)
                                 ->maxFiles(6)
                                 ->rules([SafeUpload::image()])
+                                ->fetchFileInformation(false)
                                 ->visible(fn (?BriefQuestion $record) => (bool) $record?->supports_inspiration)
                                 ->helperText('3-4 şəkil kifayətdir.'),
                         ]),

@@ -113,7 +113,14 @@ class AccessMatrix
     {
         $levels = self::resolve($user)['levels'];
 
-        return AccessLevel::from((int) ($levels[$domain->value] ?? 0));
+        // `AccessLevel::from()` diapazondan kənar tam ədədə `ValueError` atır —
+        // yəni `roles.levels` JSON-undaki BİR korlanmış dəyər (əl ilə redaktə,
+        // köhnə import, mənfi rəqəm, gələcəkdə silinmiş səviyyə) icazə rəddi
+        // yerinə istifadəçinin HƏR səhifəsində 500 verirdi: rol modulu bütövlükdə
+        // sıradan çıxırdı. `tryFrom` tanınmayan dəyəri `null` edir, biz isə ən
+        // MƏHDUD səviyyəyə (Yoxdur) düşürük — korlanmış məlumat heç vaxt geniş
+        // icazə kimi oxunmur.
+        return AccessLevel::tryFrom((int) ($levels[$domain->value] ?? 0)) ?? AccessLevel::None;
     }
 
     public static function allows(User $user, Domain $domain, AccessLevel $minimum): bool

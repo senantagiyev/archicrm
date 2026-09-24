@@ -86,8 +86,37 @@ class ChatCenter extends Page
         return $chat->conversations($user, $chat->staffProjectIds($user));
     }
 
+    /**
+     * Aktiv söhbətin layihəsi — HƏR OXUNUŞDA yenidən avtorizasiyadan keçir.
+     *
+     * NİYƏ `mount()`-daki yoxlama kifayət etmir: `$projectId` PUBLIC Livewire
+     * xassəsidir, yəni hər sorğuda gələn yükdən hidratlaşır, `mount()` isə
+     * komponentin ömründə YALNIZ BİR DƏFƏ işləyir. Ekranı icazəli vəziyyətdə
+     * açıb sonra `updateProperty` ilə `projectId`-ni dəyişmək kifayət edirdi:
+     * `mount()` bir daha çağırılmır və üzv olmadığı layihənin söhbəti açılırdı
+     * (müştəri adı, mövzu, fayl adları). Söhbət layihə danışığıdır — sərhəd
+     * məhz burada, məlumatın oxunduğu yerdə tətbiq olunmalıdır.
+     *
+     * Marşrut parametri ilə açılış (`?project=`) `mount()`-da onsuz da 403 alır;
+     * bu yoxlama onu əvəz etmir, sonrakı sorğuları bağlayır. Səlahiyyətsiz id
+     * üçün 403 yerinə `null` qaytarılır: ekran öz söhbət siyahısı ilə normal
+     * işləməyə davam edir, sadəcə yad lent açılmır.
+     */
     public function getActiveProject(): ?Project
     {
-        return $this->projectId ? Project::with('client')->find($this->projectId) : null;
+        if (! $this->projectId) {
+            return null;
+        }
+
+        $project = Project::with('client')->find($this->projectId);
+
+        if (! $project || ! auth()->user()?->can('view', $project)) {
+            // Xassə də sıfırlanır, əks halda hər render yenidən sorğu atır.
+            $this->projectId = null;
+
+            return null;
+        }
+
+        return $project;
     }
 }

@@ -16,7 +16,14 @@ class ReadinessService
 {
     public function recalculateStage(Stage $stage): void
     {
+        // LƏĞV EDİLMİŞ tapşırıq məxrəcdən çıxır. Əvvəl o da sayılırdı və mərhələ
+        // bir daha 100%-ə çatmırdı: 4 tapşırıqdan biri «artıq lazım deyil» deyə
+        // ləğv ediləndə qalan 3-ü bağlansa da rəqəm 75%-də donurdu, menecer isə
+        // mərhələni yarımçıq kimi görürdü. `Ləğv edilib` sistemin qalan hər
+        // yerində (TaskStatus::isFinal, Attention, TaskPlanner) «görülməyəcək
+        // iş»dir — hazırlıq hesabı yeganə istisna idi.
         $counts = $stage->tasks()
+            ->where('status', '!=', TaskStatus::Cancelled->value)
             ->selectRaw('count(*) as total, sum(case when status = ? then 1 else 0 end) as done', [TaskStatus::Done->value])
             ->first();
 

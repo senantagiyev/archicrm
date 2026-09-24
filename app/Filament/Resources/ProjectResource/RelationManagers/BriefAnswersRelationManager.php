@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Filament\Resources\ProjectResource;
 use App\Models\BriefAnswer;
 use App\Models\BriefSection;
 use App\Models\BriefTemplate;
 use App\Services\Brief\BriefService;
+use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -77,13 +80,27 @@ class BriefAnswersRelationManager extends RelationManager
                 Actions\Action::make('briefTemplate')
                     ->label('Brif şablonu')
                     ->icon('heroicon-o-rectangle-stack')
+                    // Şablonu dəyişmək cavabları yenidən ünvanlayır, otaq
+                    // bölmələrini qurur və proqresi yenidən hesablayır — bu, oxu
+                    // deyil, brif üzərində TAM səlahiyyətdir. Əvvəl heç bir
+                    // yoxlama yox idi: Brif = Baxış olan rol (komplektasiya,
+                    // vizualizator) düyməni görür və basa bilirdi.
+                    ->visible(fn () => self::maySwitchTemplate())
+                    ->authorize(fn () => self::maySwitchTemplate())
                     ->modalDescription('Brifin səviyyəsini/şablonunu seçin. Quick Brief-dən Premium-a keçəndə müştərinin verdiyi cavablar avtomatik köçürülür (eyni suallar üzrə).')
                     ->schema([
                         Forms\Components\Select::make('brief_template_id')
                             ->label('Şablon')
+                            // Hər qrupun İÇİ də massiv olmalıdır. Xarici `all()`
+                            // yalnız üst səviyyəni çevirirdi, qruplar Collection
+                            // qalırdı; Filament isə qruplu siyahını yalnız massiv
+                            // kimi tanıyır, ona görə `in:` qaydasının icazə
+                            // siyahısı BOŞ qalırdı və seçilən hər dəyər
+                            // validasiyadan geri qayıdırdı — yəni Quick → Premium
+                            // keçidi paneldən ümumiyyətlə saxlanıla bilmirdi.
                             ->options(fn () => BriefTemplate::where('active', true)->orderBy('position')->get()
                                 ->groupBy(fn ($t) => $t->levelLabel())
-                                ->map(fn ($group) => $group->mapWithKeys(fn ($t) => [$t->id => $t->getTranslation('name', 'az')]))
+                                ->map(fn ($group) => $group->mapWithKeys(fn ($t) => [$t->id => $t->getTranslation('name', 'az')])->all())
                                 ->all())
                             ->default(fn () => optional($this->getOwnerRecord()->brief)->brief_template_id
                                 ?? optional(BriefTemplate::default())->id)
@@ -99,5 +116,13 @@ class BriefAnswersRelationManager extends RelationManager
                     }),
             ])
             ->actions([]);
+    }
+
+    /** Şablon keçidi brifi yenidən qurur — `BriefReview::canManageBrief()` ilə eyni sədd. */
+    private static function maySwitchTemplate(): bool
+    {
+        $user = auth()->user();
+
+        return $user !== null && AccessMatrix::allows($user, Domain::Brief, AccessLevel::Full);
     }
 }

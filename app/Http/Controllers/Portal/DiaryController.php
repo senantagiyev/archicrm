@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Portal;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class DiaryController extends Controller
 {
@@ -43,9 +44,34 @@ class DiaryController extends Controller
         $path = collect($diaryEntry->photos ?? [])->filter()->values()->get($index);
 
         abort_if($path === null, 404);
-        abort_unless(Storage::disk('public')->exists($path), 404);
+        abort_unless(self::readableOnPublicDisk($path), 404, 'Foto tapılmadı.');
 
         return $this->imageResponse($path);
+    }
+
+    /**
+     * Yol `public` diskində oxunaqlıdırmı — İSTİSNA ATMADAN.
+     *
+     * Sadə `Storage::disk('public')->exists($path)` kifayət deyil: `photos`
+     * massivindəki yol disk kökündən kənara çıxırsa (idxal, köhnə məlumat və ya
+     * təhrif olunmuş qeyd) Flysystem faylı VERMİR, amma `PathTraversalDetected`
+     * atır — həm də məhz `exists()` çağırışının içindən, yəni yoxlamanın özü
+     * 500-ə çevrilir. Müştəriyə təmiz 404 qayıtmalıdır.
+     *
+     * Eyni məntiq `DocumentController`, `FileController` və `ChatController`-də
+     * də var — hamısı `public` diskindən müştəriyə fayl verir.
+     */
+    private static function readableOnPublicDisk(?string $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        try {
+            return Storage::disk('public')->exists($path);
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     /**

@@ -84,11 +84,23 @@ class InvoiceResource extends Resource
             ]),
 
             Section::make('Məbləğlər')->columns(3)->schema([
-                Forms\Components\TextInput::make('currency')
+                // AZN only, on purpose — `ExpenseResource.php` ilə eyni qayda.
+                // Sahə SƏRBƏST MƏTN idi (`maxLength(3)`), yəni operator «USD»
+                // yaza bilirdi, halbuki heç bir yerdə məzənnə çevrilməsi yoxdur:
+                // `ProfitabilityService::portfolio()` debitor borcu
+                // `SUM(total - paid_amount)` kimi valyutadan ASILI OLMADAN yığır,
+                // `PortfolioFinanceStats` isə nəticəni ₼ işarəsi ilə göstərir —
+                // 1 000 $ faktura kartda 1 000 ₼ borc kimi görünürdü. Seçimi
+                // açmaq üçün əvvəlcə məzənnə mexanizmi lazımdır, ondan sonra.
+                Forms\Components\Select::make('currency')
                     ->label('Valyuta')
+                    ->options(['AZN' => 'AZN'])
                     ->default('AZN')
                     ->required()
-                    ->maxLength(3),
+                    ->disabled()
+                    ->dehydrated()
+                    ->helperText('Hazırda yalnız AZN dəstəklənir — məzənnə çevrilməsi yoxdur.')
+                    ->native(false),
                 // `total` artıq əl ilə yazılmır — SEÇİM: oxunaqlı (disabled +
                 // dehydrated(false)) edildi. Səbəb: sahə formadan ümumiyyətlə
                 // göndərilmədiyi üçün model onu `subtotal + tax` kimi yenidən

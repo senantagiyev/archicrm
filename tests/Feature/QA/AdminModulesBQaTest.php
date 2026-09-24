@@ -142,15 +142,16 @@ class AdminModulesBQaTest extends TestCase
         // İkinci mərhələ birincinin bitməsindən BİR gün sonra başlayır.
         $this->assertSame('2026-01-09', $stages[1]->date_plan_start->toDateString());
 
-        // QA TAPINTI [ORTA]: StagesRelationManager-dəki applyTemplate düyməsinin
-        // şərhində «Rewrites the project's whole stage plan» yazılıb, amma
-        // StageTemplateService::apply() mövcud mərhələləri SİLMİR — yalnız
-        // sonuna əlavə edir. İkinci dəfə tətbiq → mərhələlər ikiqat olur.
+        // QA TAPINTI [ORTA] — DÜZƏLDİLDİ: əvvəl şablonun ikinci tətbiqi mərhələ
+        // planını ikiqatlayırdı (düymənin şərhi «bütün planı yenidən yazır»
+        // deyirdi, servis isə yalnız əlavə edirdi). `StageTemplateService::apply()`
+        // indi idempotentdir: adı planda olan bənd təkrar açılmır.
+        // Ətraflı: tests/Feature/QA2/LifecycleTest.php.
         app(StageTemplateService::class)->apply($project, $template, Carbon::parse('2026-06-01'));
         $this->assertSame(
-            $template->items->count() * 2,
+            $template->items->count(),
             $project->stages()->count(),
-            'Şablon ikinci dəfə tətbiq ediləndə mərhələlər əvəzlənmir, ikiqatlanır.'
+            'Şablonun ikinci tətbiqi mərhələləri təkrarlamamalıdır.'
         );
     }
 

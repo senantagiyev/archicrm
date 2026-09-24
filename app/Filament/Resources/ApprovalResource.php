@@ -30,7 +30,13 @@ class ApprovalResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = Approval::where('status', ApprovalStatus::Pending->value)->count();
+        // Nişan siyahının ÖZ sorğusundan sayılır. Əvvəl `Approval::where(...)`
+        // idi: «yalnız öz layihəsi» rolu menyuda 7 görürdü, siyahını açanda isə
+        // 2 tapırdı — qalan beşi üzvü olmadığı layihələrin razılaşdırmaları idi
+        // və heç vaxt açıla bilməzdi.
+        $count = static::getEloquentQuery()
+            ->where('status', ApprovalStatus::Pending->value)
+            ->count();
 
         return $count > 0 ? (string) $count : null;
     }

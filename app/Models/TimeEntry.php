@@ -47,6 +47,16 @@ class TimeEntry extends Model
                 $entry->duration_minutes = $entry->started_at->diffInMinutes($entry->ended_at);
             }
 
+            // Müddət intervalsız da yazıla bilər (import, konsol, «cəmi 8 saat»
+            // tipli yekun qeyd) — o yolda yuxarıdakı yoxlama ümumiyyətlə
+            // işləmirdi. Mənfi müddət isə rentabellikdə REAL saatları silir:
+            // −600 dəqiqəlik sətir eyni layihədəki +600-ü sıfırlayır, maya
+            // dəyəri 250 ₼ əvəzinə 0 çıxır, marja 75% əvəzinə 100% görünür.
+            // Sütun `unsignedInteger` olsa da, SQLite bunu məcbur etmir.
+            if ($entry->duration_minutes !== null && (int) $entry->duration_minutes < 0) {
+                throw new \RuntimeException('Vaxt qeydinin müddəti mənfi ola bilməz.');
+            }
+
             static::assertDoesNotOverlap($entry);
 
             // Snapshot the user's cost rate at entry time (TZ §7.27).

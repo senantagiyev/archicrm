@@ -6,7 +6,9 @@
     $editableIds = $editableQuestionIds ?? [];
     $comments = $comments ?? collect();
     $anyEditable = ! $briefLocked || $editableIds !== [];
-    $completed = $briefLocked;
+    // `$completed` QƏSDƏN burada təyin olunmur: o, sual-sual dəyişən dəyərdir və
+    // yalnız dövrənin içində mənalıdır (bax aşağıdaki `@foreach`). Dövrədən
+    // sonrakı «bölməni göndər» bloku isə `$briefLocked`-a baxır.
     $optLabel = fn ($option) => $option['label'][$locale] ?? $option['label']['az'] ?? $option['value'];
 @endphp
 
@@ -621,7 +623,12 @@
                     </div>
                 @endforeach
 
-                @unless ($completed)
+                {{-- Şərt `$briefLocked`-dır, `$completed` DEYİL: `$completed` dövrənin
+                     içində hər sual üçün yenidən təyin olunur və buraya SON sualın
+                     dəyəri ilə çatır. Kilidli brifdə bölmənin son sualı dəqiqləşdirmə
+                     üçün işarələnmişdisə, düymə görünürdü — ona basan müştəri isə
+                     `submit()`-dən izahsız 403 alırdı. --}}
+                @unless ($briefLocked)
                     <div class="flex items-center justify-between gap-4">
                         <a href="{{ route('portal.brief', $project) }}" class="ui-btn ui-btn-outline h-11 px-5 text-sm font-semibold" data-hover="true">
                             {{ t('portal.brief_save_exit') }}

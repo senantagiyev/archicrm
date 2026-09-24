@@ -16,16 +16,40 @@ class EditBriefQuestion extends EditRecord
     }
 
     /**
-     * Formadakı İKİ repeater eyni `options` açarını paylaşır və onların saxladığı
-     * quruluş eyni deyil:
-     *   • adi sual — `options` özü variant SİYAHISIDIR;
-     *   • `std_or_custom` — variantlar `options.items` altındadır, `options` isə
-     *     siyahı yox, KONFİQDİR.
-     * Ona görə format sualın tipindən müəyyən edilir. Əvvəllər hər iki hal
-     * şərtsiz `array_values()`-dan keçirdi: bu, konfiqi siyahıya çevirərək
-     * sətirləri (standart ölçü, vahid, yüklənmiş şəkillər) tamamilə silirdi, adi
-     * sualda isə gizli repeater-in qaytardığı boş sətirləri siyahıya yapışdırıb
-     * hər saxlanmada seçilə bilməyən boş kart əlavə edirdi.
+     * `options` sahəsi formaya BİRBAŞA bağlanmır, iki köməkçi açara açılır:
+     *   • `option_cards` — adi sualda `options` özü variant SİYAHISIDIR;
+     *   • `option_rows`  — `std_or_custom` sualında variantlar `options.items`
+     *     altındadır, `options` isə siyahı yox, KONFİQDİR.
+     *
+     * Niyə köməkçi açar: əvvəl iki repeater eyni `options` yolunu paylaşırdı
+     * (`options` və `options.items`). Filament gizli bölmənin komponentlərini də
+     * hidratlaşdırdığı üçün `std_or_custom` sualında birinci repeater bütün
+     * `items` siyahısını BİR sətrin içinə yığırdı, ikinci repeater isə sətirsiz
+     * qalırdı: admin sətirləri görmür, yüklədiyi şəkil diskə düşüb bazaya
+     * düşmürdü. Ayrı açarlar bu toqquşmanı kökündən aradan qaldırır.
+     */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $options = $this->getRecord()->options;
+        $options = is_array($options) ? $options : [];
+
+        if ($this->getRecord()->type === 'std_or_custom') {
+            $data['option_rows'] = array_values((array) ($options['items'] ?? []));
+            $data['option_cards'] = [];
+        } else {
+            $data['option_cards'] = array_is_list($options) ? $options : [];
+            $data['option_rows'] = [];
+        }
+
+        // Formada `options` adlı komponent yoxdur; onu state-də saxlamaq brauzerə
+        // lazımsız məlumat göndərmək olardı.
+        unset($data['options']);
+
+        return $data;
+    }
+
+    /**
+     * Köməkçi açarları geri `options`-a yığır.
      *
      * Repeater boş fayl sahələrini `null` / `[]` kimi qaytarır. Onları variantın
      * içində saxlasaq, `filled()` yoxlamaları «şəkil var» sayardı və frontendə
@@ -36,27 +60,28 @@ class EditBriefQuestion extends EditRecord
      */
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        if (! isset($data['options']) || ! is_array($data['options'])) {
-            return $data;
-        }
+        $record = $this->getRecord();
+        $stored = is_array($record->options) ? $record->options : [];
 
-        if ($this->getRecord()->type === 'std_or_custom') {
-            $options = $data['options'];
-            $items = $this->cleanOptions((array) ($options['items'] ?? []));
+        if ($record->type === 'std_or_custom') {
+            $rows = $this->cleanOptions(array_values((array) ($data['option_rows'] ?? [])));
 
             // Sətirlər formada nə əlavə, nə də silinə bilir (`addable(false)`,
             // `deletable(false)`), ona görə boş nəticə yalnız form vəziyyətinin
             // itməsi deməkdir — belə halda saxlanılmış sətirlər qorunur.
-            $options['items'] = $items !== [] ? $items : (array) ($this->getRecord()->options['items'] ?? []);
-            $data['options'] = $options;
+            $stored['items'] = $rows !== [] ? $rows : array_values((array) ($stored['items'] ?? []));
+            $data['options'] = $stored;
+        } elseif ($stored === [] || array_is_list($stored)) {
+            $cards = $this->cleanOptions(array_values((array) ($data['option_cards'] ?? [])));
 
-            return $data;
+            // Eyni qoruyucu: variantlar paneldən silinə bilmir, deməli boş nəticə
+            // yalnız itirilmiş form vəziyyətidir.
+            $data['options'] = $cards !== [] ? $cards : $stored;
         }
+        // matrix / color_swatch / budget_range kimi konfiq formasında `options`
+        // ümumiyyətlə toxunulmur — orada nə şəkil var, nə dəyişiləsi sətir.
 
-        // Adi sualda `items` açarı yad qonaqdır — gizli repeater-dən düşür.
-        unset($data['options']['items']);
-
-        $data['options'] = $this->cleanOptions($data['options']);
+        unset($data['option_cards'], $data['option_rows']);
 
         return $data;
     }

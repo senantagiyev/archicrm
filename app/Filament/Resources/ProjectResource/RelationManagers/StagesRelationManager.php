@@ -55,8 +55,15 @@ class StagesRelationManager extends RelationManager
                 ->numeric()
                 ->default(1)
                 ->minValue(1)
-                ->maxValue(10)
-                ->helperText('Layihənin hazırlıq %-ində bu mərhələnin payı.'),
+                // Tavan `stages.weight` sütununun tavanıdır (unsignedTinyInteger).
+                // Əvvəl 10 idi və şablondan açılan mərhələ formada AÇILA
+                // BİLMİRDİ: şablon çəkini plan müddətindən yazır (60, hətta 90
+                // gün), yəni hər redaktə — ad, status, məsul şəxs, tarix —
+                // «Çəki 10-dan böyük olmamalıdır» validasiyasına düşürdü.
+                // Operatorun yeganə çıxışı toxunmaq istəmədiyi çəkini azaltmaq,
+                // yəni hazırlıq faizini səssizcə pozmaq olurdu.
+                ->maxValue(255)
+                ->helperText('Layihənin hazırlıq %-ində bu mərhələnin payı. Şablon bunu plan müddətindən (gün) yazır.'),
             Forms\Components\TextInput::make('position')
                 ->label('Sıra')
                 ->numeric()
@@ -98,8 +105,10 @@ class StagesRelationManager extends RelationManager
                 Actions\Action::make('applyTemplate')
                     ->label('Şablon tətbiq et')
                     ->icon('heroicon-o-document-duplicate')
-                    // Rewrites the project's whole stage plan — it needs the same
-                    // rights as editing the project itself.
+                    // Plana mərhələ ƏLAVƏ edir (şərh əvvəl «bütün planı yenidən
+                    // yazır» deyirdi — səhv idi, silmə heç vaxt olmayıb).
+                    // Layihənin planını dəyişdiyi üçün icazəsi layihəni redaktə
+                    // etmək icazəsi ilə eynidir.
                     ->visible(fn () => auth()->user()?->can('update', $this->getOwnerRecord()))
                     ->form([
                         Forms\Components\Select::make('template_id')

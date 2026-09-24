@@ -51,6 +51,15 @@ class PurchaseOrder extends Model
             }
 
             $order->total = round((float) $order->subtotal + (float) $order->tax, 2);
+
+            // `Invoice`, `Expense` və `Payment` modellərində bu qoruma var idi,
+            // sifarişdə yox. Sifarişin cəmi rentabellikdə birbaşa maya dəyəridir:
+            // mənfi cəm xərci AZALDIR və layihəni olduğundan gəlirli göstərir.
+            // Forma artıq `minValue(0)` ilə bağlıdır — bura import, konsol və
+            // API yolları üçün son səddir.
+            if ((float) $order->subtotal < 0 || (float) $order->tax < 0) {
+                throw new \RuntimeException('Satınalma sifarişinin məbləği mənfi ola bilməz.');
+            }
         });
 
         // A received order cannot go back to draft, and a cancelled one cannot

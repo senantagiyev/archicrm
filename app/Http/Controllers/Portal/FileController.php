@@ -8,6 +8,7 @@ use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Throwable;
 
 /**
  * Roomix-dəki «Files» tabı: layihənin bütün faylları bir yerdə, tipinə görə
@@ -70,8 +71,35 @@ class FileController extends Controller
         $name = Str::of($file->title ?: 'file')->ascii()->replaceMatches('/[^A-Za-z0-9 _-]/', '')->trim();
         $filename = ($name->isEmpty() ? 'file' : $name).($ext ? '.'.$ext : '');
 
-        abort_unless(Storage::disk('public')->exists($file->file_path), 404);
+        abort_unless(self::readableOnPublicDisk($file->file_path), 404, 'Fayl tapılmadı.');
 
         return Storage::disk('public')->download($file->file_path, $filename);
+    }
+
+    /**
+     * Yol `public` diskində oxunaqlıdırmı — İSTİSNA ATMADAN.
+     *
+     * Sadə `Storage::disk('public')->exists($path)` kifayət deyil: yol disk
+     * kökündən kənara çıxırsa (`../../.env` kimi sətir idxaldan, köhnə
+     * məlumatdan və ya təhrif olunmuş qeyddən gələ bilər) Flysystem faylı
+     * VERMİR, amma `PathTraversalDetected` atır — həm də məhz `exists()`
+     * çağırışının içindən. Yəni yoxlamanın özü 500-ə çevrilir. Müştəriyə
+     * sınmış səhifə deyil, təmiz 404 qayıtmalıdır; `APP_DEBUG` açıq mühitdə
+     * istisna izi (disk kökü, tətbiq yolları) da sızmamalıdır.
+     *
+     * Eyni məntiq `DocumentController`, `DiaryController` və `ChatController`-də
+     * də var — dördü də `public` diskindən müştəriyə fayl verir.
+     */
+    private static function readableOnPublicDisk(?string $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        try {
+            return Storage::disk('public')->exists($path);
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

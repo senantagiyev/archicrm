@@ -44,7 +44,16 @@ class TaskResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         // Table closures read project/stage/assignee — eager load against the N+1 guard.
-        $query = parent::getEloquentQuery()->with(['project', 'stage', 'assignee']);
+        $query = parent::getEloquentQuery()
+            ->with(['project', 'stage', 'assignee'])
+            // Layihə soft-delete olunur, tapşırıq isə yox — `whereHas('project')`
+            // layihənin SoftDeletes skopunu işə salır. Bu qoruma MyTasksWidget,
+            // TaskPlanner, Attention və CalendarController-də vardı, resursun
+            // özündə isə yox idi: silinmiş layihənin tapşırıqları siyahıda
+            // qalırdı, layihə sütunu boş («—») görünürdü və sətri açan adam
+            // konteksti olmayan tapşırığı redaktə edirdi. Sətir bazadan silinmir,
+            // yalnız gizlənir — layihə bərpa olunsa iş də geri qayıdır.
+            ->whereHas('project');
 
         return static::scopeToVisibleProjects($query, auth()->user());
     }
@@ -72,13 +81,55 @@ class TaskResource extends Resource
             ->orWhereHas('members', fn (Builder $member) => $member->whereKey($user->id)));
     }
 
+    /**
+     * Tapşırıq yaradarkən/redaktə edərkən seçilə bilən layihələr.
+     *
+     * Əvvəl hər yerdə sadəcə `Project::orderBy('name')->pluck()` yazılırdı, yəni
+     * «yalnız öz layihələri» rolu studiyanın BÜTÜN layihə adlarını (müştəri
+     * obyektlərinin adlarını) seçim siyahısında görürdü və `project_id` Livewire
+     * payload-ından gəldiyi üçün üzvü OLMADIĞI layihəyə tapşırıq yaza bilirdi.
+     * Yazdığı sətri sonra özü görmür — yad layihədə izahsız iş peyda olur.
+     * Görünürlük şərti oxu sorğusu ilə eyni yerdən gəlsin deyə seçim siyahısı da
+     * burada saxlanılır (TaskPlanner də bunu çağırır).
+     *
+     * @return array<int, string>
+     */
+    public static function visibleProjectOptions(): array
+    {
+        $query = Project::query()->orderBy('name');
+        $user = auth()->user();
+
+        if ($user && AccessMatrix::requiresOwnProject($user)) {
+            $query->where(fn (Builder $q) => $q
+                ->where('manager_user_id', $user->id)
+                ->orWhereHas('members', fn (Builder $m) => $m->whereKey($user->id)));
+        }
+
+        return $query->pluck('name', 'id')->all();
+    }
+
+    /**
+     * Seçilmiş layihə istifadəçiyə açıqdırmı — YAZMA yolunun qapısı.
+     * UI-nı gizlətmək icazə deyil (TZ §5.20): form payload-u birbaşa da göndərilə
+     * bilər, ona görə yazmadan əvvəl id serverdə təsdiqlənir.
+     */
+    public static function projectIsVisible(?int $projectId): bool
+    {
+        return $projectId !== null && array_key_exists($projectId, static::visibleProjectOptions());
+    }
+
     public static function form(Schema $form): Schema
     {
         return $form->schema([
             Section::make()->columns(2)->schema([
                 Forms\Components\Select::make('project_id')
                     ->label('Layihə')
-                    ->options(fn () => Project::orderBy('name')->pluck('name', 'id'))
+                    // Yalnız istifadəçinin görə bildiyi layihələr — siyahı da,
+                    // saxlanılan dəyər də eyni qaydadan keçir.
+                    ->options(fn () => static::visibleProjectOptions())
+                    ->rule(fn () => fn (string $attribute, $value, \Closure $fail) => static::projectIsVisible((int) $value)
+                        ? null
+                        : $fail('Bu layihəyə tapşırıq yaratmaq icazəniz yoxdur.'))
                     ->searchable()
                     ->required()
                     ->live()
@@ -177,7 +228,10 @@ class TaskResource extends Resource
             ->filters([
                 Tables\Filters\SelectFilter::make('project_id')
                     ->label('Layihə')
-                    ->options(fn () => Project::orderBy('name')->pluck('name', 'id')),
+                    // Filtr siyahısı da görünürlük qaydasına tabedir: əks halda
+                    // rol görə bilmədiyi layihələrin adlarını filtr açılışında
+                    // oxuyurdu.
+                    ->options(fn () => static::visibleProjectOptions()),
                 Tables\Filters\SelectFilter::make('assignee_user_id')
                     ->label('İcraçı')
                     ->options(fn () => User::orderBy('name')->pluck('name', 'id')),

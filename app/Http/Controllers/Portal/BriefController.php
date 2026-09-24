@@ -492,8 +492,222 @@ class BriefController extends Controller
                 && collect($value)->every(fn ($v) => is_scalar($v) && in_array((string) $v, ['like', 'dislike'], true))
                     ? $value
                     : self::INVALID_ANSWER,
+            'matrix' => $this->sanitiseMatrix($question, $value),
+            'room_inventory' => $this->sanitiseInventory($question, $value),
+            'std_or_custom' => $this->sanitiseStdOrCustom($question, $value),
+            'repeater' => $this->sanitiseRepeater($question, $value),
+            'budget_range' => $this->sanitiseBudgetRange($question, $value),
+            'color_swatch' => $this->sanitiseColorSwatch($question, $value),
             default => $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER,
         };
+    }
+
+    /**
+     * Matris: açar `options.rows`, dəyər isə `options.columns` siyahısındandır.
+     *
+     * Əvvəl tərkibli tiplərə YALNIZ ölçü həddi tətbiq olunurdu — uydurma sətir
+     * bazaya düşür, oradan da dizaynerin ekranına, brif PDF-inə və texniki
+     * tapşırığa etiketsiz xam açar kimi çıxırdı.
+     */
+    private function sanitiseMatrix(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || array_is_list($value)) {
+            return self::INVALID_ANSWER;
+        }
+
+        $rows = $this->optionValues($question->options['rows'] ?? []);
+        $columns = $this->optionValues($question->options['columns'] ?? []);
+
+        foreach ($value as $row => $column) {
+            if ($rows !== [] && ! in_array((string) $row, $rows, true)) {
+                return self::INVALID_ANSWER;
+            }
+
+            // Sətirin seçimi götürüləndə skript boş dəyər göndərir — bu, yad
+            // sütundan fərqli olaraq qanuni haldır.
+            if (blank($column)) {
+                continue;
+            }
+
+            if (! is_scalar($column) || ($columns !== [] && ! in_array((string) $column, $columns, true))) {
+                return self::INVALID_ANSWER;
+            }
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /** Otaq tərkibi: açar otaq tipi, dəyər say. Sayın yuxarı həddi `syncRooms()`-dadır. */
+    private function sanitiseInventory(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || array_is_list($value)) {
+            return self::INVALID_ANSWER;
+        }
+
+        $types = $this->optionValues($question->options ?? []);
+
+        foreach ($value as $type => $count) {
+            if ($types !== [] && ! in_array((string) $type, $types, true)) {
+                return self::INVALID_ANSWER;
+            }
+
+            if (! is_numeric($count) || (int) $count < 0) {
+                return self::INVALID_ANSWER;
+            }
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /** «Standart / öz ölçüm»: açar `options.items`-dən, sətir isə yalnız `mode`+`value`. */
+    private function sanitiseStdOrCustom(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || array_is_list($value)) {
+            return self::INVALID_ANSWER;
+        }
+
+        $items = $this->optionValues($question->options['items'] ?? []);
+
+        foreach ($value as $key => $row) {
+            if ($items !== [] && ! in_array((string) $key, $items, true)) {
+                return self::INVALID_ANSWER;
+            }
+
+            if (! is_array($row) || array_is_list($row) || array_diff(array_keys($row), ['mode', 'value']) !== []) {
+                return self::INVALID_ANSWER;
+            }
+
+            foreach ($row as $cell) {
+                if ($cell !== null && ! is_scalar($cell)) {
+                    return self::INVALID_ANSWER;
+                }
+            }
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /** Sətir-sətir cədvəl: sütun açarları `options.fields[].key` ilə məhdudlaşır. */
+    private function sanitiseRepeater(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || ! array_is_list($value) || count($value) > self::LIST_MAX) {
+            return self::INVALID_ANSWER;
+        }
+
+        $fields = $this->scalarList(array_column((array) ($question->options['fields'] ?? []), 'key'));
+
+        foreach ($value as $row) {
+            if (! is_array($row) || array_is_list($row)) {
+                return self::INVALID_ANSWER;
+            }
+
+            if ($fields !== [] && array_diff(array_map('strval', array_keys($row)), $fields) !== []) {
+                return self::INVALID_ANSWER;
+            }
+
+            foreach ($row as $cell) {
+                if ($cell !== null && ! is_scalar($cell)) {
+                    return self::INVALID_ANSWER;
+                }
+            }
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /** Büdcə: yalnız `min`/`max`/`currency`; rəqəmlər ədəd, valyuta bankdakı siyahıdan. */
+    private function sanitiseBudgetRange(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || array_is_list($value) || array_diff(array_keys($value), ['min', 'max', 'currency']) !== []) {
+            return self::INVALID_ANSWER;
+        }
+
+        foreach (['min', 'max'] as $bound) {
+            $amount = $value[$bound] ?? null;
+
+            // Sahə boşaldıla bilər — boş büdcə «cavabsız» sayılır, xəta deyil.
+            if (! blank($amount) && ! is_numeric($amount)) {
+                return self::INVALID_ANSWER;
+            }
+        }
+
+        $currencies = $this->scalarList($question->options['currencies'] ?? []);
+        $currency = $value['currency'] ?? null;
+
+        if (! blank($currency) && $currencies !== [] && ! in_array((string) $currency, $currencies, true)) {
+            return self::INVALID_ANSWER;
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /** Rəng palitrası: yalnız `base`/`accent`, dəyərlər bankdakı çiplərdən və say həddi ilə. */
+    private function sanitiseColorSwatch(BriefQuestion $question, mixed $value): mixed
+    {
+        if (! is_array($value) || array_is_list($value) || array_diff(array_keys($value), ['base', 'accent']) !== []) {
+            return self::INVALID_ANSWER;
+        }
+
+        $swatches = $this->scalarList($question->options['swatches'] ?? []);
+        $limits = [
+            'base' => (int) ($question->options['base_max'] ?? 0),
+            'accent' => (int) ($question->options['accent_max'] ?? 0),
+        ];
+
+        foreach (['base', 'accent'] as $role) {
+            $picked = $value[$role] ?? [];
+
+            if ($picked === null) {
+                continue;
+            }
+
+            if (! is_array($picked) || ! array_is_list($picked)) {
+                return self::INVALID_ANSWER;
+            }
+
+            // Say həddi bankdadır; skript onu artıq saxlayır, sorğu birbaşa
+            // göndəriləndə isə tək müdafiə buradır.
+            if ($limits[$role] > 0 && count($picked) > $limits[$role]) {
+                return self::INVALID_ANSWER;
+            }
+
+            foreach ($picked as $hex) {
+                if (! is_scalar($hex) || ($swatches !== [] && ! in_array((string) $hex, $swatches, true))) {
+                    return self::INVALID_ANSWER;
+                }
+            }
+        }
+
+        return $this->withinSizeLimit($value) ? $value : self::INVALID_ANSWER;
+    }
+
+    /**
+     * Variant siyahısından `value` açarları — `rows`, `columns`, `items` və düz
+     * siyahı eyni formadadır.
+     *
+     * @return list<string>
+     */
+    private function optionValues(mixed $options): array
+    {
+        $values = [];
+
+        foreach ((array) $options as $option) {
+            if (is_array($option) && isset($option['value']) && is_scalar($option['value'])) {
+                $values[] = (string) $option['value'];
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Sadə siyahı (valyutalar, hex çiplər, sütun açarları) — mətnə çevrilmiş şəkildə.
+     *
+     * @return list<string>
+     */
+    private function scalarList(mixed $list): array
+    {
+        return array_values(array_map('strval', array_filter((array) $list, 'is_scalar')));
     }
 
     /**

@@ -10,6 +10,7 @@ use App\Services\Chat\ChatService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Throwable;
 
 class ChatController extends Controller
 {
@@ -112,12 +113,38 @@ class ChatController extends Controller
         $chatMessage = $project->chatMessages()->findOrFail($message);
 
         abort_unless($chatMessage->hasAttachment(), 404);
-        abort_unless(Storage::disk('public')->exists($chatMessage->attachment_path), 404);
+        abort_unless(self::readableOnPublicDisk($chatMessage->attachment_path), 404, 'Əlavə tapılmadı.');
 
         // Səsli mesaj brauzerdə <audio> ilə oxunur, ona görə inline verilir;
         // sənəd isə endirilir.
         return $chatMessage->isVoice()
             ? Storage::disk('public')->response($chatMessage->attachment_path, $chatMessage->attachment_name)
             : Storage::disk('public')->download($chatMessage->attachment_path, $chatMessage->attachment_name);
+    }
+
+    /**
+     * Yol `public` diskində oxunaqlıdırmı — İSTİSNA ATMADAN.
+     *
+     * Sadə `Storage::disk('public')->exists($path)` kifayət deyil: yol disk
+     * kökündən kənara çıxırsa Flysystem faylı VERMİR, amma
+     * `PathTraversalDetected` atır — həm də məhz `exists()` çağırışının
+     * içindən, yəni yoxlamanın özü 500-ə çevrilir. Çat sətirləri idxal və
+     * miqrasiya ilə də yaranır, ona görə `attachment_path`-ə sözsüz inanmaq
+     * olmaz. Müştəriyə təmiz 404 qayıtmalıdır.
+     *
+     * Eyni məntiq `DocumentController`, `FileController` və `DiaryController`-də
+     * də var — hamısı `public` diskindən müştəriyə fayl verir.
+     */
+    private static function readableOnPublicDisk(?string $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        try {
+            return Storage::disk('public')->exists($path);
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

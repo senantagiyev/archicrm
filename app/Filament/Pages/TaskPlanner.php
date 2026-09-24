@@ -69,6 +69,19 @@ class TaskPlanner extends Page
             && AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Edit);
     }
 
+    /**
+     * Modalda seçilə bilən layihələr. Əvvəl burada `Project::orderBy('name')
+     * ->pluck()` vardı: «yalnız öz layihələri» rolu studiyanın BÜTÜN layihə
+     * adlarını görürdü. Qayda TaskResource-da bir yerdə saxlanılır ki, oxu
+     * sorğusu ilə seçim siyahısı ayrılmasın.
+     *
+     * @return array<int, string>
+     */
+    public function getVisibleProjectOptions(): array
+    {
+        return TaskResource::visibleProjectOptions();
+    }
+
     /** Ekranda göstərilən sütunlar; «Ləğv edilib» planlaşdırmaya aid deyil. */
     public function statuses(): array
     {
@@ -150,7 +163,7 @@ class TaskPlanner extends Page
                         ->maxLength(2000),
                     Select::make('project_id')
                         ->label('Layihə')
-                        ->options(fn () => Project::orderBy('name')->pluck('name', 'id'))
+                        ->options(fn () => $this->getVisibleProjectOptions())
                         ->searchable()
                         ->required()
                         ->live()
@@ -188,6 +201,14 @@ class TaskPlanner extends Page
                     // Layihə və mərhələ id-ləri Livewire payload-ından gəlir —
                     // cari studiyanın (tenant scope) qeydləri olduğu təsdiqlənir.
                     $project = Project::findOrFail($data['project_id']);
+
+                    // Studiya yoxlaması kifayət deyil: eyni studiyada «yalnız öz
+                    // layihələri» rolu üzvü OLMADIĞI layihəyə tapşırıq yaza
+                    // bilirdi (seçim siyahısı gizlədilsə də, payload birbaşa
+                    // göndərilə bilir). Yazdığı sətri sonra özü görmür — yad
+                    // layihədə izahsız iş peyda olur. TZ §5.20: icazə serverdə.
+                    abort_unless(TaskResource::projectIsVisible($project->id), 403);
+
                     $stage = Stage::where('project_id', $project->id)->findOrFail($data['stage_id']);
 
                     $assigneeId = $data['assignee_user_id'] ?? null;

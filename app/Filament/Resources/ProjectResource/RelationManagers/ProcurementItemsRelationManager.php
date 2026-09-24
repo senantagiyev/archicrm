@@ -6,6 +6,7 @@ use App\Enums\ApprovalStatus;
 use App\Enums\PurchaseStatus;
 use App\Exports\ProcurementExport;
 use App\Filament\Concerns\OptimisticLock;
+use App\Models\ProcurementItem;
 use App\Rules\SafeUpload;
 use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
@@ -99,6 +100,15 @@ class ProcurementItemsRelationManager extends RelationManager
             Forms\Components\Toggle::make('paid')
                 ->label('Ödənilib')
                 ->inline(false),
+            // `procurement_items.visible_to_client` DB-də `false` defoltludur və
+            // paneldə heç bir sahəsi YOX idi: yəni paneldən yaradılan pozisiya
+            // müştəriyə heç vaxt açıla bilmirdi və portalın bütün Komplektasiya
+            // bölməsi (siyahı, CSV ixracı, avtorizasiyalı foto marşrutu) boş
+            // qalırdı. Açar məhz burada — pozisiyanın öz formasında — olmalıdır.
+            Forms\Components\Toggle::make('visible_to_client')
+                ->label('Sifarişçiyə görünür')
+                ->helperText('Açıq olduqda pozisiya müştəri portalının Komplektasiya bölməsində görünür.')
+                ->inline(false),
         ])->columns(2);
     }
 
@@ -141,6 +151,11 @@ class ProcurementItemsRelationManager extends RelationManager
                     ->color(fn (PurchaseStatus $state) => $state->color()),
                 Tables\Columns\IconColumn::make('paid')
                     ->label('Ödənilib')
+                    ->boolean(),
+                // Görünürlük cədvəldə də oxunmalıdır: əks halda menecer hansı
+                // pozisiyanın müştəriyə çıxdığını yalnız formanı açaraq bilir.
+                Tables\Columns\IconColumn::make('visible_to_client')
+                    ->label('Sifarişçiyə görünür')
                     ->boolean(),
                 Tables\Columns\TextColumn::make('store')
                     ->label('Mağaza')

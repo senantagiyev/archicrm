@@ -70,8 +70,18 @@ class DeliverablesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('currentVersion.status')
                     ->label('Versiya statusu')
                     ->badge()
-                    ->formatStateUsing(fn (?DeliverableVersionStatus $s) => $s?->label() ?? '—')
-                    ->color(fn (?DeliverableVersionStatus $s) => $s?->color() ?? 'gray'),
+                    // Parametr MÜTLƏQ `$state` adlanmalıdır. Filament closure
+                    // arqumentlərini əvvəlcə ADA görə inject edir; ad tanınmasa
+                    // TİPƏ görə konteynerdən həll etməyə çalışır. `$s` kimi ad heç
+                    // bir tanınan ada uyğun gəlmədiyindən Filament enum-u
+                    // konteynerdən YARATMAĞA cəhd edirdi və bütün cədvəl
+                    // «Target [DeliverableVersionStatus] is not instantiable» ilə
+                    // çökürdü — yəni layihənin Dizayn tabı bir dənə deliverable
+                    // yarandığı an 500 verirdi. (CLAUDE.md-dəki
+                    // `modifyQueryUsing(fn (Builder $query))` tələsinin eynisi,
+                    // yalnız cədvəl sütunları üçün.)
+                    ->formatStateUsing(fn (?DeliverableVersionStatus $state) => $state?->label() ?? '—')
+                    ->color(fn (?DeliverableVersionStatus $state) => $state?->color() ?? 'gray'),
                 Tables\Columns\TextColumn::make('versions_count')
                     ->label('Versiyalar')
                     ->counts('versions'),

@@ -131,10 +131,30 @@ class ProcurementController extends Controller
 
         $record = $this->clientItemsQuery($project)->findOrFail($item);
 
-        abort_if($record->photo_path === null, 404);
-        abort_unless(Storage::disk('public')->exists($record->photo_path), 404);
+        abort_unless(self::readableOnPublicDisk($record->photo_path), 404, 'Foto tapılmadı.');
 
         return $this->imageResponse($record->photo_path);
+    }
+
+    /**
+     * Diskin kökündən kənara çıxan yol (`../../../../.env`) üçün Flysystem
+     * `exists()`-in ÖZÜNDƏN `PathTraversalDetected` atır — yəni sadə
+     * `exists()` yoxlaması qorumurdu, sorğu 404 yox, 500 verirdi və
+     * `APP_DEBUG` açıq olanda server yollarını açırdı. Fayl heç vaxt
+     * verilmirdi, amma xəta emal olunmamış qalırdı.
+     * `DiaryController::readableOnPublicDisk()` ilə eyni məntiq.
+     */
+    private static function readableOnPublicDisk(?string $path): bool
+    {
+        if (blank($path)) {
+            return false;
+        }
+
+        try {
+            return Storage::disk('public')->exists($path);
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
