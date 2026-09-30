@@ -14,6 +14,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -55,7 +56,7 @@ class BriefClientTest extends TestCase
         $this->studio = StudioWorld::make('brief-qa2');
 
         app(TenantContext::class)->actingAs($this->studio->tenant->id, function (): void {
-            $this->brief = app(BriefService::class)->forProject($this->studio->project);
+            $this->brief = BriefFixture::present($this->studio->project);
         });
     }
 
@@ -675,7 +676,7 @@ class BriefClientTest extends TestCase
         $otherWorld = StudioWorld::make('brief-qa2-other');
         $otherBrief = app(TenantContext::class)->actingAs(
             $otherWorld->tenant->id,
-            fn () => app(BriefService::class)->forProject($otherWorld->project),
+            fn () => BriefFixture::present($otherWorld->project),
         );
         $foreignRoom = $otherBrief->rooms()->create(['room_type' => 'bedroom', 'label' => 'Yad otaq', 'position' => 1]);
 
@@ -730,7 +731,7 @@ class BriefClientTest extends TestCase
         $documents = $this->studio->project->documents()->count();
 
         $this->customer()->post(route('portal.brief.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $after = $this->brief->fresh();
         $this->assertSame((int) $before->current_version, (int) $after->current_version);
@@ -774,6 +775,10 @@ class BriefClientTest extends TestCase
     public function test_a_client_of_another_studio_reaches_no_brief_endpoint(): void
     {
         $other = StudioWorld::make('brief-qa2-studio2');
+
+        // Yad studiyanın ÖZ brifi təqdim edilmiş olmalıdır — yoxsa aşağıda öz
+        // bölməsini açanda da 404 alar və test yanlış səbəbdən yaşıl/qırmızı olar.
+        app(TenantContext::class)->actingAs($other->tenant->id, fn () => BriefFixture::present($other->project));
         $section = $this->section('object');
         $project = $this->studio->project->id;
 
@@ -803,7 +808,7 @@ class BriefClientTest extends TestCase
 
         $otherBrief = app(TenantContext::class)->actingAs(
             $other->tenant->id,
-            fn () => app(BriefService::class)->forProject($other->project),
+            fn () => BriefFixture::present($other->project),
         );
         $this->assertSame(1, $otherBrief->answers()->count());
     }

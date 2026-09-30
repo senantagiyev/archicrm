@@ -197,9 +197,22 @@ class Project extends Model
         return $this->hasMany(ChatMessage::class);
     }
 
+    /**
+     * Layihənin «cari» brifi — ən son yaradılanı. Tək brifli layihədə
+     * (əksəriyyət) sadəcə o brifdir. Qaralama yalnız layihədə heç bir brif
+     * olmayanda yaranır (`BriefService::forProject()`), yeni göndəriş isə onu
+     * yenidən istifadə edir — ona görə «ən son» təqdim edilmiş brifi qaralamanın
+     * arxasında gizlətmir. Hamısı lazım olanda `briefs()`.
+     */
     public function brief(): HasOne
     {
-        return $this->hasOne(Brief::class);
+        return $this->hasOne(Brief::class)->latestOfMany();
+    }
+
+    /** Layihənin bütün brifləri — hər şablondan ən çox bir. */
+    public function briefs(): HasMany
+    {
+        return $this->hasMany(Brief::class)->orderBy('id');
     }
 
     public function briefAnswers(): HasManyThrough

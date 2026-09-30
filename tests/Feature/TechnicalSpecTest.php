@@ -11,6 +11,7 @@ use App\Support\TenantContext;
 use Database\Seeders\BriefQuestionBankSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class TechnicalSpecTest extends TestCase
     private function submittedBrief(): Brief
     {
         return app(TenantContext::class)->actingAs($this->studio->tenant->id, function () {
-            $brief = app(BriefService::class)->forProject($this->studio->project);
+            $brief = BriefFixture::present($this->studio->project);
 
             $brief->answers()->create([
                 'brief_question_id' => BriefQuestion::where('key', 'object_address')->firstOrFail()->id,

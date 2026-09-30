@@ -24,7 +24,7 @@ class MyTasksWidget extends TableWidget
             // Başlıq məzmunu dürüst təsvir edir: siyahıya tarixsiz tapşırıqlar da
             // düşür, ona görə «bu həftə» tək başına yanlış oxunardı.
             ->heading('Mənim tapşırıqlarım (bu həftə və tarixsiz)')
-            ->query(fn (): Builder => TaskResource::scopeToVisibleProjects(
+            ->query(fn (): Builder => TaskResource::scopeToVisibleTasks(
                 Task::query()
                     ->where('assignee_user_id', auth()->id())
                     ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])

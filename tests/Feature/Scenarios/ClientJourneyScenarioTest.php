@@ -50,6 +50,7 @@ use Database\Seeders\TranslationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Tests\Support\BriefFixture;
 use Tests\TestCase;
 
 /**
@@ -156,7 +157,7 @@ class ClientJourneyScenarioTest extends TestCase
         ]);
 
         // ── 4. Brif: müştəri portaldan doldurur ──────────────────────────────
-        $brief = app(BriefService::class)->forProject($project);
+        $brief = BriefFixture::present($project);
         app(BriefService::class)->switchTemplate($brief, BriefTemplate::where('key', 'quick')->firstOrFail());
         $brief->refresh();
 
@@ -701,7 +702,7 @@ class ClientJourneyScenarioTest extends TestCase
         app(TenantContext::class)->set($this->tenant->id);
 
         $ourProject = $this->bareProject();
-        $ourBrief = app(BriefService::class)->forProject($ourProject);
+        $ourBrief = BriefFixture::present($ourProject);
         app(BriefService::class)->switchTemplate($ourBrief, BriefTemplate::where('key', 'quick')->firstOrFail());
 
         // İkinci studiya və onun öz müştərisi.
@@ -825,7 +826,7 @@ class ClientJourneyScenarioTest extends TestCase
      */
     private function fillQuickBrief(Project $project, ClientUser $portalUser): Brief
     {
-        $brief = app(BriefService::class)->forProject($project);
+        $brief = BriefFixture::present($project);
         app(BriefService::class)->switchTemplate($brief, BriefTemplate::where('key', 'quick')->firstOrFail());
 
         $section = BriefSection::where('key', 'quick_start')->firstOrFail();

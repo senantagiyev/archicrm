@@ -473,7 +473,9 @@ class LifecycleTest extends TestCase
      */
     public function test_own_projects_only_staff_never_sees_a_colleagues_foreign_task(): void
     {
-        $mine = $this->taskIn($this->alfa->project, 'Mənim eskizim');
+        $mine = $this->taskIn($this->alfa->project, 'Mənim eskizim', [
+            'assignee_user_id' => $this->alfa->user('designer')->id,
+        ]);
         $foreign = $this->taskIn($this->alfa->otherProject, 'Yad layihənin işi', [
             'assignee_user_id' => $this->alfa->user('visualizer')->id,
             'deadline' => today()->subWeek(),

@@ -10,7 +10,7 @@
 
 <x-portal.shell :title="t('portal.brief_summary')" :project="$project" active="brief">
     <div class="mx-auto max-w-3xl">
-        <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
+        <a href="{{ route('portal.brief', [$project, 'brief' => $brief->id]) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
         <h1 class="mt-1 text-2xl font-bold">{{ t('portal.brief_summary') }}</h1>
         <p class="mt-1 text-sm text-black/50">{{ t('portal.brief_summary_intro') }}</p>
 
@@ -93,7 +93,7 @@
                 @unless ($consented)
                     <p class="mb-3 text-[13px] font-medium text-danger">{{ t('portal.brief_consent_required') }}</p>
                 @endunless
-                <form method="post" action="{{ route('portal.brief.send', $project) }}">
+                <form method="post" action="{{ route('portal.brief.send', [$project, 'brief' => $brief->id]) }}">
                     @csrf
                     <button type="submit" @disabled(! $canSend)
                         class="ui-btn h-12 w-full text-sm font-bold {{ $canSend ? 'ui-btn-primary' : 'cursor-not-allowed bg-neutral-soft text-black/35' }}"

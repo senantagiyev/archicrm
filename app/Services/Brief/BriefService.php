@@ -22,6 +22,7 @@ use App\Models\Task;
 use App\Models\User;
 use App\Notifications\AutomationAlert;
 use App\Notifications\BriefCompleted;
+use App\Notifications\BriefPresented;
 use App\Notifications\BriefSectionSubmitted;
 use App\Services\Automation\AutomationEngine;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -35,19 +36,123 @@ class BriefService
     /** Matches the wizard's client-side cap (section.blade.php). */
     public const MAX_ROOMS_PER_TYPE = 9;
 
+    /**
+     * Studiya tərəfinin «cari» brifi: layihədə brif varsa ən sonuncusu
+     * (`Project::brief()`), yoxdursa studiyanın defolt şablonu ilə QARALAMA
+     * yaradılır. Layihədə bir neçə brif ola bilər — hamısı `Project::briefs()`.
+     */
     public function forProject(Project $project): Brief
     {
-        $brief = Brief::firstOrCreate(
-            ['project_id' => $project->id],
-            ['brief_template_id' => optional(BriefTemplate::default())->id],
-        );
+        // Studiya sistem defoltunu redaktə edibsə (nüsxə), yeni brif nüsxə ilə açılır.
+        $default = BriefTemplate::defaultFor($project->tenant_id);
+
+        $brief = Brief::query()->where('project_id', $project->id)->latest('id')->first()
+            ?? Brief::create(['project_id' => $project->id, 'brief_template_id' => $default?->id]);
 
         // Legacy briefs created before templates existed → attach the default.
-        if (! $brief->brief_template_id && ($default = BriefTemplate::default())) {
+        if (! $brief->brief_template_id && $default
+            && ! Brief::query()->where('project_id', $project->id)->where('brief_template_id', $default->id)->exists()) {
             $brief->forceFill(['brief_template_id' => $default->id])->save();
         }
 
         return $brief;
+    }
+
+    /**
+     * Müştərinin GÖRDÜYÜ «cari» brif — ən son təqdim edilmiş. `forProject()`
+     * studiya tərəfi üçündür və lazım gələndə qaralama yaradır; portal isə heç
+     * vaxt yaratmamalıdır, əks halda müştəri studiyanın hələ hazırlamadığı brifi
+     * açıb doldurmağa başlayardı.
+     */
+    public function presentedFor(Project $project): ?Brief
+    {
+        return $this->presentedBriefs($project)->last();
+    }
+
+    /**
+     * Müştəriyə göndərilmiş BÜTÜN briflər, göndərilmə sırası ilə.
+     *
+     * @return Collection<int, Brief>
+     */
+    public function presentedBriefs(Project $project): Collection
+    {
+        return Brief::query()
+            ->where('project_id', $project->id)
+            ->whereNotNull('presented_at')
+            ->with('template')
+            ->orderBy('presented_at')
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * Brifi müştəriyə TƏQDİM EDİR və müştərinin portal hesablarına bildiriş
+     * göndərir. Hansı brif sətri istifadə olunur:
+     *
+     *  1. Layihədə bu ŞABLONLA brif artıq varsa — o (ikinci nüsxə yaranmır;
+     *     unikal indeks `(project_id, brief_template_id)`). Təkrar göndəriş
+     *     cavablara toxunmur.
+     *  2. Yoxdursa, hələ göndərilməmiş QARALAMA varsa (studiya «Brif» tabını
+     *     açanda yaranır) — onun şablonu bu şablona keçirilir və göndərilir.
+     *  3. Yoxdursa — YENİ brif yaradılır. Layihədə əvvəlki briflər olduğu kimi
+     *     qalır: müştəri hamısını portalda ayrıca görür və doldurur.
+     */
+    public function present(Project $project, BriefTemplate $template, ?User $by = null): Brief
+    {
+        $existing = Brief::query()
+            ->where('project_id', $project->id)
+            ->where('brief_template_id', $template->id)
+            ->first();
+
+        $draft = $existing === null
+            ? Brief::query()->where('project_id', $project->id)->whereNull('presented_at')->latest('id')->first()
+            : null;
+
+        if ($existing !== null) {
+            $brief = $existing;
+        } elseif ($draft !== null) {
+            $this->switchTemplate($draft, $template);
+            $brief = $draft->refresh();
+        } else {
+            $brief = Brief::create(['project_id' => $project->id, 'brief_template_id' => $template->id]);
+        }
+
+        return $this->presentBrief($brief);
+    }
+
+    /**
+     * Konkret brif sətrini müştəriyə açır (şablonu dəyişmədən): təqdimat damğası,
+     * status və — yalnız İLK dəfə — bildiriş. Eyni brifi təkrar göndərəndə
+     * müştəriyə «sizə yeni brif gəldi» yazmaq yanıldıcı olardı.
+     */
+    public function presentBrief(Brief $brief): Brief
+    {
+        $firstTime = ! $brief->isPresented();
+
+        $this->markPresented($brief);
+
+        if ($firstTime) {
+            $project = $brief->project()->with('client.clientUsers')->first();
+
+            foreach ($project?->client?->clientUsers ?? [] as $clientUser) {
+                $clientUser->notify(new BriefPresented($brief->fresh(['template'])));
+            }
+        }
+
+        return $brief->fresh();
+    }
+
+    /**
+     * Təqdimat faktının özü — bildirişsiz. `present()` bunu çağırır; testlər və
+     * köçürmə skriptləri də məktub göndərmədən eyni vəziyyəti qura bilir.
+     */
+    public function markPresented(Brief $brief): void
+    {
+        $brief->forceFill([
+            'presented_at' => $brief->presented_at ?? now(),
+            // Qaralama → göndərilib. Doldurulan/kilidli brifin statusu toxunulmur.
+            'status' => $brief->statusEnum() === BriefStatus::Draft ? BriefStatus::Sent->value : $brief->status,
+        ])->save();
     }
 
     /**
@@ -82,6 +187,18 @@ class BriefService
             return;
         }
 
+        // Layihədə bir şablondan yalnız bir brif olur (unikal indeks) — əks halda
+        // portal bölmə ünvanından hansı brifin nəzərdə tutulduğunu bilməzdi.
+        $taken = Brief::query()
+            ->where('project_id', $brief->project_id)
+            ->where('brief_template_id', $template->id)
+            ->whereKeyNot($brief->id)
+            ->exists();
+
+        if ($taken) {
+            throw new \InvalidArgumentException('Bu layihədə «'.$template->getTranslation('name', 'az').'» şablonu ilə brif artıq var.');
+        }
+
         $targetQuestions = BriefQuestion::whereIn(
             'brief_section_id',
             BriefSection::where('brief_template_id', $template->id)->select('id')
@@ -110,7 +227,17 @@ class BriefService
                 );
             }
 
-            $brief->forceFill(['brief_template_id' => $template->id])->save();
+            // Yeni şablonun sualları müştəri üçün yenidir. Brif artıq göndərilmiş
+            // (kilidli) idisə, kilid saxlanılsaydı müştəri yeni sualları görər,
+            // amma heç birinə cavab verə bilməzdi — portalda heç nə kliklənmirdi.
+            // Ona görə brif yenidən açılır; köhnə göndərişin versiyası saxlanılır.
+            $attributes = ['brief_template_id' => $template->id];
+
+            if ($brief->statusEnum()->isLocked()) {
+                $attributes['status'] = BriefStatus::Sent->value;
+            }
+
+            $brief->forceFill($attributes)->save();
         });
 
         // The room set belongs to the new template's room sections.
@@ -118,6 +245,25 @@ class BriefService
         $this->syncRooms($brief->fresh(), (array) $inventory);
 
         $this->recalculateProgress($brief->fresh());
+    }
+
+    /**
+     * Brifin ÖZ şablonundakı sual — açar üzrə. Açar şablonlar arasında
+     * təkrarlanır (Quick ↔ Premium, sistem şablonu ↔ studiya nüsxəsi), ona görə
+     * qlobal `where('key')` başqa şablonun sualını — məsələn, studiyanın
+     * düzəltmədiyi orijinal variant adlarını — qaytara bilərdi.
+     */
+    public function questionByKey(Brief $brief, string $key): ?BriefQuestion
+    {
+        return BriefQuestion::query()
+            ->where('key', $key)
+            ->when($brief->brief_template_id, fn ($q, $id) => $q->whereIn(
+                'brief_section_id',
+                BriefSection::where('brief_template_id', $id)->select('id'),
+            ))
+            ->orderByDesc('active')
+            ->orderBy('id')
+            ->first();
     }
 
     public function valuesByKey(Brief $brief, ?BriefRoom $room = null): array
@@ -301,10 +447,13 @@ class BriefService
         $progress = $total > 0 ? (int) round($answered / $total * 100) : 0;
 
         // Locked briefs keep their lifecycle status; `sent` stays until the first answer.
+        // Təqdim edilmiş brif cavabsız qalanda «göndərilib»ə qayıdır, qaralamaya
+        // yox — təqdimat faktı cavabların gediş-gəlişindən asılı deyil.
         $status = $brief->statusEnum();
+        $idle = ($status === BriefStatus::Sent || $brief->isPresented()) ? BriefStatus::Sent->value : BriefStatus::Draft->value;
         $next = $status->isLocked()
             ? $status->value
-            : ($answered > 0 ? BriefStatus::InProgress->value : ($status === BriefStatus::Sent ? BriefStatus::Sent->value : BriefStatus::Draft->value));
+            : ($answered > 0 ? BriefStatus::InProgress->value : $idle);
 
         $brief->forceFill(['progress' => $progress, 'status' => $next])->save();
     }
@@ -671,8 +820,8 @@ class BriefService
     public function summaryPanel(Brief $brief): array
     {
         $v = $this->valuesByKey($brief);
-        $label = function (string $key, mixed $value) {
-            $q = BriefQuestion::where('key', $key)->first();
+        $label = function (string $key, mixed $value) use ($brief) {
+            $q = $this->questionByKey($brief, $key);
 
             return $q ? $q->displayValue($value) : (string) $value;
         };

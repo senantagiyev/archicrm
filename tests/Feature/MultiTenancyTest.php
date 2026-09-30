@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Task;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\AccessMatrix;
 use App\Support\TenantContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -84,15 +85,14 @@ class MultiTenancyTest extends TestCase
     }
 
     /**
-     * Tapşırıq görünürlüyü LAYİHƏ ÜZVLÜYÜNƏ bağlıdır, icraçıya yox.
+     * Tapşırıq görünürlüyü iki qatlıdır: LAYİHƏ (üzvlük) və TAPŞIRIĞIN ÖZÜ.
      *
-     * Əvvəl filtr `assignee_user_id = me` idi və bu, layihə menecerini öz
-     * layihəsinin lövhəsindən kəsirdi (matrisdə onun «Mərhələ/Tapşırıq»
-     * səviyyəsi Tam-dır), üstəlik başqa layihədə ona təyin edilən tapşırığı
-     * layihənin özü bağlı olsa belə açırdı. İndi qayda bütün digər
-     * layihə-əsaslı modullarla (Xərc, Faktura, Görüş, Satınalma) eynidir.
+     * Layihə meneceri/sahibkar (Tapşırıq = Tam) layihənin bütün lövhəsini görür.
+     * Sıravi işçi (dizayner) üzvü olduğu layihədə yalnız ÖZÜNƏ təyin olunan
+     * tapşırığı görür — həmkarınınkini yox (müştəri tələbi, 2026-10-01). Üzvü
+     * olmadığı layihədə isə ona təyin edilən tapşırıq da bağlıdır.
      */
-    public function test_project_member_sees_every_task_of_that_project(): void
+    public function test_project_member_sees_only_own_tasks_and_the_manager_sees_the_board(): void
     {
         $tenant = $this->tenant('task-scope');
 
@@ -114,9 +114,14 @@ class MultiTenancyTest extends TestCase
             auth()->login($designer);
             $visibleTaskIds = TaskResource::getEloquentQuery()->pluck('id')->all();
 
-            $this->assertEqualsCanonicalizing([$ownTask->id, $otherTask->id], $visibleTaskIds);
+            $this->assertEqualsCanonicalizing([$ownTask->id], $visibleTaskIds);
             $this->assertTrue($designer->can('update', $ownTask));
-            $this->assertTrue($designer->can('view', $otherTask));
+            $this->assertFalse($designer->can('view', $otherTask), 'Həmkarın tapşırığı görünməməlidir.');
+
+            // Menecer (sahibkar) isə bütün lövhəni görür.
+            auth()->login($owner);
+            AccessMatrix::flushCache();
+            $this->assertEqualsCanonicalizing([$ownTask->id, $otherTask->id], TaskResource::getEloquentQuery()->pluck('id')->all());
 
             // Üzvü olmayan işçi üçün eyni lövhə bağlıdır — hətta tapşırıq ona
             // təyin edilsə belə.

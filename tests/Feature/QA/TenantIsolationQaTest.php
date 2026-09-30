@@ -78,6 +78,9 @@ class TenantIsolationQaTest extends TestCase
         'roles' => 'Role::scopeForTenant + RoleResource::getEloquentQuery',
         'automation_rules' => 'AutomationRule::scopeForTenant + AutomationRuleResource::getEloquentQuery',
         'automation_runs' => 'Eloquent modeli yoxdur; tenant_id dedup açarının bir hissəsidir',
+        // Sistem şablonları (`tenant_id = null`) hamıya, studiyanın fərdi brifi
+        // yalnız ona — eyni copy-on-write görünürlüyü; BriefBuilderTest sübut edir.
+        'brief_templates' => 'BriefTemplate::scopeForTenant + BriefTemplateResource::getEloquentQuery + BriefTemplatePolicy',
     ];
 
     protected function setUp(): void

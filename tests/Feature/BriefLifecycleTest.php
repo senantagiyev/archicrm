@@ -15,6 +15,7 @@ use App\Services\Brief\BriefService;
 use Database\Seeders\BriefQuestionBankSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Tests\Support\BriefFixture;
 use Tests\TestCase;
 
 /** Spec Part 15 MVP lifecycle: submit → v1, needs_clarification → v(n+1), approve; Screen 02/№16 rules. */
@@ -45,7 +46,7 @@ class BriefLifecycleTest extends TestCase
         ]);
         Stage::create(['project_id' => $this->project->id, 'name' => 'Mərhələ 1', 'position' => 1, 'status' => 'in_progress']);
 
-        $this->brief = app(BriefService::class)->forProject($this->project);
+        $this->brief = BriefFixture::present($this->project);
     }
 
     private function question(string $key): BriefQuestion
@@ -115,7 +116,7 @@ class BriefLifecycleTest extends TestCase
 
         $this->actingAs($this->clientUser, 'customer')
             ->post(route('portal.brief.clarifications.send', $this->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->project->id, 'brief' => $this->project->fresh()->brief->id]));
 
         $this->brief->refresh();
         $this->assertSame(BriefStatus::Submitted, $this->brief->statusEnum());

@@ -1,6 +1,6 @@
 <x-portal.shell :title="t('portal.brief_clarifications_title')" :project="$project" active="brief">
     <div class="mx-auto max-w-[760px]">
-        <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
+        <a href="{{ route('portal.brief', [$project, 'brief' => $brief->id]) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
         <h1 class="mt-1 font-b2b text-[26px] font-extrabold tracking-tight">{{ t('portal.brief_clarifications_title') }}</h1>
         <p class="mt-2 text-[14px] leading-relaxed text-black/60">{{ t('portal.brief_clarifications_intro') }}</p>
 
@@ -15,7 +15,7 @@
                         $section = $comment->question?->section;
                         $url = $section
                             ? route('portal.brief.section', array_filter([$project->id, $section->id, $comment->brief_room_id]))
-                            : route('portal.brief', $project);
+                            : route('portal.brief', [$project, 'brief' => $brief->id]);
                     @endphp
                     <div class="rounded-[16px] border border-yellow-line bg-card p-5">
                         <p class="text-[13px] font-semibold text-black/45">
@@ -35,7 +35,7 @@
 
             <div class="mt-8 rounded-[16px] border border-black/8 bg-card p-6">
                 <p class="text-[13px] text-black/55">{{ t('portal.brief_readonly_note') }}</p>
-                <form method="post" action="{{ route('portal.brief.clarifications.send', $project) }}" class="mt-4">
+                <form method="post" action="{{ route('portal.brief.clarifications.send', [$project, 'brief' => $brief->id]) }}" class="mt-4">
                     @csrf
                     <button type="submit" class="ui-btn ui-btn-primary h-12 w-full text-sm font-bold sm:w-auto sm:px-8" data-hover="true">
                         {{ t('portal.brief_send_clarifications') }}

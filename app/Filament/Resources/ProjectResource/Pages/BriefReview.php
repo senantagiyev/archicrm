@@ -21,6 +21,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\Concerns\InteractsWithRecord;
 use Filament\Resources\Pages\Page;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\Url;
 
 /**
  * Screen 14 — Designer View (spec Part 12): sticky summary, risks, missing
@@ -58,9 +59,27 @@ class BriefReview extends Page
         return $user !== null && AccessMatrix::allows($user, Domain::Brief, AccessLevel::Full);
     }
 
+    /**
+     * Layihədə bir neçə brif ola bilər — baxılan brif URL-də (`?brief=`) saxlanır.
+     * Boşdursa layihənin cari (ən son) brifi.
+     */
+    #[Url(as: 'brief')]
+    public ?int $briefId = null;
+
     public function brief(): Brief
     {
+        if ($this->briefId !== null) {
+            // Yalnız BU layihənin brifi — başqa layihənin id-si 404.
+            return $this->record->briefs()->whereKey($this->briefId)->first() ?? abort(404);
+        }
+
         return app(BriefService::class)->forProject($this->record);
+    }
+
+    /** @return Collection<int, Brief> başlıqdakı brif seçicisi üçün */
+    public function projectBriefs(): Collection
+    {
+        return $this->record->briefs()->with('template')->get();
     }
 
     public function service(): BriefService

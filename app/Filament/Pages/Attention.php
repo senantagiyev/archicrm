@@ -196,12 +196,14 @@ class Attention extends Page
     /** 3. Gecikmiş tapşırıqlar — Task::isOverdue() şərtinin SQL qarşılığı. */
     private function overdueTasksBlock(): array
     {
-        $query = fn (): Builder => $this->scoped(
+        // Layihə süzgəcindən əlavə tapşırıq süzgəci: sıravi işçi yalnız öz
+        // (təyin olunan/yaratdığı) gecikmiş işini görür — bax TaskResource.
+        $query = fn (): Builder => TaskResource::scopeToVisibleTasks($this->scoped(
             Task::query()
                 ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
                 ->whereNotNull('deadline')
                 ->whereDate('deadline', '<', today())
-        );
+        ), auth()->user());
 
         $items = $query()
             ->with(['project:id,name', 'assignee:id,name'])
@@ -339,8 +341,8 @@ class Attention extends Page
         $projects = $this->scopeProjects(
             Project::query()
                 ->where('status', ProjectStatus::Active->value)
-                ->whereHas('brief')
-                ->with(['brief.answers.question'])
+                ->whereHas('briefs')
+                ->with(['briefs.answers.question', 'briefs.template'])
                 ->latest('id')
                 ->limit(self::RISK_PROJECT_LIMIT)
         )->get();
@@ -348,18 +350,22 @@ class Attention extends Page
         $items = [];
 
         foreach ($projects as $project) {
-            if (! $project->brief) {
-                continue;
-            }
+            // Layihədə bir neçə brif ola bilər — hər biri ayrıca yoxlanılır, keçid
+            // isə dizayner baxışını məhz həmin brifdə açır.
+            $many = $project->briefs->count() > 1;
 
-            foreach ($detector->detect($project->brief) as $risk) {
-                $items[] = [
-                    'title' => $risk['message'],
-                    'meta' => $project->name.' · '.$risk['code'],
-                    'url' => ProjectResource::getUrl('brief-review', ['record' => $project->getKey()]),
-                    'urgent' => $risk['level'] === 'critical',
-                    'badge' => $this->riskLevelLabel($risk['level']),
-                ];
+            foreach ($project->briefs as $brief) {
+                foreach ($detector->detect($brief) as $risk) {
+                    $items[] = [
+                        'title' => $risk['message'],
+                        'meta' => $project->name
+                            .($many ? ' · '.($brief->template?->getTranslation('name', 'az') ?? 'Brif') : '')
+                            .' · '.$risk['code'],
+                        'url' => ProjectResource::getUrl('brief-review', ['record' => $project->getKey(), 'brief' => $brief->getKey()]),
+                        'urgent' => $risk['level'] === 'critical',
+                        'badge' => $this->riskLevelLabel($risk['level']),
+                    ];
+                }
             }
         }
 

@@ -210,7 +210,9 @@ class TaskVisibilityFixTest extends TestCase
     public function test_procurement_sees_only_the_project_they_are_member_of(): void
     {
         $procurement = $this->w->user('procurement');
-        $own = $this->task(['title' => 'Üzv olduğum layihədə']);
+        // Öz tapşırığı: layihə üzvlüyü kifayət deyil, tapşırıq ona təyin olunmalıdır
+        // (sıravi işçi həmkarlarının tapşırığını görmür — TaskVisibilityTest).
+        $own = $this->task(['title' => 'Üzv olduğum layihədə', 'assignee_user_id' => $procurement->id]);
         $foreign = $this->foreignTask();
 
         $this->asUser('procurement');

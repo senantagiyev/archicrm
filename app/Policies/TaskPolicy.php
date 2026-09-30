@@ -63,7 +63,20 @@ class TaskPolicy
             return false;
         }
 
-        return $this->belongsToVisibleProject($user, $task);
+        return $this->belongsToVisibleProject($user, $task) && $this->isOwnOrSeesAll($user, $task);
+    }
+
+    /**
+     * Layihədən əlavə TAPŞIRIĞIN özü: Tapşırıq domenində Tam səlahiyyəti olmayan
+     * işçi yalnız ona təyin olunan və ya özünün yaratdığı tapşırığı görür/dəyişir
+     * (matris: «Edit — own»). Siyahıdakı `TaskResource::scopeToVisibleTasks()`
+     * ilə eyni qayda — birbaşa URL (`/tasks/{id}/edit`) də həmkarın tapşırığını açmır.
+     */
+    private function isOwnOrSeesAll(User $user, Task $task): bool
+    {
+        return AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Full)
+            || (int) $task->assignee_user_id === (int) $user->id
+            || (int) $task->author_user_id === (int) $user->id;
     }
 
     /** Tapşırığın layihəsi istifadəçiyə açıqdırmı (matrisin «öz layihələri» şərti). */

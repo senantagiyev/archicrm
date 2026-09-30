@@ -14,6 +14,7 @@ use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -95,6 +96,37 @@ class ClientResource extends Resource
                     ->rows(3)
                     ->autosize(),
             ]),
+
+            // Portal hesabı `client_users` cədvəlindədir, müştəri sətrində deyil —
+            // ona görə sahə `dehydrated(false)`-dur və `Client`-ə yazılmır;
+            // `CreateClient::afterCreate()` / `EditClient::afterSave()` onu
+            // `$this->data`-dan oxuyub `InvitationService::setPassword()`-ə verir.
+            Section::make('Portal girişi')
+                ->description('Müştəri portala iki yolla girə bilər: e-poçtuna gələn birdəfəlik linklə (həmişə) və ya şifrə ilə (burada təyin etsəniz). Şifrə yuxarıdakı e-poçt ünvanına bağlanır.')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('portal_password')
+                        ->label('Portal şifrəsi (istəyə görə)')
+                        ->password()
+                        ->revealable()
+                        ->autocomplete('new-password')
+                        ->minLength(8)
+                        ->maxLength(72)
+                        ->dehydrated(false)
+                        ->helperText('Boş qoysanız yalnız link ilə giriş qalır. Şifrə üçün e-poçt sahəsi doldurulmalıdır.')
+                        // `requiredWith` əksinədir: şifrə varsa e-poçt mütləq olmalıdır,
+                        // çünki hesab e-poçtla tanınır.
+                        ->rule(fn (Get $get) => fn (string $attribute, mixed $value, \Closure $fail) => filled($value) && blank($get('email'))
+                            ? $fail('Şifrə təyin etmək üçün müştərinin e-poçtunu doldurun.')
+                            : null),
+                    Forms\Components\Placeholder::make('portal_state')
+                        ->label('Mövcud portal hesabları')
+                        ->content(fn (?Client $record) => $record === null
+                            ? 'Müştəri yaradıldıqdan sonra hesablar «Portal girişləri» cədvəlində görünəcək.'
+                            : ($record->clientUsers()->count() > 0
+                                ? $record->clientUsers()->count().' hesab — aşağıdakı «Portal girişləri» cədvəlinə baxın.'
+                                : 'Hələ hesab yoxdur.')),
+                ]),
         ]);
     }
 

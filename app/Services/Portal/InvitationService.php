@@ -19,9 +19,53 @@ class InvitationService
      */
     public function invite(Client $client, string $name, string $email): ClientUser
     {
-        // Scoped to THIS client: looking an account up by email alone re-pointed
-        // an existing portal user at the new client, silently cutting off whoever
-        // was using it — one contact person can work with two clients at once.
+        $clientUser = $this->resolveAccount($client, $email);
+
+        $clientUser->fill([
+            'client_id' => $client->id,
+            'name' => $name,
+            'invited_at' => now(),
+        ])->save();
+
+        $this->sendLink($clientUser, fn (string $url) => new PortalInvitation($url), days: 7);
+
+        return $clientUser;
+    }
+
+    /**
+     * Şifrə ilə giriş: hesabı tapır və ya yaradır, şifrəni təyin edir. Link
+     * ilə giriş bağlanmır — eyni hesab hər iki yolla girə bilər. Məktub
+     * göndərilmir: şifrəni müştəriyə studiya özü çatdırır.
+     */
+    public function setPassword(Client $client, string $email, string $name, string $password): ClientUser
+    {
+        $email = trim($email);
+
+        if ($email === '') {
+            throw new PortalInvitationException('Şifrə təyin etmək üçün müştərinin e-poçtu olmalıdır.');
+        }
+
+        $clientUser = $this->resolveAccount($client, $email);
+
+        $clientUser->fill([
+            'client_id' => $client->id,
+            'name' => $name !== '' ? $name : ($clientUser->name ?? $client->name),
+            // `hashed` cast — düz mətn burada heşlənir.
+            'password' => $password,
+        ])->save();
+
+        return $clientUser;
+    }
+
+    /**
+     * Bu müştəri + bu e-poçt üçün hesab: mövcuddursa o, yoxdursa yenisi.
+     *
+     * Scoped to THIS client: looking an account up by email alone re-pointed
+     * an existing portal user at the new client, silently cutting off whoever
+     * was using it — one contact person can work with two clients at once.
+     */
+    private function resolveAccount(Client $client, string $email): ClientUser
+    {
         $clientUser = ClientUser::withTrashed()
             ->where('client_id', $client->id)
             ->where('email', $email)
@@ -40,14 +84,6 @@ class InvitationService
                 'Bu e-poçt üçün portal girişi ləğv edilib. Yenidən dəvət göndərmədən əvvəl hesabı bərpa edin.'
             );
         }
-
-        $clientUser->fill([
-            'client_id' => $client->id,
-            'name' => $name,
-            'invited_at' => now(),
-        ])->save();
-
-        $this->sendLink($clientUser, fn (string $url) => new PortalInvitation($url), days: 7);
 
         return $clientUser;
     }

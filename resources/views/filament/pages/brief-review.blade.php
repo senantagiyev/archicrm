@@ -29,6 +29,24 @@
     @endphp
 
     <div class="space-y-6">
+        {{-- Layihədə bir neçə brif varsa — hansına baxıldığını seçmək. --}}
+        @php $allBriefs = $this->projectBriefs(); @endphp
+        @if ($allBriefs->count() > 1)
+            <nav class="flex flex-wrap gap-2" aria-label="Briflər">
+                @foreach ($allBriefs as $item)
+                    <a href="{{ \App\Filament\Resources\ProjectResource::getUrl('brief-review', ['record' => $project, 'brief' => $item->id]) }}"
+                        @class([
+                            'rounded-full px-4 py-1.5 text-[13px] font-semibold ring-1 transition',
+                            'bg-gray-950 text-white ring-gray-950 dark:bg-white dark:text-gray-950' => $item->id === $brief->id,
+                            'bg-white text-gray-600 ring-gray-950/10 hover:ring-gray-950/30 dark:bg-gray-900 dark:text-gray-300 dark:ring-white/10' => $item->id !== $brief->id,
+                        ])>
+                        {{ $item->template?->getTranslation('name', 'az') ?? 'Brif #'.$item->id }}
+                        <span class="ml-1 opacity-60">{{ (int) $item->progress }}%</span>
+                    </a>
+                @endforeach
+            </nav>
+        @endif
+
         {{-- 1. Header --}}
         <div class="flex flex-wrap items-center justify-between gap-4 rounded-2xl bg-white px-6 py-5 ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div>

@@ -9,6 +9,7 @@ use App\Enums\Domain;
 use App\Enums\PaymentStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\TaskStatus;
+use App\Filament\Resources\TaskResource;
 use App\Models\Approval;
 use App\Models\Client;
 use App\Models\Payment;
@@ -86,11 +87,11 @@ class Dashboard extends BaseDashboard
         // Rəqəm də «öz layihələrim» üzrə olmalıdır: gecikmə sayı yad layihələrin
         // tapşırıqlarını da sayanda dizayner üçün mənasız, üstəlik studiyanın
         // ümumi vəziyyəti barədə məlumat sızdıran bir göstəriciyə çevrilirdi.
-        $overdueTasks = $this->scoped(
+        $overdueTasks = TaskResource::scopeToVisibleTasks($this->scoped(
             Task::query()
                 ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
                 ->whereDate('deadline', '<', today())
-        )->count();
+        ), $user)->count();
 
         if ($this->mayRead(Domain::Projects)) {
             // Sayğac da «öz layihələrim» üzrədir: studiyanın ümumi layihə sayı
@@ -203,12 +204,12 @@ class Dashboard extends BaseDashboard
      */
     public function todayTasks()
     {
-        return $this->scoped(
+        return TaskResource::scopeToVisibleTasks($this->scoped(
             Task::query()
                 ->with('project')
                 ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])
                 ->whereDate('deadline', '<=', today())
-        )
+        ), auth()->user())
             ->orderBy('deadline')
             ->limit(6)
             ->get();

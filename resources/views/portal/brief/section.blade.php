@@ -82,7 +82,7 @@
     <div class="min-w-0">
             <div class="mb-5 flex flex-wrap items-end justify-between gap-4">
                 <div class="min-w-0">
-                    <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
+                    <a href="{{ route('portal.brief', [$project, 'brief' => $brief->id]) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_back_to_map') }}</a>
                     @if ($stepNumber)
                         <p class="mt-2 text-[13px] font-semibold text-black/45">
                             {{ $stepNumber }} / {{ $steps->count() }}
@@ -111,16 +111,7 @@
                 </div>
             @endif
 
-            @if ($errors->any())
-                <div class="mb-5 rounded-ds-md border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-medium text-danger">
-                    {{ $errors->first() }}
-                </div>
-            @endif
-            @if (session('status'))
-                <div class="mb-5 rounded-ds-md border border-ok/30 bg-ok-soft px-4 py-3 text-sm font-medium text-ok">
-                    {{ session('status') }}
-                </div>
-            @endif
+            {{-- Xəta və flash mesajı `x-portal.shell` çap edir (təkrar olmasın). --}}
 
             <form id="briefForm" method="post"
                 action="{{ route('portal.brief.submit', [$project->id, $section->id]) }}"
@@ -630,7 +621,7 @@
                      `submit()`-dən izahsız 403 alırdı. --}}
                 @unless ($briefLocked)
                     <div class="flex items-center justify-between gap-4">
-                        <a href="{{ route('portal.brief', $project) }}" class="ui-btn ui-btn-outline h-11 px-5 text-sm font-semibold" data-hover="true">
+                        <a href="{{ route('portal.brief', [$project, 'brief' => $brief->id]) }}" class="ui-btn ui-btn-outline h-11 px-5 text-sm font-semibold" data-hover="true">
                             {{ t('portal.brief_save_exit') }}
                         </a>
                         <button type="submit" class="ui-btn ui-btn-primary h-11 px-6 text-sm font-bold" data-hover="true">
@@ -681,7 +672,7 @@
                     <a href="{{ $entryUrl($nav['next']) }}" title="{{ $entryTitle($nav['next']) }}"
                         class="ui-btn ui-btn-dark h-10 px-4 text-[13px] font-bold" data-hover="true">{{ t('portal.brief_next') }} →</a>
                 @else
-                    <a href="{{ route('portal.brief.summary', $project) }}"
+                    <a href="{{ route('portal.brief.summary', [$project, 'brief' => $brief->id]) }}"
                         class="ui-btn ui-btn-dark h-10 px-4 text-[13px] font-bold" data-hover="true">{{ t('portal.brief_go_summary') }} →</a>
                 @endif
             </div>

@@ -58,9 +58,24 @@ class BriefQuestionResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            // FƏRDİ briflərin sualları burada yoxdur: onların şəkilləri öz
+            // konstruktorunda (Briflər → Suallar) qurulur, burada göstərmək isə
+            // bir studiyanın sual mətnlərini o birinə açardı. Şablonsuz (köhnə)
+            // bölmələr sistem sayılır — `whereDoesntHave` məhz ona görədir.
+            ->whereDoesntHave('section.template', fn (Builder $template) => $template->whereNotNull('tenant_id'))
             ->where(fn (Builder $query) => $query
                 ->whereIn('type', ['image_select', 'image_multiselect', 'image_rating', 'std_or_custom'])
                 ->orWhere('supports_inspiration', true));
+    }
+
+    /**
+     * Bu ekran sual YARATMIR — bank git-dədir, fərdi suallar isə öz
+     * konstruktorunda yaranır. Siyasət fərdi brif üçün `create`-ə icazə verir,
+     * ona görə burada açıq bağlanır ki, düymə heç bir rol üçün çıxmasın.
+     */
+    public static function canCreate(): bool
+    {
+        return false;
     }
 
     /** Variantları `options.items` altında saxlayan tip. */

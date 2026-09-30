@@ -19,6 +19,7 @@ use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -308,7 +309,7 @@ class BriefAdminQaTest extends TestCase
 
         app(TenantContext::class)->actingAs(
             $studio->tenant->id,
-            fn () => app(BriefService::class)->forProject($studio->project),
+            fn () => BriefFixture::present($studio->project),
         );
 
         $this->actingAs($studio->portalUser, 'customer')
@@ -420,7 +421,7 @@ class BriefAdminQaTest extends TestCase
 
         $brief = app(TenantContext::class)->actingAs(
             $studio->tenant->id,
-            fn () => app(BriefService::class)->forProject($studio->project),
+            fn () => BriefFixture::present($studio->project),
         );
 
         $html = $this->renderSpec($brief);
@@ -474,7 +475,7 @@ class BriefAdminQaTest extends TestCase
         $studio = $this->seededStudio('tz-deleg');
 
         $brief = app(TenantContext::class)->actingAs($studio->tenant->id, function () use ($studio) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
             $brief->answers()->create([
                 'brief_question_id' => $this->residentialQuestion('ceiling_height_raw_mm')->id,
                 'brief_room_id' => null,
@@ -659,7 +660,7 @@ class BriefAdminQaTest extends TestCase
 
         app(TenantContext::class)->actingAs(
             $studio->tenant->id,
-            fn () => app(BriefService::class)->forProject($studio->project),
+            fn () => BriefFixture::present($studio->project),
         );
 
         $this->actingAs($studio->portalUser, 'customer')
@@ -753,7 +754,7 @@ class BriefAdminQaTest extends TestCase
         $studio = StudioWorld::make('tpl-'.$template->key);
 
         return app(TenantContext::class)->actingAs($studio->tenant->id, function () use ($studio, $template) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
             $brief->forceFill(['brief_template_id' => $template->id])->save();
 
             return $brief->fresh();
@@ -787,7 +788,7 @@ class BriefAdminQaTest extends TestCase
     private function answer(StudioWorld $studio, array $byKey): Brief
     {
         return app(TenantContext::class)->actingAs($studio->tenant->id, function () use ($studio, $byKey) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
 
             foreach ($byKey as $key => $value) {
                 $brief->answers()->create([

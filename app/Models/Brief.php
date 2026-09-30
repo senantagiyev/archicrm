@@ -13,13 +13,14 @@ class Brief extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'project_id', 'brief_template_id', 'status', 'progress',
+        'project_id', 'brief_template_id', 'status', 'progress', 'presented_at',
         'completed_at', 'submitted_at', 'approved_at', 'current_version',
     ];
 
     protected function casts(): array
     {
         return [
+            'presented_at' => 'datetime',
             'completed_at' => 'datetime',
             'submitted_at' => 'datetime',
             'approved_at' => 'datetime',
@@ -30,6 +31,21 @@ class Brief extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(BriefTemplate::class, 'brief_template_id');
+    }
+
+    /**
+     * Müştəriyə rəsmən göstərilibmi. Portal yalnız təqdim edilmiş brifi
+     * göstərir; ona qədər brif studiyanın daxili qaralamasıdır — admin baxa,
+     * şablonu dəyişə bilər, müştəri isə heç nə görmür.
+     */
+    public function isPresented(): bool
+    {
+        return $this->presented_at !== null;
     }
 
     public function answers(): HasMany

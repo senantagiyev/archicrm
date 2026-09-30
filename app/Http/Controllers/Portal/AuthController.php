@@ -8,6 +8,7 @@ use App\Services\Portal\InvitationService;
 use App\Services\Security\RecaptchaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -41,6 +42,55 @@ class AuthController extends Controller
 
         // Same response either way — do not leak which emails exist.
         return back()->with('status', t('portal.login_link_sent'));
+    }
+
+    /**
+     * Şifrə ilə giriş. Link ilə giriş qalır; bu, ona ALTERNATİVDİR — studiya
+     * müştəriyə şifrə vermək istəyəndə açılır.
+     *
+     * Üç imtina halı EYNİ cavabı alır (yanlış şifrə, mövcud olmayan e-poçt,
+     * şifrəsiz «yalnız link» hesabı): fərqli mesaj hansı ünvanın sistemdə
+     * olduğunu sızdırardı. Yalnız arxivlənmiş müştəri ayrıca izah alır —
+     * o, artıq öz hesabını tanıyan real müştəridir.
+     */
+    public function login(Request $request, RecaptchaService $recaptcha)
+    {
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'max:72'],
+        ]);
+
+        if (! $recaptcha->verify($request->input('g-recaptcha-response'), $request->ip())) {
+            throw ValidationException::withMessages([
+                'g-recaptcha-response' => t('portal.captcha_failed'),
+            ]);
+        }
+
+        // Soft-delete olunmuş (ləğv edilmiş) hesab defolt scope ilə tapılmır.
+        $clientUser = ClientUser::where('email', $credentials['email'])->first();
+
+        if (
+            ! $clientUser
+            || blank($clientUser->password)
+            || ! Hash::check($credentials['password'], $clientUser->password)
+        ) {
+            throw ValidationException::withMessages(['email' => t('portal.login_failed')]);
+        }
+
+        // Müştəri arxivlənibsə portal onsuz da hər səhifədə 403 verərdi —
+        // girişin özündə dayandırıb səbəbi demək daha düzgündür.
+        if ($clientUser->client === null) {
+            throw ValidationException::withMessages(['email' => t('portal.login_client_inactive')]);
+        }
+
+        Auth::guard('customer')->login($clientUser, remember: $request->boolean('remember'));
+
+        $clientUser->forceFill(['last_login_at' => now()])->save();
+
+        $request->session()->regenerate();
+        $request->session()->put('locale', $clientUser->locale);
+
+        return redirect()->intended(route('portal.home'));
     }
 
     public function magicLogin(Request $request, ClientUser $clientUser)

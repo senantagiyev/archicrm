@@ -22,6 +22,7 @@ use App\Filament\Widgets\UpcomingDeadlinesWidget;
 use App\Models\Approval;
 use App\Models\AutomationRule;
 use App\Models\BriefQuestion;
+use App\Models\BriefTemplate;
 use App\Models\BudgetLine;
 use App\Models\ChangeRequest;
 use App\Models\Client;
@@ -97,7 +98,7 @@ class RolePermissionQaTest extends TestCase
     private const DOMAIN_MODELS = [
         Domain::Clients->value => [Client::class, Lead::class],
         Domain::Projects->value => [Project::class, ChangeRequest::class, ProjectDecision::class, Meeting::class],
-        Domain::Brief->value => [BriefQuestion::class],
+        Domain::Brief->value => [BriefQuestion::class, BriefTemplate::class],
         Domain::StagesTasks->value => [Task::class, Stage::class, TimeEntry::class, PunchListIssue::class],
         Domain::FilesDocuments->value => [Document::class, ProjectFile::class, Deliverable::class, DiaryEntry::class],
         Domain::Budget->value => [BudgetLine::class],
@@ -268,16 +269,17 @@ class RolePermissionQaTest extends TestCase
     private const EXPECTED_STRICTER = [
         'accountant|owner_dashboard|AutomationRule|viewAny',
         'accountant|owner_dashboard|User|viewAny',
-        // Brif sualları git-dəki qlobal bankdan gəlir — paneldən yaratmaq qəsdən bağlıdır.
-        'designer|brief|BriefQuestion|create',
         // Layihə yaratmaq matrisdə Redaktə yox, TAM tələb edir (ProjectPolicy:26).
         'designer|projects|Project|create',
-        'owner|brief|BriefQuestion|create',
         // Avtomatlaşdırma qaydaları yalnız seeder-dən gəlir (AutomationRulePolicy:26).
         'owner|owner_dashboard|AutomationRule|create',
         'procurement|projects|Project|create',
-        'project_manager|brief|BriefQuestion|create',
         'visualizer|projects|Project|create',
+        // Brif konstruktoru gələndən sonra `BriefQuestion|create` və
+        // `BriefTemplate|create` artıq matrisə UYĞUNDUR: Brif = Tam olan rol
+        // fərdi brif və onun suallarını yaradır (sistem bankı isə yenə də
+        // toxunulmazdır — bax BriefQuestionPolicy). Ona görə əvvəlki
+        // «qəsdən sərt» üç xana siyahıdan çıxdı.
     ];
 
     // ---------------------------------------------------------------------
@@ -1163,7 +1165,6 @@ class RolePermissionQaTest extends TestCase
             'BriefRoom',
             'BriefSection',
             'BriefSectionState',
-            'BriefTemplate',
             'BriefVersion',
             'ChatMessage',
             'ClientContactLog',

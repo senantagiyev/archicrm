@@ -7,6 +7,7 @@ use App\Enums\Domain;
 use App\Enums\PaymentStatus;
 use App\Enums\StageStatus;
 use App\Enums\TaskStatus;
+use App\Filament\Resources\TaskResource;
 use App\Models\Invoice;
 use App\Models\Meeting;
 use App\Models\Payment;
@@ -61,10 +62,14 @@ class CalendarController extends Controller
                 'end' => $m->ends_at?->toIso8601String(),
                 'color' => '#2563eb',
                 'url' => url("{$adminPath}/meetings/{$m->id}/edit"),
+                // Təqvim görüşü öz modalında redaktə/silir (Calendar::editMeeting);
+                // `url` JS olmadan və ya icazəsiz halda ehtiyat keçiddir.
+                'extendedProps' => ['meetingId' => $m->id],
             ];
         }
 
-        $tasks = $scope(Task::query())
+        // Təqvimdə də həmkarların tapşırıqları görünməməlidir — bax TaskResource.
+        $tasks = TaskResource::scopeToVisibleTasks($scope(Task::query()), $request->user())
             ->whereNotNull('deadline')
             ->whereBetween('deadline', [$start, $end])
             ->whereNotIn('status', [TaskStatus::Done->value, TaskStatus::Cancelled->value])

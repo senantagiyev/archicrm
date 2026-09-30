@@ -3,12 +3,15 @@
 namespace App\Filament\Resources\ClientResource\Pages;
 
 use App\Filament\Resources\ClientResource;
+use App\Filament\Resources\ClientResource\Concerns\SyncsPortalPassword;
 use App\Filament\Resources\ProjectResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
 class EditClient extends EditRecord
 {
+    use SyncsPortalPassword;
+
     protected static string $resource = ClientResource::class;
 
     protected function getHeaderActions(): array
@@ -23,5 +26,10 @@ class EditClient extends EditRecord
                 ->requiresConfirmation()
                 ->modalDescription('Müştəri silinəcək. Bu əməliyyat əməliyyat jurnalında qeyd olunur.'),
         ];
+    }
+
+    protected function afterSave(): void
+    {
+        $this->syncPortalPassword();
     }
 }

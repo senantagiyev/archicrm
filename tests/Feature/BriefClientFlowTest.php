@@ -12,6 +12,7 @@ use App\Support\TenantContext;
 use Database\Seeders\BriefQuestionBankSeeder;
 use Database\Seeders\TranslationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -40,7 +41,7 @@ class BriefClientFlowTest extends TestCase
         $this->studio = StudioWorld::make('brief-flow');
 
         app(TenantContext::class)->actingAs($this->studio->tenant->id, function (): void {
-            $this->brief = app(BriefService::class)->forProject($this->studio->project);
+            $this->brief = BriefFixture::present($this->studio->project);
         });
     }
 

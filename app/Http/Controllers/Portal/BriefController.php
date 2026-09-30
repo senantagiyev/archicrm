@@ -9,6 +9,7 @@ use App\Models\Brief;
 use App\Models\BriefQuestion;
 use App\Models\BriefRoom;
 use App\Models\BriefSection;
+use App\Models\Project;
 use App\Rules\SafeUpload;
 use App\Services\Brief\BriefService;
 use App\Services\Chat\ChatService;
@@ -40,7 +41,29 @@ class BriefController extends Controller
     public function index(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+
+        if (request()->filled('brief')) {
+            $brief = $this->presentedBrief($project);
+        } else {
+            $all = $this->briefs->presentedBriefs($project);
+
+            // Studiya brifi hələ göndərməyibsə müştəri boş, izahlı səhifə görür —
+            // 404 yox, çünki bura layihə kartından da gəlmək mümkündür.
+            if ($all->isEmpty()) {
+                return view('portal.brief.not-presented', compact('project'));
+            }
+
+            // Bir neçə brif göndərilibsə, əvvəl onların siyahısı: hər biri ayrıca
+            // doldurulur və göndərilir. Tək brif — birbaşa onun özü.
+            if ($all->count() > 1) {
+                return view('portal.brief.list', [
+                    'project' => $project,
+                    'briefs' => $all,
+                ]);
+            }
+
+            $brief = $all->first();
+        }
 
         // Spec 13.2 №9: first open of a sent brief → in_progress.
         if ($brief->statusEnum() === BriefStatus::Sent) {
@@ -70,13 +93,17 @@ class BriefController extends Controller
 
         $openComments = $brief->openComments()->count();
 
-        return view('portal.brief.index', compact('project', 'brief', 'map', 'openComments'));
+        // Layihədə bir neçə brif varsa, səhifə başlığı brifin adını və siyahıya qayıdış göstərir.
+        $briefCount = $this->briefs->presentedBriefs($project)->count();
+        $brief->loadMissing('template');
+
+        return view('portal.brief.index', compact('project', 'brief', 'map', 'openComments', 'briefCount'));
     }
 
     public function section(int $project, BriefSection $section, ?BriefRoom $room = null)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project, $section);
 
         $this->assertSectionBelongsToBrief($brief, $section);
         abort_if($room && $room->brief_id !== $brief->id, 404);
@@ -130,7 +157,7 @@ class BriefController extends Controller
     public function discuss(Request $request, int $project, BriefSection $section)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project, $section);
         $room = $this->resolveRoom($request, $brief);
 
         abort_if($room && $room->brief_id !== $brief->id, 404);
@@ -167,7 +194,7 @@ class BriefController extends Controller
     public function autosave(Request $request, int $project, BriefSection $section)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project, $section);
         $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
 
@@ -249,7 +276,7 @@ class BriefController extends Controller
     public function upload(Request $request, int $project, BriefSection $section)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project, $section);
         $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
 
@@ -285,7 +312,7 @@ class BriefController extends Controller
     public function submit(Request $request, int $project, BriefSection $section)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project, $section);
         $this->assertSectionBelongsToBrief($brief, $section);
         $room = $this->resolveRoom($request, $brief);
 
@@ -319,8 +346,15 @@ class BriefController extends Controller
 
         $this->briefs->submitSection($brief, $section, $room);
 
+        // Sonuncu bölmə bütün brifi bağladısa, «Brif dizaynerə göndərildi»
+        // kartı onsuz da görünür — üstünə «Bölmə göndərildi» flash-ı yazmaq
+        // eyni xəbəri iki dəfə deyirdi.
+        if ($brief->fresh()->isLocked()) {
+            return redirect()->route('portal.brief', [$project, 'brief' => $brief->id]);
+        }
+
         return redirect()
-            ->route('portal.brief', $project)
+            ->route('portal.brief', [$project, 'brief' => $brief->id])
             ->with('status', t('portal.brief_section_submitted'));
     }
 
@@ -328,7 +362,7 @@ class BriefController extends Controller
     public function summary(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project);
         $brief->load('rooms');
 
         $map = $this->briefs->sectionMap($brief);
@@ -337,7 +371,7 @@ class BriefController extends Controller
 
         // Consent is what gates the button (spec Part 10 №20) — it is also a
         // required question, so it is listed in $missing; the view needs it flagged.
-        $consented = ($values['pdpa_consent'] ?? null) === '1';
+        $consented = $this->consentGiven($brief, $values);
         $validationErrors = $this->briefs->validationErrors($brief);
 
         return view('portal.brief.summary', compact('project', 'brief', 'map', 'missing', 'values', 'consented', 'validationErrors'));
@@ -347,10 +381,10 @@ class BriefController extends Controller
     public function sent(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project);
 
         if (! $brief->isLocked()) {
-            return redirect()->route('portal.brief', $project);
+            return redirect()->route('portal.brief', [$project, 'brief' => $brief->id]);
         }
 
         $openComments = $brief->openComments()->count();
@@ -359,7 +393,8 @@ class BriefController extends Controller
         // yola düşdüyünü bir baxışda görsün. Dəyərlər brifin öz cavablarındandır,
         // ona görə ayrıca saxlama lazım deyil.
         $values = $this->briefs->valuesByKey($brief);
-        $questions = BriefQuestion::whereIn('key', ['object_type', 'style_preferences'])->get()->keyBy('key');
+        $questions = collect(['object_type', 'style_preferences'])
+            ->mapWithKeys(fn (string $key) => [$key => $this->briefs->questionByKey($brief, $key)]);
 
         $summary = array_filter([
             t('portal.brief_sum_object_type') => $questions->get('object_type')?->displayValue($values['object_type'] ?? null),
@@ -376,7 +411,7 @@ class BriefController extends Controller
     public function clarifications(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project);
 
         $comments = $brief->openComments()->with(['question.section', 'room', 'user'])->latest()->get();
 
@@ -387,14 +422,14 @@ class BriefController extends Controller
     public function sendClarifications(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project);
 
         abort_unless($brief->needsClarification(), 403);
 
         $this->briefs->answerClarifications($brief, auth('customer')->user());
 
         return redirect()
-            ->route('portal.brief.sent', $project)
+            ->route('portal.brief.sent', [$project, 'brief' => $brief->id])
             ->with('status', t('portal.brief_clarifications_sent'));
     }
 
@@ -402,14 +437,14 @@ class BriefController extends Controller
     public function submitBrief(int $project)
     {
         $project = $this->clientProject($project);
-        $brief = $this->briefs->forProject($project);
+        $brief = $this->presentedBrief($project);
 
         if ($brief->isLocked()) {
-            return redirect()->route('portal.brief.sent', $project);
+            return redirect()->route('portal.brief.sent', [$project, 'brief' => $brief->id]);
         }
 
         $missing = $this->briefs->missingRequired($brief);
-        $consented = ($this->briefs->valuesByKey($brief)['pdpa_consent'] ?? null) === '1';
+        $consented = $this->consentGiven($brief, $this->briefs->valuesByKey($brief));
         $validationErrors = $this->briefs->validationErrors($brief);
 
         if ($missing->isNotEmpty() || ! $consented || $validationErrors !== []) {
@@ -423,9 +458,56 @@ class BriefController extends Controller
 
         $this->briefs->submit($brief, auth('customer')->user());
 
-        return redirect()
-            ->route('portal.brief.sent', $project)
-            ->with('status', t('portal.brief_sent_success'));
+        // «Göndərildi» səhifəsinin özü təsdiqdir — flash onu təkrarlayırdı.
+        return redirect()->route('portal.brief.sent', [$project, 'brief' => $brief->id]);
+    }
+
+    /**
+     * Müştərinin işlədiyi brif — YALNIZ təqdim edilmişi. Əvvəl burada
+     * `forProject()` idi və layihəyə ilk girən müştəri brifi özü «yaradırdı»:
+     * studiya hələ hansı brifi verəcəyinə qərar verməmiş, müştəri defolt 325
+     * sualı doldurmağa başlayırdı. İndi təqdim edilməmiş brif portal üçün
+     * mövcud deyil — bölmə, avtosaxlama, göndərmə: hamısı 404.
+     */
+    private function presentedBrief(Project $project, ?BriefSection $section = null): Brief
+    {
+        $query = Brief::query()
+            ->where('project_id', $project->id)
+            ->whereNotNull('presented_at');
+
+        // Layihədə bir neçə brif ola bilər. Hansı nəzərdə tutulur:
+        //  • bölmə ünvanında — bölmənin ŞABLONUNUN brifi (layihədə bir şablondan
+        //    bir brif olur, ona görə birmənalıdır; yad şablonun bölməsi 404);
+        //  • `?brief=` ilə — həmin brif, amma yalnız BU layihənin təqdim
+        //    edilmişlərindən (başqa layihənin brif id-si 404);
+        //  • heç biri yoxdursa — ən son göndərilmiş.
+        if ($section !== null) {
+            return $query->where('brief_template_id', $section->brief_template_id)->first() ?? abort(404);
+        }
+
+        if (request()->filled('brief')) {
+            return $query->whereKey((int) request('brief'))->first() ?? abort(404);
+        }
+
+        return $this->briefs->presentedFor($project) ?? abort(404);
+    }
+
+    /**
+     * Razılıq sualı yalnız onu SORUŞAN şablonda göndərməyi bloklayır. Fərdi
+     * brifdə belə sual yoxdur — orada razılıq tələb etsək müştəri brifi heç
+     * vaxt göndərə bilməzdi.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    private function consentGiven(Brief $brief, array $values): bool
+    {
+        $asksConsent = BriefQuestion::query()
+            ->whereIn('brief_section_id', BriefSection::where('brief_template_id', $brief->brief_template_id)->select('id'))
+            ->where('key', 'pdpa_consent')
+            ->where('active', true)
+            ->exists();
+
+        return ! $asksConsent || ($values['pdpa_consent'] ?? null) === '1';
     }
 
     private function resolveRoom(Request $request, Brief $brief): ?BriefRoom

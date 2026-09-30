@@ -1,13 +1,18 @@
 @php
     $locale = app()->getLocale();
     $totalMinutes = $map->sum(fn ($e) => $e['section']->estimated_minutes ?? 0);
-    $roomsHub = $map->firstWhere(fn ($e) => $e['section']->key === 'rooms_hub');
+    // Otaq mərkəzi — otaq inventarı sualını saxlayan bölmə. Açarla (`rooms_hub`) axtarılmır:
+    // studiyanın redaktə etdiyi şablon nüsxəsində bölmə açarı fərqlidir (`f12-rooms_hub`).
+    $roomsHub = $map->firstWhere(fn ($e) => $e['room'] === null && $e['section']->questions->contains('type', 'room_inventory'));
 @endphp
 
 <x-portal.shell :title="t('portal.nav_brief')" :project="$project" active="brief">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold">{{ t('portal.nav_brief') }}</h1>
+            @if (($briefCount ?? 1) > 1)
+                <a href="{{ route('portal.brief', $project) }}" class="text-[13px] font-semibold text-black/50 hover:text-ink">← {{ t('portal.brief_all_briefs') }}</a>
+            @endif
+            <h1 class="text-2xl font-bold">{{ $brief->template?->getTranslation('name', $locale, true) ?? t('portal.nav_brief') }}</h1>
             <p class="mt-1 text-sm text-black/50">{{ t('portal.brief_intro') }}</p>
         </div>
         <div class="min-w-[220px] rounded-ds-md border border-black/10 bg-card px-5 py-3">
@@ -21,11 +26,8 @@
         </div>
     </div>
 
-    @if (session('status'))
-        <div class="mb-6 rounded-ds-md border border-ok/30 bg-ok-soft px-4 py-3 text-sm font-medium text-ok">
-            {{ session('status') }}
-        </div>
-    @endif
+    {{-- Flash (`status`) və xəta mesajını `x-portal.shell` özü çap edir — burada
+         təkrar blok mesajı iki dəfə göstərirdi. --}}
 
     @if ($brief->isLocked())
         {{-- Screen 12 / 13 — lifecycle state (submitted / needs_clarification / approved) --}}
@@ -33,7 +35,7 @@
             <div class="mb-6 rounded-ds-md border border-yellow-line bg-sel-bg p-6">
                 <p class="text-lg font-bold">✎ {{ t('portal.brief_needs_clar_title') }}</p>
                 <p class="mt-1.5 text-sm text-black/70">{{ t('portal.brief_needs_clar_body', ['count' => $openComments ?? 0]) }}</p>
-                <a href="{{ route('portal.brief.clarifications', $project) }}" class="ui-btn ui-btn-dark mt-4 h-10 px-5 text-sm font-bold" data-hover="true">
+                <a href="{{ route('portal.brief.clarifications', [$project, 'brief' => $brief->id]) }}" class="ui-btn ui-btn-dark mt-4 h-10 px-5 text-sm font-bold" data-hover="true">
                     {{ t('portal.brief_answer_clarifications') }} →
                 </a>
             </div>
@@ -112,7 +114,7 @@
     </div>
 
     <div class="mt-8 flex justify-end">
-        <a href="{{ route('portal.brief.summary', $project) }}" class="ui-btn ui-btn-dark h-11 px-6 text-sm font-bold" data-hover="true">
+        <a href="{{ route('portal.brief.summary', [$project, 'brief' => $brief->id]) }}" class="ui-btn ui-btn-dark h-11 px-6 text-sm font-bold" data-hover="true">
             {{ $brief->isCompleted() ? t('portal.brief_summary') : t('portal.brief_go_summary') }} →
         </a>
     </div>

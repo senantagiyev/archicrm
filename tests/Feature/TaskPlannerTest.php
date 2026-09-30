@@ -126,13 +126,13 @@ class TaskPlannerTest extends TestCase
     }
 
     /**
-     * «Yalnız öz layihələri» rolları üçün «bütün studiya» filtri genişlənmir:
-     * planlaşdırıcı üzv olduğu layihənin BÜTÜN tapşırıqlarını göstərir (komanda
-     * lövhəsi budur), üzvü olmadığı layihəninkini isə göstərmir.
+     * Sıravi işçi (dizayner — matrisdə «Edit, own») planlaşdırıcıda yalnız ÖZ
+     * tapşırıqlarını görür: həmkarın (burada sahibkarın) eyni layihədəki işi və
+     * üzvü olmadığı layihənin işi görünmür — ona təyin edilmiş olsa belə.
      *
-     * Əvvəl filtr icraçıya baxırdı — nəticədə layihə meneceri öz layihəsinin
-     * lövhəsini boş görürdü, üzvü olmadığı layihədə ona təyin edilən tapşırıq isə
-     * açıq qalırdı.
+     * Müştəri tələbi (2026-10-01): «tapşırıq assign olunan adamın tasklarını ancaq
+     * həmin adam görə bilər». Layihə meneceri və sahibkar (Tam) isə bütün
+     * lövhəni görür — bax TaskVisibilityTest.
      */
     public function test_planner_shows_the_whole_board_of_own_projects_only(): void
     {
@@ -157,7 +157,7 @@ class TaskPlannerTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('Dizaynerin tapşırığı', false);
-        $response->assertSee('Sahibkarın tapşırığı', false);
+        $response->assertDontSee('Sahibkarın tapşırığı', false);
         $response->assertDontSee('Yad layihənin tapşırığı', false);
     }
 

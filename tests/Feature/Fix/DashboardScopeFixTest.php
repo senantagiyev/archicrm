@@ -127,7 +127,13 @@ class DashboardScopeFixTest extends TestCase
 
         $this->assertStringContainsString($this->studio->project->name, $html);
         $this->assertStringContainsString($this->studio->otherProject->name, $html);
-        $this->assertStringContainsString(self::FOREIGN_TASK, $html);
+
+        // Tapşırığın özü isə yalnız Tapşırıq = Tam rola (sahibkar) görünür.
+        // Mühasib layihələri görür, amma həmkarlarının tapşırıqlarını YOX —
+        // müştəri tələbi (2026-10-01), bax TaskVisibilityTest.
+        $role === 'owner'
+            ? $this->assertStringContainsString(self::FOREIGN_TASK, $html)
+            : $this->assertStringNotContainsString(self::FOREIGN_TASK, $html);
     }
 
     /**
@@ -139,7 +145,8 @@ class DashboardScopeFixTest extends TestCase
         $this->assertSame('1', $this->overdueTileValue('designer'), 'Dizayner yad layihənin gecikməsini də sayır.');
         $this->assertSame('1', $this->overdueTileValue('project_manager'));
         $this->assertSame('2', $this->overdueTileValue('owner'), 'Sahibkar bütün gecikmələri görməlidir.');
-        $this->assertSame('2', $this->overdueTileValue('accountant'), 'Mühasib bütün gecikmələri görməlidir.');
+        // Mühasibin özünə aid tapşırığı yoxdur — həmkarların gecikməsi ona sayılmır.
+        $this->assertSame('0', $this->overdueTileValue('accountant'), 'Mühasib həmkarlarının tapşırıqlarını saymamalıdır.');
     }
 
     // ─────────────────────────────────────────────────────────────────────────

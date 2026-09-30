@@ -28,6 +28,7 @@ use Illuminate\Support\Facades\Storage;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use PHPUnit\Framework\AssertionFailedError;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -383,7 +384,7 @@ class BriefAdminTest extends TestCase
         auth()->guard('web')->logout();
         $this->app['auth']->forgetGuards();
 
-        $this->inTenant($studio->tenant->id, fn () => app(BriefService::class)->forProject($studio->project));
+        $this->inTenant($studio->tenant->id, fn () => BriefFixture::present($studio->project));
 
         $this->actingAs($studio->portalUser, 'customer')
             ->get(route('portal.brief.section', [$studio->project, BriefSection::where('key', 'aesthetics')->firstOrFail()]))
@@ -545,7 +546,7 @@ class BriefAdminTest extends TestCase
         $studio = $this->seededStudio('tpl-broken');
         $quick = BriefTemplate::where('key', 'quick')->firstOrFail();
 
-        $brief = $this->inTenant($studio->tenant->id, fn () => app(BriefService::class)->forProject($studio->project));
+        $brief = $this->inTenant($studio->tenant->id, fn () => BriefFixture::present($studio->project));
         $before = $brief->brief_template_id;
         $this->assertNotSame($quick->id, $before, 'Başlanğıc şablon Premium olmalıdır.');
 
@@ -583,7 +584,7 @@ class BriefAdminTest extends TestCase
     public function test_a_view_only_role_cannot_see_or_invoke_the_template_switch_action(): void
     {
         $studio = $this->seededStudio('tpl-perm');
-        $this->inTenant($studio->tenant->id, fn () => app(BriefService::class)->forProject($studio->project));
+        $this->inTenant($studio->tenant->id, fn () => BriefFixture::present($studio->project));
 
         // Komplektasiya işçisi: Brief = View, layihənin üzvüdür.
         $procurement = $studio->staff['procurement'];
@@ -609,7 +610,7 @@ class BriefAdminTest extends TestCase
         // Gizlətmək kifayət deyil: düymənin olmaması Livewire sorğusunu
         // bloklamır, ona görə əməliyyatın ÖZÜ də işləməməlidir.
         $quick = BriefTemplate::where('key', 'quick')->firstOrFail();
-        $brief = $this->inTenant($studio->tenant->id, fn () => app(BriefService::class)->forProject($studio->project));
+        $brief = $this->inTenant($studio->tenant->id, fn () => BriefFixture::present($studio->project));
         $before = $brief->brief_template_id;
 
         try {
@@ -655,7 +656,7 @@ class BriefAdminTest extends TestCase
         $premium = BriefTemplate::where('key', 'residential')->firstOrFail();
 
         $brief = $this->inTenant($studio->tenant->id, function () use ($studio, $quick) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
             $brief->forceFill(['brief_template_id' => $quick->id])->save();
 
             return $brief->fresh();
@@ -695,7 +696,7 @@ class BriefAdminTest extends TestCase
         $premium = BriefTemplate::where('key', 'residential')->firstOrFail();
 
         $brief = $this->inTenant($studio->tenant->id, function () use ($studio, $quick) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
             $brief->forceFill(['brief_template_id' => $quick->id])->save();
 
             return $brief->fresh();
@@ -767,7 +768,7 @@ class BriefAdminTest extends TestCase
         $first = $this->answer($studio, ['object_address' => 'Bakı 1']);
         $second = $this->inTenant(
             $studio->tenant->id,
-            fn () => app(BriefService::class)->forProject($studio->otherProject),
+            fn () => BriefFixture::present($studio->otherProject),
         );
 
         $this->inTenant($studio->tenant->id, function () use ($first, $second) {
@@ -1018,7 +1019,7 @@ class BriefAdminTest extends TestCase
         $a = StudioWorld::make('ten-a');
         $b = StudioWorld::make('ten-b');
 
-        $briefA = $this->inTenant($a->tenant->id, fn () => app(BriefService::class)->forProject($a->project));
+        $briefA = $this->inTenant($a->tenant->id, fn () => BriefFixture::present($a->project));
 
         // Sorğu qatı: B kontekstində A-nın brifi görünmür.
         $this->inTenant($b->tenant->id, function () use ($briefA) {
@@ -1046,7 +1047,7 @@ class BriefAdminTest extends TestCase
         Storage::fake('public');
 
         $a = StudioWorld::make('ten-own');
-        $this->inTenant($a->tenant->id, fn () => app(BriefService::class)->forProject($a->project));
+        $this->inTenant($a->tenant->id, fn () => BriefFixture::present($a->project));
 
         $this->actingAs($a->staff['owner']);
         Filament::setCurrentPanel('admin');
@@ -1107,7 +1108,7 @@ class BriefAdminTest extends TestCase
     private function answer(StudioWorld $studio, array $byKey): Brief
     {
         return $this->inTenant($studio->tenant->id, function () use ($studio, $byKey) {
-            $brief = app(BriefService::class)->forProject($studio->project);
+            $brief = BriefFixture::present($studio->project);
 
             foreach ($byKey as $key => $value) {
                 $brief->answers()->create([

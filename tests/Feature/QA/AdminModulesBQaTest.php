@@ -1171,7 +1171,11 @@ class AdminModulesBQaTest extends TestCase
             'deadline' => today()->subDays(2),
             'assignee_user_id' => $this->w->user('owner')->id,
         ]);
-        $this->task(['deadline' => today()->subDay(), 'title' => 'Öz layihəmin gecikmiş işi']);
+        $this->task([
+            'deadline' => today()->subDay(),
+            'title' => 'Öz layihəmin gecikmiş işi',
+            'assignee_user_id' => $this->w->user('designer')->id,
+        ]);
 
         $designer = $this->asUser('designer');
         $this->assertFalse($this->w->otherProject->hasMember($designer));
@@ -1273,8 +1277,10 @@ class AdminModulesBQaTest extends TestCase
         $designer = $this->asUser('designer');
 
         $titles = collect($this->actingAs($designer)->getJson(route('calendar.events', [
-            'start' => today()->startOfMonth()->toDateString(),
-            'end' => today()->endOfMonth()->toDateString(),
+            // Pəncərə bugündən bir ay irəli: ayın son günlərində `endOfMonth()`
+            // «+1/+2 gün» hadisələrini kənarda qoyur və test yalançı qırmızı olur.
+            'start' => today()->subDay()->toDateString(),
+            'end' => today()->addMonth()->toDateString(),
         ]))->assertOk()->json())->pluck('title')->implode(' | ');
 
         $this->assertStringNotContainsStringQuietly('9999', $titles, 'Dizayner ödəniş məbləğini görməməlidir.');
@@ -1283,8 +1289,10 @@ class AdminModulesBQaTest extends TestCase
         // Sahibkar isə görür — filtr rola görə işləyir, ümumiyyətlə söndürülməyib.
         $owner = $this->asUser('owner');
         $ownerTitles = collect($this->actingAs($owner)->getJson(route('calendar.events', [
-            'start' => today()->startOfMonth()->toDateString(),
-            'end' => today()->endOfMonth()->toDateString(),
+            // Pəncərə bugündən bir ay irəli: ayın son günlərində `endOfMonth()`
+            // «+1/+2 gün» hadisələrini kənarda qoyur və test yalançı qırmızı olur.
+            'start' => today()->subDay()->toDateString(),
+            'end' => today()->addMonth()->toDateString(),
         ]))->assertOk()->json())->pluck('title')->implode(' | ');
 
         $this->assertStringContainsStringQuietly('Gizli ödəniş', $ownerTitles, 'Sahibkar ödənişi görməlidir.');
@@ -1301,8 +1309,10 @@ class AdminModulesBQaTest extends TestCase
         $owner = $this->asUser('owner');
 
         $titles = fn () => collect($this->actingAs($owner)->getJson(route('calendar.events', [
-            'start' => today()->startOfMonth()->toDateString(),
-            'end' => today()->endOfMonth()->toDateString(),
+            // Pəncərə bugündən bir ay irəli: ayın son günlərində `endOfMonth()`
+            // «+1/+2 gün» hadisələrini kənarda qoyur və test yalançı qırmızı olur.
+            'start' => today()->subDay()->toDateString(),
+            'end' => today()->addMonth()->toDateString(),
         ]))->assertOk()->json())->pluck('title')->all();
 
         $this->assertContains('✓ Ölü layihə tapşırığı', $titles(), 'Layihə diri ikən tapşırıq təqvimdədir.');

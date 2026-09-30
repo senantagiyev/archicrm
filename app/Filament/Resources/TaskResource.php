@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\AccessLevel;
+use App\Enums\Domain;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Filament\Resources\TaskResource\Pages;
@@ -55,7 +57,43 @@ class TaskResource extends Resource
             // yalnız gizlənir — layihə bərpa olunsa iş də geri qayıdır.
             ->whereHas('project');
 
-        return static::scopeToVisibleProjects($query, auth()->user());
+        return static::scopeToVisibleTasks($query, auth()->user());
+    }
+
+    /**
+     * İstifadəçinin GÖRƏ BİLDİYİ tapşırıqlar — tapşırıq oxuyan hər ekranın
+     * (siyahı, planlayıcı, dashboard, «Diqqət», təqvim) yeganə qaydası.
+     *
+     *  1. Layihə: «yalnız öz layihələri» rolu yalnız menecer/üzv olduğu
+     *     layihələrin işini görür (`scopeToVisibleProjects`).
+     *  2. Tapşırığın özü: Mərhələ/Tapşırıq domenində TAM səlahiyyəti olmayan
+     *     işçi (matrisdə «Edit — own»: dizayner, vizualizator, təchizat; həmçinin
+     *     «View» səviyyəli mühasib) yalnız ÖZÜNƏ TƏYİN OLUNAN və ya ÖZÜNÜN
+     *     YARATDIĞI tapşırığı görür. Əvvəl bu şərt yox idi: layihənin istənilən
+     *     üzvü həmkarlarına verilmiş bütün tapşırıqları oxuyurdu.
+     *
+     * Yaradan istisnası qəsdəndir: dizayner vizualizatora tapşırıq verəndə onu
+     * izləyə bilməlidir, yoxsa yaratdığı sətir dərhal gözdən itərdi.
+     * Sahibkar və layihə meneceri (Tam) layihədəki bütün tapşırıqları görür —
+     * iş bölgüsü onların işidir.
+     */
+    public static function scopeToVisibleTasks(Builder $query, ?User $user): Builder
+    {
+        $query = static::scopeToVisibleProjects($query, $user);
+
+        if ($user === null || static::seesEveryTask($user)) {
+            return $query;
+        }
+
+        return $query->where(fn (Builder $own) => $own
+            ->where($own->qualifyColumn('assignee_user_id'), $user->id)
+            ->orWhere($own->qualifyColumn('author_user_id'), $user->id));
+    }
+
+    /** Tapşırıq domenində TAM səlahiyyət — layihənin bütün tapşırıqlarını görür. */
+    public static function seesEveryTask(User $user): bool
+    {
+        return AccessMatrix::allows($user, Domain::StagesTasks, AccessLevel::Full);
     }
 
     /**

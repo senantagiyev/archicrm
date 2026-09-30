@@ -71,6 +71,24 @@ class BriefQuestion extends Model
         return $this->belongsTo(BriefSection::class, 'brief_section_id');
     }
 
+    /**
+     * Sualın şablonu — bölmə üzərindən. Sistem bankının sualı ilə studiyanın
+     * fərdi brifinin sualını ayırmaq üçün lazımdır: birincisi git-in
+     * nəzarətindədir və paneldən silinmir, ikincisi tam studiyanın malıdır.
+     */
+    public function template(): ?BriefTemplate
+    {
+        $this->loadMissing('section.template');
+
+        return $this->section?->template;
+    }
+
+    /** Studiyanın konstruktorda yaratdığı sual (sistem bankından deyil). */
+    public function isCustom(): bool
+    {
+        return $this->template()?->isCustom() ?? false;
+    }
+
     /** Localized label for one option value; also looks inside matrix rows/columns. */
     public function optionLabel(string $value): string
     {

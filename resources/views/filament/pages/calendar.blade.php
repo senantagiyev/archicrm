@@ -7,7 +7,7 @@
                     <p class="text-sm text-gray-500 dark:text-gray-400">Görüşləri, son tarixləri və ödənişləri bir yerdə izləyin.</p>
                 </div>
                 <span class="hidden rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 sm:inline-flex dark:bg-white/10 dark:text-gray-300">
-                    Hadisəyə klikləyərək detallara keçin
+                    Boş günə klikləyin — görüş əlavə olunur; hadisəyə klikləyin — açılır
                 </span>
             </div>
 
@@ -101,9 +101,23 @@
                     },
                     buttonText: { today: 'Bu gün', month: 'Ay', week: 'Həftə', list: 'Siyahı' },
                     events: @js(route('calendar.events')),
+                    // Boş günə klik — həmin tarixlə yeni görüş (icazə varsa).
+                    dateClick: function (info) {
+                        if (! @js($this->canCreateMeetings())) return;
+                        $wire.mountAction('createMeeting', { date: info.dateStr.slice(0, 10) });
+                    },
                     eventClick: function (info) {
+                        info.jsEvent.preventDefault();
+
+                        // Görüş təqvimin öz modalında redaktə/silinir; qalan
+                        // hadisələr (tapşırıq, mərhələ, ödəniş) öz səhifəsinə aparır.
+                        const meetingId = info.event.extendedProps?.meetingId;
+                        if (meetingId) {
+                            $wire.mountAction('editMeeting', { meeting: meetingId });
+                            return;
+                        }
+
                         if (info.event.url) {
-                            info.jsEvent.preventDefault();
                             window.location.href = info.event.url;
                         }
                     },
@@ -113,6 +127,9 @@
                 });
 
                 calendar.render();
+
+                // Yaratma/redaktə/silmədən sonra hadisələr yenidən yüklənir.
+                $wire.on('calendar-refresh', () => calendar.refetchEvents());
             }
         </script>
     @endscript

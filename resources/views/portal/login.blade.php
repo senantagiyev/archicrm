@@ -19,13 +19,20 @@
         </div>
     </header>
 
+    @php
+        $recaptchaSiteKey = config('services.recaptcha.site_key');
+        // Hansı tab açıq qalsın: link göndəriləndən sonra və ya link formasında
+        // xəta olanda «Link ilə», qalan hallarda «Şifrə ilə».
+        $mode = old('mode', session('status') ? 'link' : 'password');
+        $mode = in_array($mode, ['password', 'link'], true) ? $mode : 'password';
+    @endphp
+
     <main class="flex flex-1 items-center justify-center px-6 py-16">
-        <div class="w-full max-w-[420px] rounded-[18px] border border-black/8 bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
+        <div class="w-full max-w-[440px] rounded-[18px] border border-black/8 bg-card p-8 shadow-[0_1px_2px_rgba(0,0,0,.04),0_18px_50px_-24px_rgba(0,0,0,.18)] sm:p-10">
             <span class="inline-flex items-center gap-2 text-helper font-semibold text-black/60">
                 <span class="h-2 w-2 rounded-[2px] bg-yellow"></span>Müştəri portalı
             </span>
             <h1 class="mt-4 font-b2b text-heading font-semibold tracking-normal">{{ t('portal.login_title') }}</h1>
-            <p class="mt-2 text-body leading-relaxed text-black/60">{{ t('portal.login_hint') }}</p>
 
             @if (session('status'))
                 <div class="mt-5 rounded-ds-lg border border-ok/30 bg-ok-soft px-4 py-3 text-helper font-medium text-ok">
@@ -39,35 +46,70 @@
                 </div>
             @endif
 
-            @php $recaptchaSiteKey = config('services.recaptcha.site_key'); @endphp
-            <form id="portalLoginForm" method="post" action="{{ route('portal.login-link') }}" class="mt-8 space-y-4">
+            {{-- İki giriş yolu — eyni hesab, müştəri hansı rahatdırsa --}}
+            <div class="mt-7 grid grid-cols-2 gap-1 rounded-ds-lg bg-neutral-soft p-1" role="tablist" data-login-tabs>
+                <button type="button" role="tab" data-login-tab="password" aria-selected="{{ $mode === 'password' ? 'true' : 'false' }}"
+                    class="h-10 rounded-ds text-helper font-semibold transition-colors aria-selected:bg-card aria-selected:text-ink aria-selected:shadow-sm text-black/55">
+                    {{ t('portal.login_password_tab') }}
+                </button>
+                <button type="button" role="tab" data-login-tab="link" aria-selected="{{ $mode === 'link' ? 'true' : 'false' }}"
+                    class="h-10 rounded-ds text-helper font-semibold transition-colors aria-selected:bg-card aria-selected:text-ink aria-selected:shadow-sm text-black/55">
+                    {{ t('portal.login_link_tab') }}
+                </button>
+            </div>
+
+            {{-- Şifrə ilə --}}
+            <form method="post" action="{{ route('portal.login.password') }}" class="mt-6 space-y-4" data-login-panel="password" data-recaptcha-form @if ($mode !== 'password') hidden @endif>
                 @csrf
+                <input type="hidden" name="mode" value="password">
+                <p class="text-body leading-relaxed text-black/60">{{ t('portal.login_password_hint') }}</p>
                 <div>
-                    <label for="email" class="mb-1.5 block text-helper font-semibold">{{ t('portal.email') }}</label>
-                    <input id="email" name="email" type="email" required autofocus
-                        value="{{ old('email') }}"
+                    <label for="pw_email" class="mb-1.5 block text-helper font-semibold">{{ t('portal.email') }}</label>
+                    <input id="pw_email" name="email" type="email" required autocomplete="username"
+                        value="{{ old('mode') === 'password' ? old('email') : '' }}"
                         class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-body outline-none transition-colors focus:border-ink">
                 </div>
-
+                <div>
+                    <label for="pw_password" class="mb-1.5 block text-helper font-semibold">{{ t('portal.password') }}</label>
+                    <input id="pw_password" name="password" type="password" required autocomplete="current-password"
+                        class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-body outline-none transition-colors focus:border-ink">
+                </div>
+                <label class="flex items-center gap-2.5 text-helper text-black/70">
+                    <input type="checkbox" name="remember" value="1" class="h-4 w-4 rounded-[4px] border-black/30">
+                    {{ t('portal.remember_me') }}
+                </label>
                 @if ($recaptchaSiteKey)
-                    {{-- v3: invisible; a fresh token is fetched at submit time. --}}
-                    <input type="hidden" name="g-recaptcha-response" id="recaptchaToken">
+                    <input type="hidden" name="g-recaptcha-response" data-recaptcha-token>
                 @endif
+                <button class="ui-btn ui-btn-dark h-12 w-full text-body font-semibold" data-hover="true">
+                    {{ t('portal.login_button') }}
+                </button>
+                <p class="text-helper leading-relaxed text-black/55">{{ t('portal.login_no_password') }}</p>
+            </form>
 
+            {{-- Link ilə (parolsuz) --}}
+            <form method="post" action="{{ route('portal.login-link') }}" class="mt-6 space-y-4" data-login-panel="link" data-recaptcha-form @if ($mode !== 'link') hidden @endif>
+                @csrf
+                <input type="hidden" name="mode" value="link">
+                <p class="text-body leading-relaxed text-black/60">{{ t('portal.login_hint') }}</p>
+                <div>
+                    <label for="link_email" class="mb-1.5 block text-helper font-semibold">{{ t('portal.email') }}</label>
+                    <input id="link_email" name="email" type="email" required autocomplete="email"
+                        value="{{ old('mode') === 'link' ? old('email') : '' }}"
+                        class="h-12 w-full rounded-ds border border-black/15 px-3.5 text-body outline-none transition-colors focus:border-ink">
+                </div>
+                @if ($recaptchaSiteKey)
+                    <input type="hidden" name="g-recaptcha-response" data-recaptcha-token>
+                @endif
                 <button class="ui-btn ui-btn-dark h-12 w-full text-body font-semibold" data-hover="true">
                     {{ t('portal.send_login_link') }}
                 </button>
+                <p class="text-helper leading-relaxed text-black/55">{{ t('portal.login_no_link') }}</p>
             </form>
 
             @if ($recaptchaSiteKey)
-                <p class="mt-3 text-helper leading-relaxed text-black/55">
-                    Bu sayt Google reCAPTCHA ilə qorunur.
-                </p>
+                <p class="mt-4 text-helper leading-relaxed text-black/45">Bu sayt Google reCAPTCHA ilə qorunur.</p>
             @endif
-
-            <p class="mt-8 text-helper leading-relaxed text-black/60">
-                {{ t('portal.login_no_link') }}
-            </p>
         </div>
     </main>
 
@@ -75,23 +117,37 @@
         © {{ date('Y') }} Archi CRM
     </footer>
 
+    <script>
+        // Tab keçidi — JS-siz də hər iki forma işləyir (yalnız ikisi birdən görünərdi).
+        (() => {
+            const tabs = document.querySelectorAll('[data-login-tab]');
+            const panels = document.querySelectorAll('[data-login-panel]');
+            tabs.forEach((tab) => tab.addEventListener('click', () => {
+                const mode = tab.dataset.loginTab;
+                tabs.forEach((t) => t.setAttribute('aria-selected', t === tab ? 'true' : 'false'));
+                panels.forEach((p) => { p.hidden = p.dataset.loginPanel !== mode; });
+                panels.forEach((p) => { if (!p.hidden) p.querySelector('input[type=email]')?.focus(); });
+            }));
+        })();
+    </script>
+
     @if ($recaptchaSiteKey)
         <script src="https://www.google.com/recaptcha/api.js?render={{ $recaptchaSiteKey }}"></script>
         <script>
+            // v3: görünməzdir; göndərmə anında hər forma üçün təzə token alınır.
             (() => {
-                const form = document.getElementById('portalLoginForm');
-                const field = document.getElementById('recaptchaToken');
                 const key = @json($recaptchaSiteKey);
-                let ready = false;
-
-                form.addEventListener('submit', (e) => {
-                    if (ready) return; // second pass: token set, let it through
-                    e.preventDefault();
-                    grecaptcha.ready(() => {
-                        grecaptcha.execute(key, { action: 'portal_login' }).then((token) => {
-                            field.value = token;
-                            ready = true;
-                            form.submit();
+                document.querySelectorAll('[data-recaptcha-form]').forEach((form) => {
+                    let ready = false;
+                    form.addEventListener('submit', (e) => {
+                        if (ready) return;
+                        e.preventDefault();
+                        grecaptcha.ready(() => {
+                            grecaptcha.execute(key, { action: 'portal_login' }).then((token) => {
+                                form.querySelector('[data-recaptcha-token]').value = token;
+                                ready = true;
+                                form.submit();
+                            });
                         });
                     });
                 });

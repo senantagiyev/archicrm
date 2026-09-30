@@ -34,14 +34,18 @@ class ProjectController extends Controller
             ->count();
 
         // Lightweight counts for the portal quick-access cards.
-        $briefProgress = (int) ($project->brief?->progress ?? 0);
+        // Brif kartı yalnız studiya brifi TƏQDİM EDƏNDƏN sonra görünür. Bir neçə
+        // brif göndərilibsə, kart onların orta doldurulma faizini göstərir.
+        $presentedBriefs = $project->briefs()->whereNotNull('presented_at')->get(['id', 'progress']);
+        $briefPresented = $presentedBriefs->isNotEmpty();
+        $briefProgress = (int) round($presentedBriefs->avg('progress') ?? 0);
         $documentsCount = $project->documents()->where('visible_to_client', true)->count();
         $paymentsDue = $project->payments()
             ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Overdue->value])
             ->count();
 
         return view('portal.projects.show', compact(
-            'project', 'pendingApprovals', 'briefProgress', 'documentsCount', 'paymentsDue'
+            'project', 'pendingApprovals', 'briefProgress', 'briefPresented', 'documentsCount', 'paymentsDue'
         ));
     }
 }

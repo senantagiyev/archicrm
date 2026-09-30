@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
@@ -17,6 +18,11 @@ class BriefSection extends Model
     protected function casts(): array
     {
         return ['active' => 'boolean'];
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(BriefTemplate::class, 'brief_template_id');
     }
 
     public function questions(): HasMany

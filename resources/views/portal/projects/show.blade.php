@@ -71,8 +71,10 @@
     <h2 class="mb-3 mt-8 text-body font-semibold text-ink">Bölmələr</h2>
     <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
         @php
+            // Brif kartı yalnız studiya brifi göndərəndən sonra görünür —
+            // göndərilməmiş brif müştəri üçün mövcud deyil.
             $cards = [
-                ['brief', route('portal.brief', $project), t('portal.nav_brief'), $briefProgress.'% dolduruldu', 'M8 4h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M9.5 9h5M9.5 13h5M9.5 17h3'],
+                ...(($briefPresented ?? false) ? [['brief', route('portal.brief', $project), t('portal.nav_brief'), $briefProgress.'% dolduruldu', 'M8 4h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M9.5 9h5M9.5 13h5M9.5 17h3']] : []),
                 ['approvals', route('portal.approvals', $project), t('portal.nav_approvals'), $pendingApprovals > 0 ? $pendingApprovals.' gözləyir' : 'hamısı təmiz', 'M20 6 9 17l-5-5'],
                 ['documents', route('portal.documents', $project), t('portal.nav_documents'), $documentsCount.' sənəd', 'M8 4h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],
                 ['payments', route('portal.payments', $project), t('portal.nav_payments'), $paymentsDue > 0 ? $paymentsDue.' ödəniş' : 'aktual yoxdur', 'M3 10h18M7 15h2M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z'],

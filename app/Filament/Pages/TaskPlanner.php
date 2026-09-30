@@ -110,7 +110,7 @@ class TaskPlanner extends Page
 
         // Resursdakı ilə HƏRFƏN eyni məhdudiyyət — görünürlük qaydası
         // TaskResource-da bir yerdə saxlanılır ki, iki ekran ayrılmasın.
-        $query = TaskResource::scopeToVisibleProjects($query, $user);
+        $query = TaskResource::scopeToVisibleTasks($query, $user);
 
         if ($this->scope === 'mine' && $user) {
             $query->where('assignee_user_id', $user->id);

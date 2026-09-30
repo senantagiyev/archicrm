@@ -11,12 +11,18 @@ class ExampleTest extends TestCase
         $this->get('/')->assertOk()->assertSee('Dizayn bürosu üçün idarəetmə sistemi');
     }
 
-    public function test_the_entry_page_offers_both_logins(): void
+    /**
+     * Giriş səhifəsi yalnız sifarişçi üçündür: büro komandasının girişi
+     * qəsdən göstərilmir — panel öz gizli ünvanından açılır.
+     */
+    public function test_the_entry_page_offers_only_the_customer_login(): void
     {
         $this->get('/giris')
             ->assertOk()
-            ->assertSee('Büro komandası')
-            ->assertSee('Sifarişçi');
+            ->assertSee('Portala daxil ol')
+            ->assertSee(route('portal.login'), false)
+            ->assertDontSee('Büro komandası')
+            ->assertDontSee(route('filament.app.auth.login'), false);
     }
 
     public function test_the_admin_panel_lives_on_the_hidden_path(): void

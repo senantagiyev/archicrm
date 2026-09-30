@@ -24,6 +24,10 @@ Route::prefix('portal')->name('portal.')->group(function () {
     Route::post('/login-link', [AuthController::class, 'sendLoginLink'])
         ->middleware('throttle:auth')
         ->name('login-link');
+    // Şifrə ilə giriş — link ilə eyni sərt hədd: şifrə tapmaq cəhdləri də burada dayanır.
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware('throttle:auth')
+        ->name('login.password');
     Route::get('/magic/{clientUser}', [AuthController::class, 'magicLogin'])
         ->middleware(['signed', 'throttle:auth'])
         ->name('magic-login');

@@ -28,6 +28,12 @@
         'payments'  => [route('portal.payments', $project),      t('portal.nav_payments'),  'M3 10h18M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM7 15h2'],
     ] : [];
 
+    // Brif tabı yalnız studiya brifi TƏQDİM EDƏNDƏN sonra görünür: göndərilməmiş
+    // brif müştəri üçün mövcud deyil, ona görə boş tab göstərilmir.
+    if ($project && ! $project->briefs()->whereNotNull('presented_at')->exists()) {
+        unset($tabs['brief']);
+    }
+
     // Sol panel qlobal naviqasiyadır: layihənin İÇİNDƏ olanda orada «Layihələrim»
     // işıqlanır (Roomix-də də belədir), konkret bölmə isə yuxarı tabda vurğulanır.
     $navActive = $project ? 'projects' : ($active ?? 'projects');

@@ -14,6 +14,7 @@ use App\Services\Brief\BriefService;
 use Database\Seeders\BriefQuestionBankSeeder;
 use Database\Seeders\TranslationSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Support\BriefFixture;
 use Tests\TestCase;
 
 /**
@@ -37,7 +38,7 @@ class BriefSpecTest extends TestCase
             'status' => 'active', 'manager_user_id' => $user->id,
         ]);
 
-        return app(BriefService::class)->forProject($project);
+        return BriefFixture::present($project);
     }
 
     private function answer(Brief $brief, string $key, mixed $value): void

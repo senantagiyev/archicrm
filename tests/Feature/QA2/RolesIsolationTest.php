@@ -94,8 +94,10 @@ class RolesIsolationTest extends TestCase
      */
     private const INTENTIONALLY_GLOBAL = [
         // Paylaşılan kataloqlar: platforma səviyyəsində bir dəfə qurulur.
-        'BriefTemplate' => 'Brif şablon bankı — platforma kataloqu',
-        'BriefSection' => 'Brif bölmə bankı — platforma kataloqu',
+        // Sistem şablonu `tenant_id = null`, studiyanın fərdi brifi isə öz
+        // `tenant_id`-si ilə — Role/AutomationRule kimi copy-on-write görünürlük.
+        'BriefTemplate' => 'tenant_id VAR; BriefTemplate::scopeForTenant + BriefTemplateResource::getEloquentQuery + BriefTemplatePolicy',
+        'BriefSection' => 'Brif bölmə bankı — şablon vasitəsilə (sistem və ya studiyanın öz brifi)',
         'BriefQuestion' => 'Brif sual bankı — platforma kataloqu',
         'StageTemplate' => 'Mərhələ şablonları — platforma kataloqu',
         'StageTemplateItem' => 'Mərhələ şablon sətirləri — valideyn şablonla gəlir',
@@ -148,7 +150,7 @@ class RolesIsolationTest extends TestCase
                 continue;
             }
 
-            if (in_array($name, ['Role', 'AutomationRule'], true)) {
+            if (in_array($name, ['Role', 'AutomationRule', 'BriefTemplate'], true)) {
                 // Copy-on-write kataloqu: global scope yoxdur, `forTenant()` var.
                 $this->assertTrue(
                     method_exists($class, 'scopeForTenant'),

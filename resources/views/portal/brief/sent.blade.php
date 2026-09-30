@@ -41,7 +41,7 @@
                 <span class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-sel-bg text-2xl">✎</span>
                 <h1 class="mt-5 font-b2b text-[24px] font-extrabold tracking-tight">{{ t('portal.brief_needs_clar_title') }}</h1>
                 <p class="mt-2 text-[14px] leading-relaxed text-black/60">{{ t('portal.brief_needs_clar_body', ['count' => $openComments]) }}</p>
-                <a href="{{ route('portal.brief.clarifications', $project) }}" class="ui-btn ui-btn-primary mt-6 h-11 px-6 text-sm font-bold" data-hover="true">
+                <a href="{{ route('portal.brief.clarifications', [$project, 'brief' => $brief->id]) }}" class="ui-btn ui-btn-primary mt-6 h-11 px-6 text-sm font-bold" data-hover="true">
                     {{ t('portal.brief_answer_clarifications') }} →
                 </a>
             @elseif ($brief->isApproved())
@@ -59,7 +59,7 @@
                 <a href="{{ route('portal.projects.show', $project) }}" class="ui-btn ui-btn-dark h-11 px-6 text-sm font-bold" data-hover="true">
                     {{ t('portal.brief_back_to_project') }}
                 </a>
-                <a href="{{ route('portal.brief', $project) }}" class="ui-btn ui-btn-outline h-11 px-6 text-sm font-semibold" data-hover="true">
+                <a href="{{ route('portal.brief', [$project, 'brief' => $brief->id]) }}" class="ui-btn ui-btn-outline h-11 px-6 text-sm font-semibold" data-hover="true">
                     {{ t('portal.brief_view_answers') }}
                 </a>
             </div>

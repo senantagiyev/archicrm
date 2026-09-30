@@ -18,6 +18,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Support\BriefFixture;
 use Tests\Support\StudioWorld;
 use Tests\TestCase;
 
@@ -49,7 +50,7 @@ class BriefClientQaTest extends TestCase
         $this->studio = StudioWorld::make('brief-client-qa');
 
         app(TenantContext::class)->actingAs($this->studio->tenant->id, function (): void {
-            $this->brief = app(BriefService::class)->forProject($this->studio->project);
+            $this->brief = BriefFixture::present($this->studio->project);
         });
     }
 
@@ -214,7 +215,7 @@ class BriefClientQaTest extends TestCase
 
         // 6. Göndərmə.
         $customer->post(route('portal.brief.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $brief = $this->brief->fresh();
         $this->assertSame(BriefStatus::Submitted, $brief->statusEnum());
@@ -254,7 +255,10 @@ class BriefClientQaTest extends TestCase
             ->assertRedirect()
             ->assertSessionHasErrors('brief');
 
-        $this->assertSame(BriefStatus::Draft, $this->brief->fresh()->statusEnum());
+        // Təqdim edilmiş brif cavabsız qalanda «göndərilib»də qalır — qaralamaya
+        // qayıtmır, çünki təqdimat faktı cavabların gedişindən asılı deyil.
+        $this->assertSame(BriefStatus::Sent, $this->brief->fresh()->statusEnum());
+        $this->assertFalse($this->brief->fresh()->isLocked());
     }
 
     public function test_design_area_larger_than_total_area_is_refused_both_inline_and_on_send(): void
@@ -442,7 +446,7 @@ class BriefClientQaTest extends TestCase
 
         $this->actingAs($this->studio->portalUser, 'customer')
             ->post(route('portal.brief.submit', [$this->studio->project->id, $section->id]))
-            ->assertRedirect(route('portal.brief', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $state = $this->brief->sectionStates()->where('brief_section_id', $section->id)->first();
         $this->assertSame('submitted', $state->status);
@@ -565,14 +569,14 @@ class BriefClientQaTest extends TestCase
 
         $this->actingAs($this->studio->portalUser, 'customer')
             ->post(route('portal.brief.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $firstSubmittedAt = $this->brief->fresh()->submitted_at;
         $documents = $this->studio->project->documents()->count();
 
         $this->actingAs($this->studio->portalUser, 'customer')
             ->post(route('portal.brief.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $brief = $this->brief->fresh();
         $this->assertSame(1, $brief->current_version, 'İkinci göndəriş yeni versiya yaratmamalıdır.');
@@ -612,7 +616,7 @@ class BriefClientQaTest extends TestCase
     {
         $this->actingAs($this->studio->portalUser, 'customer')
             ->get(route('portal.brief.sent', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $this->service()->submit($this->brief->fresh(), $this->studio->portalUser);
 
@@ -664,7 +668,7 @@ class BriefClientQaTest extends TestCase
 
         $this->actingAs($this->studio->portalUser, 'customer')
             ->post(route('portal.brief.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $this->assertSame(3, $this->brief->fresh()->current_version, 'v1 göndəriş, v2 yenidən açma, v3 təkrar göndəriş.');
     }
@@ -696,7 +700,7 @@ class BriefClientQaTest extends TestCase
 
         $this->actingAs($this->studio->portalUser, 'customer')
             ->post(route('portal.brief.clarifications.send', $this->studio->project->id))
-            ->assertRedirect(route('portal.brief.sent', $this->studio->project->id));
+            ->assertRedirect(route('portal.brief.sent', [$this->studio->project->id, 'brief' => $this->studio->project->fresh()->brief->id]));
 
         $this->assertSame(BriefStatus::Submitted, $this->brief->fresh()->statusEnum());
         $this->assertSame(0, $this->brief->fresh()->openComments()->count());
