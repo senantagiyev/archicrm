@@ -12,6 +12,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 
 class StagesRelationManager extends RelationManager
@@ -74,6 +75,10 @@ class StagesRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // Policy hər sətir üçün `$record->project`-i oxuyur. Əvvəlcədən
+            // yüklənməsə, lokal mühitdə (preventLazyLoading) iki sətirdən sonra
+            // tab qəzaya uğrayırdı, prod-da isə hər sətrə ayrıca sorğu gedirdi.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('project'))
             ->reorderable('position')
             ->defaultSort('position')
             ->columns([

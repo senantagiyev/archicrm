@@ -158,6 +158,7 @@ class TranslationSeeder extends Seeder
                 'choose_variant' => 'Bunu seçirəm|Выбираю этот|Choose this',
                 'variant_chosen' => 'Seçilmiş variant|Выбранный вариант|Chosen option',
                 'approval_history' => 'Əvvəlki dövrlər (:count)|Предыдущие версии (:count)|Approval history (:count)',
+                'approval_open_file' => 'Faylı aç|Открыть файл|Open the file',
                 'chat_search' => 'Axtar|Поиск|Search',
                 'chat_search_placeholder' => 'Yazışmada axtar…|Искать в переписке…|Search the conversation…',
                 'chat_search_clear' => 'Təmizlə|Сбросить|Clear',
@@ -277,6 +278,11 @@ class TranslationSeeder extends Seeder
                 'project_type.house' => 'Ev|Дом|House',
                 'project_type.office' => 'Ofis|Офис|Office',
                 'project_type.commercial' => 'Kommersiya|Коммерция|Commercial',
+                'diary_entry_status.new' => 'Yeni|Новая|New',
+                'diary_entry_status.under_review' => 'Baxılır|На рассмотрении|Under review',
+                'diary_entry_status.reviewed' => 'Baxıldı|Рассмотрено|Reviewed',
+                'diary_entry_status.done' => 'İcra edildi|Выполнено|Done',
+                'diary_entry_status.cancelled' => 'Ləğv edildi|Отменено|Cancelled',
             ],
         ];
 

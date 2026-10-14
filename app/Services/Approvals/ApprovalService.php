@@ -3,6 +3,7 @@
 namespace App\Services\Approvals;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\DocumentType;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Approval;
@@ -11,6 +12,7 @@ use App\Models\ClientUser;
 use App\Models\Deliverable;
 use App\Models\Document;
 use App\Models\ProcurementItem;
+use App\Models\Project;
 use App\Models\Stage;
 use App\Models\Task;
 use App\Models\User;
@@ -25,6 +27,15 @@ use InvalidArgumentException;
 
 class ApprovalService
 {
+    /** Paneldəki «Razılaşdırma yarat» formasında «Nə razılaşdırılır?» seçimləri. */
+    public const SUBJECT_UPLOAD = 'upload';
+
+    public const SUBJECT_DOCUMENT = 'document';
+
+    public const SUBJECT_DELIVERABLE = 'deliverable';
+
+    public const SUBJECT_STAGE = 'stage';
+
     /**
      * Send a row (smeta line, procurement item, stage or document) to the
      * customer for approval. Notifies every portal account of the client.
@@ -33,7 +44,7 @@ class ApprovalService
      *                                                                                  Roomix-dəki «pick one option» halı: bir neçə variant göndərilir,
      *                                                                                  müştəri birini seçir. Boş massiv adi bəli/xeyr deməkdir.
      */
-    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null, array $variants = []): Approval
+    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null, array $variants = [], ?string $note = null): Approval
     {
         // `visible_to_client = false` means the studio marked this line internal.
         // The portal prints the approval's subject label and total verbatim, so
@@ -75,6 +86,7 @@ class ApprovalService
             'status' => ApprovalStatus::Pending,
             'version' => $version,
             'variants' => $variants === [] ? null : array_values($variants),
+            'note' => filled($note) ? trim($note) : null,
             'respond_by' => $respondBy,
         ]);
 
@@ -85,6 +97,61 @@ class ApprovalService
         }
 
         return $approval;
+    }
+
+    /**
+     * Paneldəki «Razılaşdırma yarat» formasının girişi.
+     *
+     * Əvvəl razılaşdırma yalnız smeta sətri, komplektasiya və dizayn materialının
+     * öz cədvəlindəki düymədən yaranırdı — «Razılaşdırmalar» bölməsində isə
+     * yaratmaq üçün heç nə yox idi və müştəriyə sadə bir faylı (çertyoj, plan,
+     * kollaj) təsdiqə göndərmək mümkün deyildi. Burada obyekt seçilir (və ya
+     * yeni fayl sənəd kimi yaradılır), sonra HƏMİŞƏ `request()` çağırılır ki,
+     * versiya, köhnə sorğunun əvəzlənməsi, cavab müddəti və müştəriyə bildiriş
+     * eyni qaydada işləsin.
+     *
+     * Obyekt yalnız VERİLƏN layihədən axtarılır: başqa layihənin (və ya başqa
+     * studiyanın) sənədinin id-si göndərilsə, `findOrFail` 404 verir.
+     *
+     * @param  array{subject_type: string, subject_id?: int|string|null, title?: string|null, document_type?: string|null, file_path?: string|null, note?: string|null, respond_by?: string|null}  $data
+     */
+    public function requestFromPanel(Project $project, User $requestedBy, array $data): Approval
+    {
+        $respondBy = filled($data['respond_by'] ?? null) ? Carbon::parse($data['respond_by']) : null;
+        $note = $data['note'] ?? null;
+
+        return DB::transaction(function () use ($project, $requestedBy, $data, $respondBy, $note): Approval {
+            $subject = match ($data['subject_type'] ?? null) {
+                self::SUBJECT_UPLOAD => Document::create([
+                    'project_id' => $project->id,
+                    'type' => $data['document_type'] ?? DocumentType::Other->value,
+                    'title' => $data['title'],
+                    'file_path' => $data['file_path'],
+                    'uploaded_by_type' => 'user',
+                    'uploaded_by_id' => $requestedBy->id,
+                    // Müştəri təsdiqləyəcəyi faylı görməlidir — portal yalnız
+                    // `visible_to_client` sənədləri verir.
+                    'visible_to_client' => true,
+                ]),
+                self::SUBJECT_DOCUMENT => $project->documents()->findOrFail($data['subject_id'] ?? null),
+                self::SUBJECT_DELIVERABLE => $project->deliverables()->findOrFail($data['subject_id'] ?? null),
+                self::SUBJECT_STAGE => $project->stages()->findOrFail($data['subject_id'] ?? null),
+                default => throw new InvalidArgumentException('Razılaşdırılan obyektin növü seçilməyib.'),
+            };
+
+            // Razılaşdırmaya göndərmək = müştəriyə göstərmək. Dizayn materialının
+            // öz düyməsi də `client_visible`-ı açır; mövcud daxili sənəd də
+            // açılmasa, müştəri kartı görərdi, faylı isə yükləyə bilməzdi.
+            if ($subject instanceof Document && ! $subject->visible_to_client) {
+                $subject->update(['visible_to_client' => true]);
+            }
+
+            if ($subject instanceof Deliverable && ! $subject->client_visible) {
+                $subject->update(['client_visible' => true]);
+            }
+
+            return $this->request($subject, $requestedBy, $respondBy, [], $note);
+        });
     }
 
     /**

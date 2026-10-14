@@ -19,7 +19,7 @@ class Approval extends Model
     protected $fillable = [
         'approvable_type', 'approvable_id', 'project_id',
         'requested_by_user_id', 'client_user_id',
-        'status', 'version', 'comment', 'variants', 'chosen_variant',
+        'status', 'version', 'comment', 'note', 'variants', 'chosen_variant',
         'respond_by', 'decided_at',
     ];
 

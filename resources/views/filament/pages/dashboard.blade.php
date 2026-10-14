@@ -6,6 +6,7 @@
         $donut = $this->statusBreakdown();
         $recent = $this->recentProjects();
         $tasks = $this->todayTasks();
+        $punchIssues = $this->myPunchIssues();
         $circ = 339.292; // 2πr, r=54
         $offset = 0;
     @endphp
@@ -157,6 +158,34 @@
                 </div>
             </div>
         </div>
+
+        {{-- Mənə təyin olunan qüsurlar (Punch List). Boşdursa blok ümumiyyətlə
+             çıxmır — qüsurla işi olmayan rolun dashboardu dəyişmir. --}}
+        @if ($punchIssues->isNotEmpty())
+            <div class="rounded-2xl bg-white ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+                <div class="border-b border-gray-100 px-6 py-4 dark:border-white/10">
+                    <h2 class="text-base font-bold text-gray-950 dark:text-white">Mənə təyin olunan qüsurlar</h2>
+                </div>
+                <div class="divide-y divide-gray-100 dark:divide-white/10">
+                    @foreach ($punchIssues as $issue)
+                        <a href="{{ \App\Filament\Resources\ProjectResource\RelationManagers\PunchListRelationManager::urlFor($issue->project) }}"
+                           class="flex items-start gap-3 px-6 py-3.5 transition-colors hover:bg-gray-50 dark:hover:bg-white/5">
+                            <span @class([
+                                'mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full',
+                                'bg-red-500' => $issue->due_date && $issue->due_date->isPast(),
+                                'bg-[#f2d900]' => ! ($issue->due_date && $issue->due_date->isPast()),
+                            ])></span>
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-medium text-gray-950 dark:text-white">{{ $issue->title }}</p>
+                                <p class="truncate text-[12px] text-gray-400">{{ collect([$issue->project?->name, $issue->room])->filter()->implode(' · ') }}</p>
+                            </div>
+                            <span class="shrink-0 text-[11px] font-medium text-gray-400">{{ $issue->status->label() }}</span>
+                            <span class="w-10 shrink-0 text-right text-[11px] font-medium text-gray-400">{{ $issue->due_date?->format('d.m') }}</span>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
     </div>
 </x-filament-panels::page>

@@ -18,6 +18,15 @@
                     <span aria-hidden="true">·</span>
                     <span>{{ $entry->author->name }}</span>
                 @endif
+                {{-- İradın icra vəziyyəti: müştəri «yazılıb, amma edilibmi?»
+                     sualının cavabını menecerə zəng etmədən görsün. --}}
+                <span @class([
+                    'ml-auto rounded-pill px-3 py-1 text-helper font-medium',
+                    'bg-ok-soft text-ok' => $entry->status === \App\Enums\DiaryEntryStatus::Done,
+                    'bg-warn-soft text-warn' => in_array($entry->status, [\App\Enums\DiaryEntryStatus::UnderReview, \App\Enums\DiaryEntryStatus::Reviewed], true),
+                    'bg-error-soft text-error' => $entry->status === \App\Enums\DiaryEntryStatus::Cancelled,
+                    'bg-neutral-soft text-black/60' => $entry->status === \App\Enums\DiaryEntryStatus::New,
+                ])>{{ $entry->status->translatedLabel() }}</span>
             </div>
 
             <p class="whitespace-pre-line text-body">{{ $entry->body }}</p>

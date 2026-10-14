@@ -35,6 +35,7 @@ use App\Observers\FinanceObserver;
 use App\Observers\LeadObserver;
 use App\Observers\StageObserver;
 use App\Observers\TaskObserver;
+use App\Support\Errors\LivewireErrorNotifier;
 use App\Support\TenantContext;
 use App\Translation\DatabaseTranslationLoader;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -107,6 +108,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->registerRateLimiters();
         $this->guardAgainstLazyLoading();
+
+        // Admin panelində əməliyyat xətası ümumi «Error» pəncərəsi yox, səbəbi
+        // izah edən bildiriş kimi göstərilsin (xəta istinad kodu ilə jurnala düşür).
+        LivewireErrorNotifier::register();
     }
 
     /**

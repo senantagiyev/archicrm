@@ -3,8 +3,10 @@
 namespace App\Notifications;
 
 use App\Enums\ApprovalStatus;
+use App\Filament\Resources\ApprovalResource;
 use App\Filament\Resources\ProjectResource;
 use App\Models\Approval;
+use App\Notifications\Concerns\ShowsInPanel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -14,6 +16,7 @@ use Illuminate\Notifications\Notification;
 class ApprovalDecided extends Notification implements ShouldQueue
 {
     use Queueable;
+    use ShowsInPanel;
 
     public function __construct(public Approval $approval) {}
 
@@ -35,13 +38,15 @@ class ApprovalDecided extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return [
-            'title' => $this->approval->status === ApprovalStatus::Approved
-                ? 'Pozisiya razılaşdırıldı'
-                : 'Pozisiya rədd edildi',
-            'body' => $this->approval->subjectLabel().($this->approval->comment ? ' — '.$this->approval->comment : ''),
-            'approval_id' => $this->approval->id,
-            'project_id' => $this->approval->project_id,
-        ];
+        $approved = $this->approval->status === ApprovalStatus::Approved;
+
+        return $this->panelMessage(
+            title: $approved ? 'Pozisiya razılaşdırıldı' : 'Pozisiya rədd edildi',
+            body: $this->approval->subjectLabel().($this->approval->comment ? ' — '.$this->approval->comment : ''),
+            url: ApprovalResource::getUrl(),
+            icon: $approved ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle',
+            color: $approved ? 'success' : 'danger',
+            extra: ['approval_id' => $this->approval->id, 'project_id' => $this->approval->project_id],
+        );
     }
 }

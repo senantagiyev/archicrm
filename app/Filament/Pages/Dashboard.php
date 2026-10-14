@@ -14,6 +14,7 @@ use App\Models\Approval;
 use App\Models\Client;
 use App\Models\Payment;
 use App\Models\Project;
+use App\Models\PunchListIssue;
 use App\Models\Task;
 use App\Support\AccessMatrix;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -211,6 +212,39 @@ class Dashboard extends BaseDashboard
                 ->whereDate('deadline', '<=', today())
         ), auth()->user())
             ->orderBy('deadline')
+            ->limit(6)
+            ->get();
+    }
+
+    /**
+     * Mənə təyin olunan, hələ həll edilməmiş Punch List qüsurları.
+     *
+     * Qüsurlar əvvəl yalnız layihənin içindəki tabda idi — məsul şəxs hər
+     * layihəni ayrıca açıb axtarmalı idi. Blok boşdursa view onu göstərmir,
+     * yəni qüsurla işi olmayan rolun dashboardu dəyişmir. Sorğu eyni «öz
+     * layihələrim» şərti ilə kəsilir: girişi itmiş layihənin qüsuru çıxmır.
+     *
+     * @return Collection<int, PunchListIssue>
+     */
+    public function myPunchIssues()
+    {
+        $user = auth()->user();
+
+        if ($user === null || ! $user->can('viewAny', PunchListIssue::class)) {
+            return collect();
+        }
+
+        return $this->scoped(
+            PunchListIssue::query()
+                ->with('project')
+                ->where('responsible_user_id', $user->id)
+                ->unresolved()
+                // Silinmiş layihənin qüsuru «mənim işim» deyil.
+                ->whereHas('project')
+        )
+            // Tarixi olanlar öncə: sadə orderBy NULL-ları başa qoyardı.
+            ->orderByRaw('due_date is null')
+            ->orderBy('due_date')
             ->limit(6)
             ->get();
     }

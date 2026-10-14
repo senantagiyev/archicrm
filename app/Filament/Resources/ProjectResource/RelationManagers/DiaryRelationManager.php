@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
+use App\Enums\DiaryEntryStatus;
 use App\Rules\SafeUpload;
 use Filament\Actions;
 use Filament\Forms;
@@ -9,6 +10,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DiaryRelationManager extends RelationManager
 {
@@ -29,6 +31,14 @@ class DiaryRelationManager extends RelationManager
                 ->rows(4)
                 ->maxLength(2000)
                 ->helperText('Obyektdən qısa qeyd — müştəri portalda bunu görəcək.')
+                ->columnSpanFull(),
+            Forms\Components\Select::make('status')
+                ->label('Status')
+                ->options(DiaryEntryStatus::options())
+                ->default(DiaryEntryStatus::New->value)
+                ->required()
+                ->native(false)
+                ->helperText('Qeydin icra vəziyyəti. Dərc olunmuş qeydin statusunu müştəri də görür.')
                 ->columnSpanFull(),
             Forms\Components\FileUpload::make('photos')
                 ->label('Fotolar')
@@ -61,6 +71,10 @@ class DiaryRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // Policy hər sətir üçün `$record->project`-i oxuyur. Əvvəlcədən
+            // yüklənməsə, lokal mühitdə (preventLazyLoading) iki sətirdən sonra
+            // tab qəzaya uğrayırdı, prod-da isə hər sətrə ayrıca sorğu gedirdi.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('project'))
             ->defaultSort('created_at', 'desc')
             ->columns([
                 Tables\Columns\TextColumn::make('body')
@@ -68,6 +82,12 @@ class DiaryRelationManager extends RelationManager
                     ->limit(80)
                     ->wrap()
                     ->searchable(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->formatStateUsing(fn (DiaryEntryStatus $state) => $state->label())
+                    ->color(fn (DiaryEntryStatus $state) => $state->color())
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('photos')
                     ->label('Foto')
                     ->state(fn ($record) => count($record->photos ?? [])),
@@ -87,6 +107,9 @@ class DiaryRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                Tables\Filters\SelectFilter::make('status')
+                    ->label('Status')
+                    ->options(DiaryEntryStatus::options()),
                 Tables\Filters\TernaryFilter::make('published_at')
                     ->label('Dərc olunub')
                     ->nullable()
@@ -105,6 +128,25 @@ class DiaryRelationManager extends RelationManager
                     }),
             ])
             ->actions([
+                // Statusu tam redaktə formasını açmadan dəyişmək üçün — obyektdə
+                // iradın icrası tez-tez yenilənir, hər dəfə formanı açmaq yorucudur.
+                Actions\Action::make('changeStatus')
+                    ->label('Statusu dəyiş')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('gray')
+                    ->visible(fn ($record) => auth()->user()?->can('update', $record))
+                    ->modalHeading('Qeydin statusunu dəyiş')
+                    ->modalSubmitActionLabel('Yadda saxla')
+                    ->fillForm(fn ($record) => ['status' => $record->status->value])
+                    ->schema([
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options(DiaryEntryStatus::options())
+                            ->required()
+                            ->native(false),
+                    ])
+                    ->action(fn ($record, array $data) => $record->update(['status' => $data['status']]))
+                    ->successNotificationTitle('Status yeniləndi'),
                 Actions\Action::make('publish')
                     ->label('Dərc et')
                     ->icon('heroicon-o-paper-airplane')

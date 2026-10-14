@@ -34,6 +34,20 @@
                         @if ($approval->approvable instanceof \App\Models\BudgetLine || $approval->approvable instanceof \App\Models\ProcurementItem)
                             <p class="mt-2 text-title font-semibold">{{ number_format((float) $approval->approvable->total, 2, '.', ' ') }} ₼</p>
                         @endif
+                        {{-- Paneldəki «Razılaşdırma yarat» formasının qeydi: dizayner
+                             nəyə baxmalı olduğunu yazır. Əvvəl kartda obyektin
+                             adından başqa heç nə yox idi. --}}
+                        @if ($approval->note)
+                            <p class="mt-2 whitespace-pre-line text-body text-black/70">{{ $approval->note }}</p>
+                        @endif
+                        {{-- Təsdiqlənən fayl elə buradan açılır — müştəri onu
+                             «Sənədlər»də axtarmamalıdır. --}}
+                        @if ($approval->approvable instanceof \App\Models\Document && $approval->approvable->visible_to_client)
+                            <a href="{{ route('portal.documents.download', [$project->id, $approval->approvable->id]) }}"
+                                class="mt-2 inline-flex items-center gap-1 text-helper font-semibold text-ink underline">
+                                {{ t('portal.approval_open_file') }}
+                            </a>
+                        @endif
                     </div>
 
                     @if ($decidable && $approval->status === \App\Enums\ApprovalStatus::Pending)

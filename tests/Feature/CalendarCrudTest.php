@@ -8,7 +8,6 @@ use App\Models\User;
 use App\Support\AccessMatrix;
 use App\Support\TenantContext;
 use Filament\Facades\Filament;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportRedirects\SupportRedirects;
 use Livewire\Livewire;
@@ -109,8 +108,15 @@ class CalendarCrudTest extends TestCase
 
         $this->asStaff('designer');
 
-        $this->expectException(ModelNotFoundException::class);
-        Livewire::test(Calendar::class)->mountAction('editMeeting', ['meeting' => $foreign->id]);
+        // Sorğu tenant/üzvlük süzgəcindən keçir, yad görüş TAPILMIR. Əvvəl bu
+        // xəta brauzerə ümumi «Error» pəncərəsi kimi çıxırdı; indi admin
+        // izahlı bildiriş görür, modal isə ümumiyyətlə açılmır (yad görüşün
+        // məlumatı formaya doldurulmur).
+        Livewire::test(Calendar::class)
+            ->mountAction('editMeeting', ['meeting' => $foreign->id])
+            ->assertNotified('Qeyd tapılmadı')
+            ->assertSet('mountedActions', [])
+            ->assertDontSee('Yad layihənin görüşü');
     }
 
     public function test_a_view_only_role_sees_no_create_button(): void

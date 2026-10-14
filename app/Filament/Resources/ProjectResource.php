@@ -183,10 +183,13 @@ class ProjectResource extends Resource
 
     public static function getRelations(): array
     {
+        // Brif birinci tabdır: layihə brifdən başlayır, mərhələlər ondan sonra
+        // qurulur. Əvvəl «Mərhələlər» birinci, «Brif» ikinci idi (müştəri tələbi).
         return [
-            StagesRelationManager::class,
             RelationManagers\BriefAnswersRelationManager::class,
+            StagesRelationManager::class,
             RelationManagers\DeliverablesRelationManager::class,
+            RelationManagers\ApprovalsRelationManager::class,
             RelationManagers\SpecificationsRelationManager::class,
             RelationManagers\BudgetLinesRelationManager::class,
             RelationManagers\ProcurementItemsRelationManager::class,

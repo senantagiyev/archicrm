@@ -11,6 +11,7 @@ use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SpecificationsRelationManager extends RelationManager
 {
@@ -51,6 +52,10 @@ class SpecificationsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            // Policy hər sətir üçün `$record->project`-i oxuyur. Əvvəlcədən
+            // yüklənməsə, lokal mühitdə (preventLazyLoading) iki sətirdən sonra
+            // tab qəzaya uğrayırdı, prod-da isə hər sətrə ayrıca sorğu gedirdi.
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('project'))
             ->columns([
                 Tables\Columns\TextColumn::make('product_name')
                     ->label('Məhsul')->searchable()

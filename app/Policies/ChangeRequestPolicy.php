@@ -37,6 +37,18 @@ class ChangeRequestPolicy
         return $this->allowsOn($user, $record->project, AccessLevel::Edit, $record->project_id);
     }
 
+    /**
+     * Pul və müddət barədə qərar: studiya adından təsdiq və müştərinin cavabının
+     * qeydi. «Edit» səviyyəli rollar (dizayner, vizualizator, təchizat) sorğunu
+     * aça, təsirini hesablaya və təsdiqə göndərə bilər, amma özləri təsdiqləyə
+     * bilməz — əks halda «studiyada təsdiq» mərhələsinin mənası qalmırdı.
+     * Matrisdə layihələr üzrə «Full» yalnız sahibkar və layihə menecerindədir.
+     */
+    public function approve(User $user, ChangeRequest $record): bool
+    {
+        return $this->allowsOn($user, $record->project, AccessLevel::Full, $record->project_id);
+    }
+
     public function delete(User $user, ChangeRequest $record): bool
     {
         return $this->allowsOn($user, $record->project, AccessLevel::Edit, $record->project_id);

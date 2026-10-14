@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Notifications\Concerns\ShowsInPanel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -15,6 +16,7 @@ use Illuminate\Notifications\Notification;
 class AutomationAlert extends Notification implements ShouldQueue
 {
     use Queueable;
+    use ShowsInPanel;
 
     public function __construct(
         public string $title,
@@ -44,11 +46,18 @@ class AutomationAlert extends Notification implements ShouldQueue
 
     public function toDatabase(object $notifiable): array
     {
-        return array_merge([
-            'title' => $this->title,
-            'body' => $this->body,
-            'url' => $this->url,
-            'rule' => $this->ruleCode,
-        ], $this->data);
+        return $this->panelMessage(
+            title: $this->title,
+            body: $this->body,
+            url: $this->url,
+            icon: 'heroicon-o-bolt',
+            color: 'warning',
+            extra: array_merge([
+                'title' => $this->title,
+                'body' => $this->body,
+                'url' => $this->url,
+                'rule' => $this->ruleCode,
+            ], $this->data),
+        );
     }
 }

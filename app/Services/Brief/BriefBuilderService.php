@@ -159,16 +159,67 @@ class BriefBuilderService
             throw new InvalidArgumentException('Nüsxə yalnız studiyaya bağlı istifadəçi tərəfindən yaradıla bilər.');
         }
 
-        if ($existing = $system->forkFor($by->tenant_id)) {
+        return $this->forkForTenant($system, (int) $by->tenant_id, $by->id);
+    }
+
+    /** Studiyanın Premium brifinin adı — Roomix nümunəsində qurulmuş şəkilli tam brif. */
+    public const STUDIO_PREMIUM_NAME = [
+        'az' => 'Premium brif (şəkilli)',
+        'ru' => 'Премиум бриф (с иллюстрациями)',
+        'en' => 'Premium brief (illustrated)',
+    ];
+
+    public const STUDIO_PREMIUM_DESCRIPTION = [
+        'az' => 'Mənzil və evlər üçün tam brif: üslub, materiallar, işıqlandırma, otaqlar — şəkilli variantlarla.',
+        'ru' => 'Полный бриф для квартир и домов: стиль, материалы, освещение, комнаты — с иллюстрациями.',
+        'en' => 'Full brief for apartments and houses: style, materials, lighting, rooms — with illustrated options.',
+    ];
+
+    /**
+     * Studiyanın standart (defolt) şablonu — sistemin tam şəkilli brifinin
+     * (Roomix nümunəsi ilə qurulmuş «Yaşayış obyekti») studiyaya məxsus nüsxəsi.
+     *
+     * Niyə nüsxə: sistem sətri bütün studiyalar üçün ortaqdır və seeder onu
+     * bankdan yenidən yazır; studiya isə öz standart brifini digər fərdi briflər
+     * kimi BİRBAŞA redaktə etmək istəyir. Nüsxə siyahıda orijinalın yerini tutur
+     * və `BriefTemplate::defaultFor()` onu yeni layihələrin defoltu edir.
+     *
+     * İdempotentdir: nüsxə artıq varsa (adı dəyişdirilmiş olsa belə) toxunulmur.
+     * Studiya yaradılanda (CreateTenant) və köçürmə ilə mövcud studiyalar üçün çağırılır.
+     */
+    public function provisionStudioPremium(int $tenantId, ?int $creatorId = null): ?BriefTemplate
+    {
+        $system = BriefTemplate::default();
+
+        if ($system === null) {
+            return null;
+        }
+
+        if ($existing = $system->forkFor($tenantId)) {
             return $existing;
         }
 
-        return DB::transaction(function () use ($system, $by): BriefTemplate {
+        $fork = $this->forkForTenant($system, $tenantId, $creatorId);
+        $fork->forceFill([
+            'name' => self::STUDIO_PREMIUM_NAME,
+            'description' => self::STUDIO_PREMIUM_DESCRIPTION,
+        ])->save();
+
+        return $fork->fresh();
+    }
+
+    private function forkForTenant(BriefTemplate $system, int $tenantId, ?int $creatorId): BriefTemplate
+    {
+        if ($existing = $system->forkFor($tenantId)) {
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($system, $tenantId, $creatorId): BriefTemplate {
             $fork = BriefTemplate::create([
-                'tenant_id' => $by->tenant_id,
-                'created_by_user_id' => $by->id,
+                'tenant_id' => $tenantId,
+                'created_by_user_id' => $creatorId,
                 'forked_from_id' => $system->id,
-                'key' => 'fork-'.$by->tenant_id.'-'.Str::lower(Str::random(10)),
+                'key' => 'fork-'.$tenantId.'-'.Str::lower(Str::random(10)),
                 // Səviyyə qorunur: nüsxə seçim siyahısında orijinalın qrupunda
                 // (Quick / Premium) görünür və `isQuick()` məntiqi dəyişmir.
                 'level' => $system->level,

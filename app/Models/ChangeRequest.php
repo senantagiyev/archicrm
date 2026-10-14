@@ -15,6 +15,12 @@ class ChangeRequest extends Model
 {
     use BelongsToTenant, HasFactory, LogsActivity;
 
+    /** Dəyişikliyi kim istədi — forma, cədvəl və süzgəc eyni siyahını işlədir. */
+    public const REQUESTERS = [
+        'client' => 'Müştəri',
+        'team' => 'Studiya (komanda)',
+    ];
+
     protected $fillable = [
         'project_id', 'number', 'requested_by', 'requested_by_user_id',
         'title', 'description', 'reason', 'affected_entity_type', 'affected_entity_id',

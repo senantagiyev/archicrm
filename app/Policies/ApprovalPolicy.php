@@ -4,7 +4,9 @@ namespace App\Policies;
 
 use App\Enums\AccessLevel;
 use App\Enums\Domain;
+use App\Enums\ProjectStatus;
 use App\Models\Approval;
+use App\Models\Project;
 use App\Models\User;
 use App\Policies\Concerns\ScopesProjectDomain;
 use App\Support\AccessMatrix;
@@ -16,8 +18,15 @@ use App\Support\AccessMatrix;
  * one of the two financial domains. A visualizer (Budget=None, Procurement=None)
  * is out; a designer (View on both) is in, limited to their own projects.
  *
- * Decisions are the client's and are made in the portal, so there is no create,
- * update or delete here.
+ * Decisions are the client's and are made in the portal, so there is no update
+ * or delete here.
+ *
+ * Yaratmaq — müştəriyə sorğu GÖNDƏRMƏKDİR. Əvvəl `create()` həmişə `false`
+ * idi və «Razılaşdırmalar» bölməsində düymə yox idi: sorğu yalnız smeta,
+ * komplektasiya və dizayn cədvəllərinin içindən gedirdi, müştəri isə
+ * «razılaşdırmanı harada yaradım» deyə soruşurdu. İndi layihədə Redaktə +
+ * Sənədlərdə Redaktə (forma faylı sənəd kimi yaradır) + siyahını görmək
+ * tələb olunur: sahibkar, menecer və dizayner — öz layihələrində.
  */
 class ApprovalPolicy
 {
@@ -40,7 +49,21 @@ class ApprovalPolicy
 
     public function create(User $user): bool
     {
-        return false;
+        return $this->viewAny($user)
+            && $this->allowsAny($user, AccessLevel::Edit)
+            && AccessMatrix::allows($user, Domain::FilesDocuments, AccessLevel::Edit);
+    }
+
+    /**
+     * Konkret layihəyə sorğu göndərmək: «yalnız öz layihəsi» rolu üçün üzvlük
+     * şərtdir. Arxivlənmiş layihədə müştəri qərar verə bilmir (portal 403
+     * qaytarır), ona görə orada yeni sorğu da açılmır.
+     */
+    public function createFor(User $user, Project $project): bool
+    {
+        return $this->create($user)
+            && $project->status !== ProjectStatus::Archived
+            && $this->allowsOn($user, $project, AccessLevel::Edit, $project->id);
     }
 
     public function update(User $user, Approval $approval): bool

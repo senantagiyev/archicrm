@@ -41,10 +41,8 @@ class ApprovalResource extends Resource
         return $count > 0 ? (string) $count : null;
     }
 
-    public static function canCreate(): bool
-    {
-        return false;
-    }
+    // `canCreate()` əvvəl sərt `false` qaytarırdı — paneldə razılaşdırma
+    // yaratmağın yolu yox idi. İndi qərarı policy verir (ApprovalPolicy::create).
 
     public static function table(Table $table): Table
     {
@@ -72,6 +70,11 @@ class ApprovalResource extends Resource
                     ->label('Qərar tarixi')
                     ->dateTime('d.m.Y H:i')
                     ->toggleable(),
+                Tables\Columns\TextColumn::make('note')
+                    ->label('Müştəriyə qeyd')
+                    ->limit(60)
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('comment')
                     ->label('Şərh')
                     ->limit(60)
