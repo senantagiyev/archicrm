@@ -157,7 +157,10 @@ class ChangeRequestsRelationManagerTest extends TestCase
             $this->manager()
                 ->callTableAction('to_'.$to->value, $cr)
                 ->assertHasNoTableActionErrors()
-                ->assertNotified('Vəziyyət: '.$to->label());
+                // Müştəriyə göndəriş portalda razılaşdırma açır (ChangeRequestPortalApprovalTest).
+                ->assertNotified($to === ChangeRequestStatus::WaitingClientApproval
+                    ? 'Müştəriyə göndərildi — portalda təsdiq gözləyir'
+                    : 'Vəziyyət: '.$to->label());
 
             $this->assertSame($to, $cr->fresh()->status);
         }

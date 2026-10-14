@@ -25,6 +25,9 @@
                         @if ($approval->approvable instanceof \App\Models\BudgetLine || $approval->approvable instanceof \App\Models\ProcurementItem)
                             <p class="mt-2 text-lg font-bold">{{ number_format((float) $approval->approvable->total, 2, '.', ' ') }} ₼</p>
                         @endif
+                        @if ($approval->approvable instanceof \App\Models\ChangeRequest)
+                            @include('portal.partials.change-request-impact', ['changeRequest' => $approval->approvable, 'compact' => true])
+                        @endif
                         @if ($approval->note)
                             <p class="mt-2 line-clamp-3 whitespace-pre-line text-[14px] text-black/60">{{ $approval->note }}</p>
                         @endif

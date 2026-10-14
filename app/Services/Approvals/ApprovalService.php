@@ -3,11 +3,13 @@
 namespace App\Services\Approvals;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\ChangeRequestStatus;
 use App\Enums\DocumentType;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Approval;
 use App\Models\BudgetLine;
+use App\Models\ChangeRequest;
 use App\Models\ClientUser;
 use App\Models\Deliverable;
 use App\Models\Document;
@@ -52,6 +54,19 @@ class ApprovalService
         if ($approvable instanceof BudgetLine && ! $approvable->visible_to_client) {
             throw new InvalidArgumentException(
                 'Müştəriyə gizli işarələnmiş smeta sətri razılaşdırmaya göndərilə bilməz.'
+            );
+        }
+
+        // Dəyişiklik sorğusu müştəriyə yalnız studiya rəhbərliyi təsiri
+        // təsdiqlədikdən sonra gedir (və ya artıq müştəridə olanda təkrar
+        // göndərilir). Qaralamanı və ya hesablanmamış təsiri müştəriyə
+        // göndərmək razılaşdırılmamış rəqəmləri ona təqdim etmək olardı.
+        if ($approvable instanceof ChangeRequest && ! in_array($approvable->status, [
+            ChangeRequestStatus::WaitingInternalApproval,
+            ChangeRequestStatus::WaitingClientApproval,
+        ], true)) {
+            throw new InvalidArgumentException(
+                'Dəyişiklik sorğusu müştəriyə yalnız studiyada təsdiqləndikdən sonra göndərilə bilər. Hazırkı vəziyyət: «'.$approvable->status->label().'».'
             );
         }
 
@@ -208,7 +223,9 @@ class ApprovalService
                 $this->setSubjectStatus($approval->approvable, $approval->status);
             }
 
-            if (! $approved) {
+            // Rədd edilmiş dəyişiklik sorğusu bağlanır — onun üçün «Düzəliş»
+            // tapşırığı mənasızdır: müştəri dəyişikliyi istəmir, düzəldiləcək iş yoxdur.
+            if (! $approved && ! $approval->approvable instanceof ChangeRequest) {
                 $this->createRevisionTask($approval, $comment);
             }
         });
@@ -258,9 +275,57 @@ class ApprovalService
             $approvable instanceof ProcurementItem => $approvable->forceFill(['approval_status' => $status])->save(),
             // Deliverables run their own version state machine (TZ §9.2).
             $approvable instanceof Deliverable => $this->applyDeliverableDecision($approvable, $status),
+            $approvable instanceof ChangeRequest => $this->applyChangeRequestDecision($approvable, $status),
             $approvable instanceof Stage, $approvable instanceof Document => null,
             default => throw new InvalidArgumentException('Bu obyekt razılaşdırıla bilməz: '.$approvable::class),
         };
+    }
+
+    /**
+     * Müştəriyə göndərilmiş, hələ cavablanmamış razılaşdırmanı geri çəkir —
+     * məsələn, dəyişiklik sorğusu ləğv ediləndə. Sətir silinmir (tarixçə qalır),
+     * «əvəzlənmiş» kimi qaralamaya keçir və portalda görünmür.
+     */
+    public function withdrawPending(Model $approvable): int
+    {
+        return Approval::query()
+            ->where('approvable_type', $approvable->getMorphClass())
+            ->where('approvable_id', $approvable->getKey())
+            ->where('status', ApprovalStatus::Pending->value)
+            ->update(['status' => ApprovalStatus::Draft->value]);
+    }
+
+    /** Obyektin cavab gözləyən (portalda açıq) razılaşdırması. */
+    public function pendingFor(Model $approvable): ?Approval
+    {
+        return Approval::query()
+            ->where('approvable_type', $approvable->getMorphClass())
+            ->where('approvable_id', $approvable->getKey())
+            ->where('status', ApprovalStatus::Pending->value)
+            ->latest('id')
+            ->first();
+    }
+
+    /**
+     * Müştərinin qərarı dəyişiklik sorğusunun vəziyyətinə yazılır:
+     * göndəriş → «Müştəri təsdiqi gözləyir», təsdiq → «Müştəri təsdiqlədi»,
+     * rədd → «Rədd edilib». Sorğu artıq həmin vəziyyətdədirsə (təkrar
+     * göndəriş) heç nə dəyişmir.
+     */
+    private function applyChangeRequestDecision(ChangeRequest $changeRequest, ApprovalStatus $status): void
+    {
+        $target = match ($status) {
+            ApprovalStatus::Pending => ChangeRequestStatus::WaitingClientApproval,
+            ApprovalStatus::Approved => ChangeRequestStatus::Approved,
+            ApprovalStatus::Rejected => ChangeRequestStatus::Rejected,
+            default => null,
+        };
+
+        if ($target === null || $changeRequest->status === $target) {
+            return;
+        }
+
+        $changeRequest->transitionTo($target);
     }
 
     private function applyDeliverableDecision(Deliverable $deliverable, ApprovalStatus $status): void

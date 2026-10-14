@@ -66,7 +66,7 @@ enum ChangeRequestStatus: string
             self::Draft => 'Sorğu yenidən qaralamaya qaytarılacaq.',
             self::ImpactAssessment => 'Dəyişikliyin qiymətə, müddətə və iş saatına təsiri hesablanır. Rəqəmləri «Redaktə et» ilə doldurun.',
             self::WaitingInternalApproval => 'Hesablanmış təsir studiya rəhbərliyinin (sahibkar / layihə meneceri) təsdiqinə verilir.',
-            self::WaitingClientApproval => 'Studiya təsiri təsdiqlədi. İndi dəyişikliyi, əlavə dəyəri və müddəti müştəriyə təqdim edin.',
+            self::WaitingClientApproval => 'Müştəri portalda bildiriş alacaq və dəyişikliyi, onun qiymətə və müddətə təsirini görüb təsdiq edəcək və ya rədd edəcək. Cavabı sorğunun vəziyyətinə avtomatik yazılır.',
             self::Approved => 'Müştəri dəyişikliyi, onun dəyərini və müddətini qəbul etdi. Bundan sonra sorğunun rəqəmləri dəyişdirilə və sorğu silinə bilməz.',
             self::InImplementation => 'Təsdiqlənmiş dəyişiklik üzrə iş başlayır.',
             self::Completed => 'Dəyişiklik üzrə iş başa çatıb.',

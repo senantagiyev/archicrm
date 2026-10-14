@@ -2,19 +2,25 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
+use App\Enums\ApprovalStatus;
 use App\Enums\ChangeRequestStatus;
 use App\Models\ChangeRequest;
 use App\Models\User;
+use App\Services\Approvals\ApprovalService;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Forms\Components\Field;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
+use InvalidArgumentException;
 use RuntimeException;
 
 /**
@@ -99,7 +105,7 @@ class ChangeRequestsRelationManager extends RelationManager
             // Siyasət (policy) hər sətir üçün `$record->project`-ə baxır. Əvvəlcədən
             // yüklənməsə, iki və daha çox sorğu olan layihədə qeyri-production
             // mühitdə cədvəl «Attempted to lazy load [project]» ilə çökürdü.
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['project', 'responsible']))
+            ->modifyQueryUsing(fn (Builder $query) => $query->with(['project', 'responsible', 'approvals']))
             ->columns([
                 Tables\Columns\TextColumn::make('number')->label('Nömrə')->searchable(),
                 Tables\Columns\TextColumn::make('title')
@@ -127,7 +133,10 @@ class ChangeRequestsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('status')
                     ->label('Vəziyyət')->badge()
                     ->formatStateUsing(fn (ChangeRequestStatus $state) => $state->label())
-                    ->color(fn (ChangeRequestStatus $state) => $state->color()),
+                    ->color(fn (ChangeRequestStatus $state) => $state->color())
+                    // Müştərinin portaldakı cavabı: gözləyir / qərarı və şərhi.
+                    ->description(fn (ChangeRequest $record) => $this->clientAnswerLine($record))
+                    ->wrap(),
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Yaradılıb')
                     ->date('d.m.Y')
@@ -180,7 +189,9 @@ class ChangeRequestsRelationManager extends RelationManager
         return collect(ChangeRequestStatus::cases())
             ->reject(fn (ChangeRequestStatus $to) => $to === ChangeRequestStatus::Draft)
             ->map(fn (ChangeRequestStatus $to) => Action::make('to_'.$to->value)
-                ->label($to->actionLabel())
+                ->label(fn (ChangeRequest $record) => $this->recordsClientAnswer($record, $to)
+                    ? $to->actionLabel().' (portaldan kənar)'
+                    : $to->actionLabel())
                 ->color(match ($to) {
                     ChangeRequestStatus::Rejected, ChangeRequestStatus::Cancelled => 'danger',
                     ChangeRequestStatus::Approved, ChangeRequestStatus::Completed => 'success',
@@ -190,24 +201,137 @@ class ChangeRequestsRelationManager extends RelationManager
                     && $record->status->canTransitionTo($to))
                 ->requiresConfirmation()
                 ->modalHeading(fn (ChangeRequest $record) => $record->number.' — '.$to->actionLabel())
-                ->modalDescription($to->actionDescription())
-                ->action(function (ChangeRequest $record, Action $action) use ($to): void {
+                ->modalDescription(fn (ChangeRequest $record) => $this->recordsClientAnswer($record, $to)
+                    ? 'Müştəri cavabını portaldan kənar (telefon, görüş) verib. Qeyd ediləndə portaldakı razılaşdırma da bağlanır. '.$to->actionDescription()
+                    : $to->actionDescription())
+                ->schema(fn (ChangeRequest $record) => $this->transitionSchema($record, $to))
+                ->action(function (ChangeRequest $record, array $data, Action $action) use ($to): void {
                     try {
-                        $record->transitionTo($to);
-                    } catch (RuntimeException) {
-                        // Başqa əməkdaş eyni anda statusu dəyişibsə keçid artıq
-                        // qadağandır — 500 əvəzinə səbəbi göstəririk.
+                        $this->applyTransition($record, $to, $data);
+                    } catch (RuntimeException|InvalidArgumentException $e) {
+                        // Başqa əməkdaş / müştəri eyni anda statusu dəyişibsə keçid
+                        // artıq qadağandır — 500 əvəzinə səbəbi göstəririk.
                         Notification::make()
                             ->danger()
                             ->title('Vəziyyət dəyişdirilmədi')
-                            ->body('Sorğunun vəziyyəti artıq «'.$record->fresh()?->status->label().'»-dir. Səhifəni yeniləyin.')
+                            ->body($e instanceof InvalidArgumentException
+                                ? $e->getMessage()
+                                : 'Sorğunun vəziyyəti artıq «'.$record->fresh()?->status->label().'»-dir. Səhifəni yeniləyin.')
                             ->send();
 
                         $action->cancel();
                     }
                 })
-                ->successNotificationTitle('Vəziyyət: '.$to->label()))
+                ->successNotificationTitle($to === ChangeRequestStatus::WaitingClientApproval
+                    ? 'Müştəriyə göndərildi — portalda təsdiq gözləyir'
+                    : 'Vəziyyət: '.$to->label()))
             ->values()
             ->all();
+    }
+
+    /**
+     * Keçidin icrası. Müştəri ilə bağlı addımlar razılaşdırma mexanizmindən
+     * keçir ki, portal və panel həmişə eyni vəziyyəti göstərsin:
+     *  • «Müştəriyə təsdiqə göndər» — portalda razılaşdırma açılır, müştəri
+     *    bildiriş alır; sorğunun vəziyyətini servis özü dəyişir;
+     *  • müştəri portalda cavab veribsə vəziyyət onsuz da dəyişib; portaldan
+     *    kənar cavab (telefon) qeyd ediləndə açıq razılaşdırma da bağlanır;
+     *  • ləğv ediləndə portaldakı cavabsız razılaşdırma geri çəkilir.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function applyTransition(ChangeRequest $record, ChangeRequestStatus $to, array $data): void
+    {
+        $approvals = app(ApprovalService::class);
+
+        if ($to === ChangeRequestStatus::WaitingClientApproval) {
+            $approvals->request(
+                $record,
+                auth()->user(),
+                filled($data['respond_by'] ?? null) ? Carbon::parse($data['respond_by'])->endOfDay() : null,
+                note: $data['note'] ?? null,
+            );
+
+            return;
+        }
+
+        if ($this->recordsClientAnswer($record, $to)) {
+            $approvals->decide(
+                $approvals->pendingFor($record),
+                $to === ChangeRequestStatus::Approved,
+                filled($data['comment'] ?? null)
+                    ? $data['comment']
+                    : 'Studiya qeyd etdi: müştəri portaldan kənar təsdiqlədi.',
+            );
+
+            return;
+        }
+
+        $record->transitionTo($to);
+
+        if ($to === ChangeRequestStatus::Cancelled) {
+            $approvals->withdrawPending($record);
+        }
+    }
+
+    /** Status sütununun altındakı sətir: portalda nə gözləyir və ya müştəri nə dedi. */
+    private function clientAnswerLine(ChangeRequest $record): ?string
+    {
+        $latest = $record->approvals->sortByDesc('id')->first();
+
+        if ($latest === null) {
+            return null;
+        }
+
+        return match ($latest->status) {
+            ApprovalStatus::Pending => 'Portalda müştəri cavabı gözlənilir'
+                .($latest->respond_by ? ' · son tarix '.$latest->respond_by->format('d.m.Y') : ''),
+            ApprovalStatus::Approved, ApprovalStatus::Rejected => ($latest->client_user_id ? 'Müştəri portalda: ' : 'Qeyd: ')
+                .($latest->status === ApprovalStatus::Approved ? 'təsdiqlədi' : 'rədd etdi')
+                .($latest->decided_at ? ' ('.$latest->decided_at->format('d.m.Y').')' : '')
+                .(filled($latest->comment) ? ' — «'.str($latest->comment)->limit(120).'»' : ''),
+            default => null,
+        };
+    }
+
+    /** Müştəri cavabını işçi qeyd edir, amma portalda açıq razılaşdırma var. */
+    private function recordsClientAnswer(ChangeRequest $record, ChangeRequestStatus $to): bool
+    {
+        return $record->status === ChangeRequestStatus::WaitingClientApproval
+            && in_array($to, [ChangeRequestStatus::Approved, ChangeRequestStatus::Rejected], true)
+            && app(ApprovalService::class)->pendingFor($record) !== null;
+    }
+
+    /** @return array<int, Component|Field> */
+    private function transitionSchema(ChangeRequest $record, ChangeRequestStatus $to): array
+    {
+        if ($to === ChangeRequestStatus::WaitingClientApproval) {
+            $days = (int) ($record->project?->client_response_days ?? 0);
+
+            return [
+                Forms\Components\Textarea::make('note')
+                    ->label('Müştəriyə qeyd (istəyə görə)')
+                    ->helperText('Müştəri portalda dəyişikliyin adını, təsvirini, qiymətə və müddətə təsirini görür. Əlavə izah lazımdırsa buraya yazın.')
+                    ->rows(3)
+                    ->maxLength(2000),
+                Forms\Components\DatePicker::make('respond_by')
+                    ->label('Cavab müddəti')
+                    ->default($days > 0 ? now()->addDays($days)->toDateString() : null)
+                    ->minDate(today())
+                    ->native(false),
+            ];
+        }
+
+        if ($this->recordsClientAnswer($record, $to)) {
+            return [
+                Forms\Components\Textarea::make('comment')
+                    ->label($to === ChangeRequestStatus::Rejected ? 'Müştəri niyə rədd etdi?' : 'Qeyd (istəyə görə)')
+                    ->required($to === ChangeRequestStatus::Rejected)
+                    ->rows(3)
+                    ->maxLength(2000),
+            ];
+        }
+
+        return [];
     }
 }
