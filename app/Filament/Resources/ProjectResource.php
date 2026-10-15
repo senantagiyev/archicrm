@@ -7,7 +7,6 @@ use App\Enums\ProjectType;
 use App\Enums\StaffRole;
 use App\Filament\Resources\ProjectResource\Pages;
 use App\Filament\Resources\ProjectResource\RelationManagers;
-use App\Filament\Resources\ProjectResource\RelationManagers\MembersRelationManager;
 use App\Filament\Resources\ProjectResource\RelationManagers\StagesRelationManager;
 use App\Models\Client;
 use App\Models\Project;
@@ -15,6 +14,7 @@ use App\Models\User;
 use App\Support\AccessMatrix;
 use Filament\Actions;
 use Filament\Forms;
+use Filament\Resources\RelationManagers\RelationGroup;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -183,24 +183,23 @@ class ProjectResource extends Resource
 
     public static function getRelations(): array
     {
-        // Brif birinci tabdır: layihə brifdən başlayır, mərhələlər ondan sonra
-        // qurulur. Əvvəl «Mərhələlər» birinci, «Brif» ikinci idi (müştəri tələbi).
+        // Müştəri TZ «Layihə naviqasiyası» (2026-10-15, docs/tz-layihe-naviqasiyasi.md):
+        // altı bölmə — İcmal (EditProject-in öz məzmunu), sonra bunlar. Açarlar
+        // `?relation=` keçidlərində işlənir (İcmal, mərhələ → fayllar, bildirişlər).
+        //
+        // Tabdan çıxanlar yox olmayıb: Dizayn/Fayllar/Razılaşdırmalar → «Fayllar»
+        // (material kartı), Spesifikasiyalar → «Komplektasiya», Smeta/Ödənişlər/
+        // müqavilələr → «Maliyyə» resursları, Dəyişiklik sorğuları və Qərarlar →
+        // aid olduqları obyektin içində, Komanda → «Layihə parametrləri».
         return [
-            RelationManagers\BriefAnswersRelationManager::class,
-            StagesRelationManager::class,
-            RelationManagers\DeliverablesRelationManager::class,
-            RelationManagers\ApprovalsRelationManager::class,
-            RelationManagers\SpecificationsRelationManager::class,
-            RelationManagers\BudgetLinesRelationManager::class,
-            RelationManagers\ProcurementItemsRelationManager::class,
-            RelationManagers\PaymentsRelationManager::class,
-            RelationManagers\DocumentsRelationManager::class,
-            RelationManagers\FilesRelationManager::class,
-            RelationManagers\DiaryRelationManager::class,
-            RelationManagers\ChangeRequestsRelationManager::class,
-            RelationManagers\DecisionsRelationManager::class,
-            RelationManagers\PunchListRelationManager::class,
-            MembersRelationManager::class,
+            'brief' => RelationManagers\BriefAnswersRelationManager::class,
+            'stages' => StagesRelationManager::class,
+            'materials' => RelationManagers\MaterialsRelationManager::class,
+            'procurement' => RelationManagers\ProcurementItemsRelationManager::class,
+            'supervision' => RelationGroup::make('Müəllif nəzarəti', [
+                RelationManagers\DiaryRelationManager::class,
+                RelationManagers\PunchListRelationManager::class,
+            ]),
         ];
     }
 
@@ -215,6 +214,7 @@ class ProjectResource extends Resource
             'index' => Pages\ListProjects::route('/'),
             'create' => Pages\CreateProject::route('/create'),
             'edit' => Pages\EditProject::route('/{record}/edit'),
+            'settings' => Pages\ProjectSettings::route('/{record}/settings'),
             'brief-review' => Pages\BriefReview::route('/{record}/brief-review'),
         ];
     }

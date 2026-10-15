@@ -6,6 +6,7 @@ use App\Enums\ApprovalStatus;
 use App\Enums\PaymentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Portal\Concerns\ResolvesClientProjects;
+use App\Services\Portal\ClientOverviewService;
 
 class ProjectController extends Controller
 {
@@ -24,28 +25,38 @@ class ProjectController extends Controller
         return view('portal.projects.index', compact('projects'));
     }
 
-    public function show(int $project)
+    /**
+     * «İcmal» — portalın birinci bölməsi (TZ «Layihə naviqasiyası» §1–2):
+     * «Sizdən gözlənilən əməliyyatlar», cari mərhələ və yaxın son tarixlər,
+     * iştirakçılar, müştəri üçün təhlükəsiz hadisə lenti. Ödənişlər, sənədlər
+     * və smeta bölmə deyil — buradan ikinci dərəcəli keçidlərlə açılır.
+     */
+    public function show(int $project, ClientOverviewService $overview)
     {
         $project = $this->clientProject($project);
-        $project->load(['stages', 'manager', 'brief']);
+        $project->load(['stages.responsible:id,name', 'manager', 'brief']);
 
         $pendingApprovals = $project->approvals()
             ->where('status', ApprovalStatus::Pending->value)
             ->count();
 
-        // Lightweight counts for the portal quick-access cards.
         // Brif kartı yalnız studiya brifi TƏQDİM EDƏNDƏN sonra görünür. Bir neçə
         // brif göndərilibsə, kart onların orta doldurulma faizini göstərir.
         $presentedBriefs = $project->briefs()->whereNotNull('presented_at')->get(['id', 'progress']);
         $briefPresented = $presentedBriefs->isNotEmpty();
         $briefProgress = (int) round($presentedBriefs->avg('progress') ?? 0);
-        $documentsCount = $project->documents()->where('visible_to_client', true)->count();
+        $documentsCount = $project->documents()->visibleToClient()->count();
         $paymentsDue = $project->payments()
             ->whereIn('status', [PaymentStatus::Pending->value, PaymentStatus::Overdue->value])
             ->count();
 
-        return view('portal.projects.show', compact(
-            'project', 'pendingApprovals', 'briefProgress', 'briefPresented', 'documentsCount', 'paymentsDue'
-        ));
+        return view('portal.projects.show', [
+            ...compact('project', 'pendingApprovals', 'briefProgress', 'briefPresented', 'documentsCount', 'paymentsDue'),
+            'actions' => $overview->pendingActions($project),
+            'currentStage' => $overview->currentStage($project),
+            'deadlines' => $overview->upcomingDeadlines($project),
+            'participants' => $overview->participants($project),
+            'feed' => $overview->feed($project),
+        ]);
     }
 }

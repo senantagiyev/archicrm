@@ -13,31 +13,20 @@
         'profile'   => [route('portal.profile'),        t('portal.nav_profile'),   'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM4.5 21a7.5 7.5 0 0 1 15 0'],
     ];
 
-    $tabs = $project ? [
-        'overview'  => [route('portal.projects.show', $project), t('portal.nav_overview'),  'M3 11l9-8 9 8M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5'],
-        'brief'     => [route('portal.brief', $project),         t('portal.nav_brief'),     'M8 4h8a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M9.5 9h5M9.5 13h5M9.5 17h3'],
-        'chat'      => [route('portal.chat', $project),          t('portal.nav_chat'),      'M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5'],
-        'stages'    => [route('portal.stages', $project),        t('portal.nav_stages'),    'M4 6h16M4 12h16M4 18h9M2.5 6h.01M2.5 12h.01M2.5 18h.01'],
-        'files'     => [route('portal.files', $project),         t('portal.nav_files'),     'M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5Z'],
-        'diary'     => [route('portal.diary', $project),         t('portal.nav_diary'),     'M4 4h13l3 3v13a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1ZM7 10h9M7 14h6'],
-        // Razılaşdırma, smeta və komplektasiya QƏSDƏN tab deyil: Roomix-də onlar
-        // sənəd alt-səhifələridir (`/estimate/<id>`, `/complectation/<id>`), tab
-        // zolağında isə cəmi 4 bənd var. Onları da tab etsək zolaq 11 bəndə
-        // çatıb daşırdı — indi «Sənədlər» səhifəsindən açılırlar.
-        'documents' => [route('portal.documents', $project),     t('portal.nav_documents'), 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'],
-        'payments'  => [route('portal.payments', $project),      t('portal.nav_payments'),  'M3 10h18M3 6h18a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1ZM7 15h2'],
-    ] : [];
-
-    // Brif tabı yalnız studiya brifi TƏQDİM EDƏNDƏN sonra görünür: göndərilməmiş
-    // brif müştəri üçün mövcud deyil, ona görə boş tab göstərilmir.
-    if ($project && ! $project->briefs()->whereNotNull('presented_at')->exists()) {
-        unset($tabs['brief']);
-    }
+    // Layihə bölmələri — heyət paneli ilə EYNİ altı bölmə, eyni sıra ilə
+    // (TZ «Layihə naviqasiyası» §1): İcmal · Brif · Mərhələlər · Fayllar ·
+    // Komplektasiya · Müəllif nəzarəti. Brif həmişə görünür — studiya brifi
+    // hələ göndərməyibsə səhifə izahlı boş vəziyyət göstərir. Çat bölmə deyil,
+    // ayrıca keçiddir; ödənişlər, sənədlər, smeta və razılaşdırmalar siyahısı
+    // İcmaldan açılır (həmin səhifələrdə «İcmal» vurğulanır).
+    $sectionNav = app(\App\Services\Portal\ProjectSections::class);
+    $tabs = $project ? $sectionNav->sections($project) : [];
+    $chatLink = $project ? $sectionNav->chat($project) : null;
 
     // Sol panel qlobal naviqasiyadır: layihənin İÇİNDƏ olanda orada «Layihələrim»
     // işıqlanır (Roomix-də də belədir), konkret bölmə isə yuxarı tabda vurğulanır.
     $navActive = $project ? 'projects' : ($active ?? 'projects');
-    $tabActive = $active;
+    $tabActive = $project ? $sectionNav->activeSection($active) : null;
 
     // Tab bar, səhifə başlığı və <main> EYNİ konteynerdən keçir — əks halda geniş
     // ekranda tablar sol kənardan, məzmun isə mərkəzdən başlayırdı.
@@ -131,19 +120,42 @@
                 @endauth
             </div>
         </div>
-        {{-- Mobil: layihə daxilindəykən tablar, əks halda qlobal naviqasiya. --}}
-        <nav class="flex items-center gap-1 overflow-x-auto border-t border-sidebar-ink/10 px-2 py-2">
-            @foreach (($project ? $tabs : $nav) as $key => [$url, $label, $icon])
-                <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
-                   class="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[14px] font-semibold
-                          {{ ($project ? $tabActive : $navActive) === $key ? 'bg-yellow text-on-yellow' : 'text-sidebar-ink/65' }}">
-                    {{ $label }}
-                    @if ($key === 'chat')
-                        <span data-chat-dot hidden class="absolute -right-0.5 -top-0.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
+        @if ($project)
+            {{-- Mobil: altı bölmə uzun üfüqi sətir əvəzinə YIĞCAM menyudadır
+                 (TZ qəbul meyarı 13). Seçim dəyişəndə həmin bölmə açılır. Çat
+                 yanında ayrıca düymədir — bölmə deyil, amma bir toxunuşdadır. --}}
+            <div class="flex items-center gap-2 border-t border-sidebar-ink/10 px-3 py-2" data-section-nav="mobile">
+                <label for="portal-section-select" class="sr-only">{{ t('portal.sections_menu') }}</label>
+                <select id="portal-section-select" onchange="if (this.value) location.href = this.value"
+                        class="h-9 min-w-0 flex-1 rounded-[10px] border border-sidebar-ink/20 bg-sidebar px-3 text-[14px] font-semibold text-sidebar-ink">
+                    @if ($tabActive === null || $tabActive === 'chat')
+                        <option value="" selected disabled>{{ $tabActive === 'chat' ? $chatLink['label'] : t('portal.sections_menu') }}</option>
                     @endif
+                    @foreach ($tabs as $key => $tab)
+                        <option value="{{ $tab['available'] ? $tab['url'] : '' }}" @selected($tabActive === $key) @disabled(! $tab['available'])>{{ $loop->iteration }}. {{ $tab['label'] }}</option>
+                    @endforeach
+                </select>
+                <a href="{{ $chatLink['url'] }}" data-nav-chat
+                   @if ($tabActive === 'chat') aria-current="page" @endif
+                   class="relative flex h-9 shrink-0 items-center gap-1.5 rounded-[10px] px-3 text-[14px] font-semibold
+                          {{ $tabActive === 'chat' ? 'bg-yellow text-on-yellow' : 'text-sidebar-ink/75' }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{ $chatLink['icon'] }}"/></svg>
+                    {{ $chatLink['label'] }}
+                    <span data-chat-dot hidden class="absolute -right-0.5 -top-0.5 inline-block h-2 w-2 rounded-pill bg-danger"></span>
                 </a>
-            @endforeach
-        </nav>
+            </div>
+        @else
+            {{-- Mobil qlobal naviqasiya (layihədən kənar səhifələr). --}}
+            <nav class="flex items-center gap-1 overflow-x-auto border-t border-sidebar-ink/10 px-2 py-2">
+                @foreach ($nav as $key => [$url, $label, $icon])
+                    <a href="{{ $url }}"
+                       class="relative whitespace-nowrap rounded-[10px] px-3 py-1.5 text-[14px] font-semibold
+                              {{ $navActive === $key ? 'bg-yellow text-on-yellow' : 'text-sidebar-ink/65' }}">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </nav>
+        @endif
     </header>
 
     {{-- ── Content ─────────────────────────────────────────────────────── --}}
@@ -211,15 +223,22 @@
                      aralıqlar ~98px, kənarlarda ~57px), sola yığılmır. Ona görə hər
                      tab `flex-1 basis-0` ilə boşluğu bölüşür və məzmunu mərkəzdədir.
                      `min-w-fit` uzun etiketin («Razılaşdırmalar») sıxılıb kəsilməsinin
-                     qarşısını alır; yer çatmasa zolaq sürüşür. --}}
-                <nav class="{{ $container }} flex items-stretch overflow-x-auto" aria-label="{{ $project->name }}">
-                    @foreach ($tabs as $key => [$url, $label, $icon])
-                        <a href="{{ $url }}" @if ($key === 'chat') data-nav-chat @endif
+                     qarşısını alır; yer çatmasa zolaq sürüşür. Altı bölmədən sonra
+                     çat ayrıca (xətlə ayrılmış) keçiddir — bölmə deyil. --}}
+                <nav class="{{ $container }} flex items-stretch overflow-x-auto" aria-label="{{ $project->name }}" data-section-nav="desktop">
+                    @foreach ([...$tabs, 'chat' => $chatLink] as $key => ['url' => $url, 'label' => $label, 'icon' => $icon, 'available' => $available])
+                        @if ($key === 'chat')
+                            <span class="my-3 w-px shrink-0 bg-black/8" aria-hidden="true"></span>
+                        @endif
+                        {{-- Hələ açılmayan bölmə (təqdim edilməmiş brif) strukturda
+                             yerində qalır, amma keçid deyil. --}}
+                        <{{ $available ? 'a' : 'span' }} @if ($available) href="{{ $url }}" @else aria-disabled="true" title="{{ t('portal.section_not_available') }}" @endif
+                           @if ($key === 'chat') data-nav-chat @else data-section="{{ $key }}" @endif
                            @if ($tabActive === $key) aria-current="page" @endif
                            class="flex min-w-fit flex-1 basis-0 flex-col items-center gap-1 border-b-2 px-3 py-2.5 text-[13px] font-semibold transition-colors
                                   {{ $tabActive === $key
                                         ? 'border-yellow text-ink'
-                                        : 'border-transparent text-black/55 hover:text-ink' }}">
+                                        : ($available ? 'border-transparent text-black/55 hover:text-ink' : 'cursor-default border-transparent text-black/30') }}">
                             {{-- Oxunmamış nöqtə ikona bağlıdır: tab enləri bərabər
                                  olmadığı üçün onu tabın sağ kənarına bağlasaq,
                                  etiketdən qopub havada qalırdı. --}}
@@ -230,7 +249,7 @@
                                 @endif
                             </span>
                             <span class="whitespace-nowrap">{{ $label }}</span>
-                        </a>
+                        </{{ $available ? 'a' : 'span' }}>
                     @endforeach
                 </nav>
             </div>

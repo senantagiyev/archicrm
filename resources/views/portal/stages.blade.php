@@ -19,7 +19,8 @@
 
     <div class="overflow-hidden rounded-ds-xl border border-black/8 bg-card">
         @forelse ($stages as $stage)
-            <div class="flex flex-col gap-3 border-b border-black/5 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:gap-4">
+            <div id="stage-{{ $stage->id }}" data-stage="{{ $stage->id }}"
+                 class="flex scroll-mt-24 flex-col gap-3 border-b border-black/5 px-5 py-4 last:border-0 sm:flex-row sm:items-center sm:gap-4">
                 <span @class([
                     'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-helper font-semibold',
                     $chip($stage->status),
@@ -29,8 +30,21 @@
 
                 <div class="min-w-0 flex-1">
                     <p class="truncate text-body font-semibold">{{ $stage->name }}</p>
-                    @if ($stage->date_plan_end)
-                        <p class="mt-0.5 text-helper text-black/55">{{ $stage->date_plan_end->format('d.m.Y') }}</p>
+                    {{-- Plan tarixləri: başlanğıc — bitmə. Gecikmə plan bitməsinə görədir. --}}
+                    @if ($stage->date_plan_start || $stage->date_plan_end)
+                        <p class="mt-0.5 text-helper text-black/55">
+                            {{ t('portal.stage_plan') }}: {{ $stage->date_plan_start?->format('d.m.Y') ?? '…' }} — {{ $stage->date_plan_end?->format('d.m.Y') ?? '…' }}
+                        </p>
+                    @endif
+                    {{-- «Materiallar — N» → «Fayllar» bu mərhələyə görə süzülmüş.
+                         Yalnız müştəriyə dərc edilmiş materiallar sayılır. --}}
+                    @if ($stage->published_materials_count > 0)
+                        <a href="{{ route('portal.files', [$project, 'stage' => $stage->id]) }}" data-stage-materials="{{ $stage->id }}"
+                           class="mt-1.5 inline-flex items-center gap-1 text-helper font-semibold text-ink underline underline-offset-2">
+                            {{ t('portal.stage_materials', ['count' => $stage->published_materials_count]) }} · {{ t('portal.stage_open_materials') }} →
+                        </a>
+                    @else
+                        <p class="mt-1.5 text-helper text-black/45" data-stage-materials="{{ $stage->id }}">{{ t('portal.stage_materials', ['count' => 0]) }}</p>
                     @endif
                 </div>
 
@@ -44,7 +58,7 @@
                         </span>
                     @endif
                     <span @class(['rounded-pill px-3 py-1 text-helper font-medium', $chip($stage->status)])>
-                        {{ $stage->status->label() }}
+                        {{ $stage->status->translatedLabel() }}
                     </span>
                 </span>
             </div>

@@ -8,8 +8,8 @@ use App\Enums\DeliverableVersionStatus;
 use App\Filament\Concerns\OptimisticLock;
 use App\Models\User;
 use App\Rules\SafeUpload;
-use App\Services\Approvals\ApprovalService;
 use App\Services\Design\DeliverableService;
+use App\Services\Design\MaterialService;
 use Filament\Actions;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -131,10 +131,13 @@ class DeliverablesRelationManager extends RelationManager
                         && $record->currentVersion?->status !== DeliverableVersionStatus::Locked)
                     ->requiresConfirmation()
                     ->modalDescription('Cari versiya müştəriyə razılaşdırma üçün göndəriləcək.')
-                    ->action(function ($record, ApprovalService $service) {
-                        $record->update(['client_visible' => true]);
-                        $service->request($record, auth()->user());
-                    })
+                    // Material kartları ilə eyni yol: cari versiya dərc edilir və
+                    // razılaşdırma HƏMİN versiyaya bağlanır.
+                    ->action(fn ($record, MaterialService $service) => $service->sendForApproval(
+                        $record,
+                        $record->currentVersion,
+                        auth()->user(),
+                    ))
                     ->successNotificationTitle('Razılaşdırmaya göndərildi'),
                 Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
                 Actions\DeleteAction::make()

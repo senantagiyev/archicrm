@@ -1565,7 +1565,8 @@ class DocsApprovalsTest extends TestCase
                 'room' => 'Mətbəx',
                 'priority' => PunchIssuePriority::High->value,
                 'status' => PunchIssueStatus::Open->value,
-                'photo_url' => UploadedFile::fake()->image('qusur.jpg', 20, 20),
+                // İradlar (köhnə Punch List) artıq bir neçə foto qəbul edir.
+                'photos' => [UploadedFile::fake()->image('qusur.jpg', 20, 20)],
             ])
             ->callMountedTableAction()
             ->assertHasNoTableActionErrors();
@@ -1573,10 +1574,11 @@ class DocsApprovalsTest extends TestCase
         $issue = $this->inTenant(fn () => PunchListIssue::where('title', 'Kafel çatı')->first());
 
         $this->assertNotNull($issue, 'Qüsur yaradılmadı.');
-        $this->assertNotNull($issue->photo_url, 'Foto yolu yazılmadı.');
+        $photo = $issue->photoPaths()[0] ?? null;
+        $this->assertNotNull($photo, 'Foto yolu yazılmadı.');
         $this->assertTrue(
-            Storage::disk('public')->exists($issue->photo_url),
-            'Punch list fotosu `public` diskində yoxdur: '.$issue->photo_url,
+            Storage::disk('public')->exists($photo),
+            'Punch list fotosu `public` diskində yoxdur: '.$photo,
         );
 
         // Statusu dəyişmək YAZMA əməliyyatıdır: üzv olmayan rol edə bilməməlidir.

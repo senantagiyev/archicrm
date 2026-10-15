@@ -25,12 +25,18 @@ class ProcurementController extends Controller
 {
     use ResolvesClientProjects;
 
-    /** CSV başlıqları — səhifə cədvəli ilə eyni sıra (foto CSV-də verilmir). */
+    /**
+     * CSV başlıqları (foto və əlavə fayllar CSV-də verilmir). Spesifikasiyadan
+     * gələn sahələr (brend, model, xüsusiyyətlər, seçim statusu) SONA əlavə
+     * olunub — köhnə sütunların yeri dəyişmir, əvvəlki ixracla uyğun qalır.
+     * Təchizatçı mayası (`supplier_cost`) daxilidir və heç vaxt ixraca düşmür.
+     */
     private const CSV_HEADERS = [
         'Ad', 'Analoq', 'Kateqoriya', 'Otaq', 'Ölçü vahidi', 'Say',
         'Vahidin qiyməti', 'Cəmi', 'Endirim %', 'Endirimlə', 'Mövcudluq',
         'Razılaşdırma', 'Alınıb', 'Çatdırılma', 'Keçid',
         'Çatdırılma/quraşdırma', 'Ehtiyat %', 'Şərh',
+        'Brend', 'Model', 'Xüsusiyyətlər', 'Seçim statusu',
     ];
 
     public function index(int $project)
@@ -100,11 +106,16 @@ class ProcurementController extends Controller
                     // Yalnız müştəri üçün nəzərdə tutulan şərh; `cancel_comment`
                     // (daxili ləğv səbəbi) qəsdən ixraca DÜŞMÜR.
                     $item->comment ?? '',
+                    $item->brand ?? '',
+                    $item->model ?? '',
+                    $item->characteristics ?? '',
+                    $item->selection_status?->label() ?? '',
                 ]), ';');
             }
 
             // Yekun sətirləri: faylı Excel-də açan adam cəmi əl ilə yığmasın.
-            $pad = fn (array $tail) => array_pad($tail, -count(self::CSV_HEADERS), '');
+            // Yer əvvəlki kimidir (sonuncu köhnə sütunlar), yeni sütunlar boş.
+            $pad = fn (array $tail) => array_pad(array_pad($tail, -18, ''), count(self::CSV_HEADERS), '');
 
             fputcsv($out, $pad(['Endirimdən əvvəl', $this->money($totalBeforeDiscount)]), ';');
             fputcsv($out, $pad(['Endirimlə', $this->money($totalWithDiscount)]), ';');
@@ -134,6 +145,40 @@ class ProcurementController extends Controller
         abort_unless(self::readableOnPublicDisk($record->photo_path), 404, 'Foto tapılmadı.');
 
         return $this->imageResponse($record->photo_path);
+    }
+
+    /**
+     * Pozisiyanın əlavəsi (şəkil / texniki sənəd) — foto ilə eyni qayda:
+     * müştəri sərhədi + `visible_to_client`, indeks yalnız sətrin öz
+     * massivindən. Rastr şəkil inline açılır, qalanı endirilir.
+     */
+    public function attachment(int $project, int $item, int $index)
+    {
+        $project = $this->clientProject($project);
+
+        $record = $this->clientItemsQuery($project)->findOrFail($item);
+
+        $path = self::attachmentPaths($record)[$index] ?? null;
+
+        abort_if($path === null, 404);
+        abort_unless(self::readableOnPublicDisk($path), 404, 'Fayl tapılmadı.');
+
+        return $this->imageResponse($path);
+    }
+
+    /**
+     * `attachments` sütunu FileUpload-dan yol siyahısıdır; köçürülmüş köhnə
+     * sətirlərdə `['path' => …]` forması da ola bilər.
+     *
+     * @return list<string>
+     */
+    public static function attachmentPaths(ProcurementItem $item): array
+    {
+        return collect($item->attachments ?? [])
+            ->map(fn ($file) => is_array($file) ? ($file['path'] ?? null) : $file)
+            ->filter(fn ($path) => is_string($path) && $path !== '')
+            ->values()
+            ->all();
     }
 
     /**

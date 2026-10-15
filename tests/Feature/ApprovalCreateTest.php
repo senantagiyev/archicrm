@@ -3,13 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\DeliverableType;
 use App\Enums\ProjectStatus;
 use App\Filament\Resources\ApprovalResource\Pages\ListApprovals;
 use App\Filament\Resources\ProjectResource;
 use App\Filament\Resources\ProjectResource\Pages\EditProject;
 use App\Filament\Resources\ProjectResource\RelationManagers\ApprovalsRelationManager;
+use App\Filament\Resources\ProjectResource\RelationManagers\MaterialsRelationManager;
 use App\Models\Approval;
-use App\Models\Document;
+use App\Models\Deliverable;
 use App\Models\User;
 use App\Notifications\ApprovalRequested;
 use App\Services\Approvals\ApprovalService;
@@ -88,7 +90,7 @@ class ApprovalCreateTest extends TestCase
                 'project_id' => $project->id,
                 'subject_type' => ApprovalService::SUBJECT_UPLOAD,
                 'title' => 'Qonaq otağının planı',
-                'document_type' => 'drawing',
+                'material_type' => 'drawing',
                 'file_path' => UploadedFile::fake()->createWithContent('plan.pdf', $bytes),
                 'note' => 'Divarların yerinə baxın.',
                 'respond_by' => now()->addDays(5)->toDateString(),
@@ -104,22 +106,28 @@ class ApprovalCreateTest extends TestCase
         $this->assertSame(1, $approval->version);
         $this->assertSame('Divarların yerinə baxın.', $approval->note);
         $this->assertSame(now()->addDays(5)->toDateString(), $approval->respond_by->toDateString());
-        $this->assertInstanceOf(Document::class, $approval->approvable);
-        $this->assertTrue($approval->approvable->visible_to_client, 'Müştəri təsdiqlədiyi faylı görməlidir.');
-        $this->assertSame('Sənəd: Qonaq otağının planı', $approval->subjectLabel());
+        // Yeni fayl «Fayllar»da material kartı olur (TZ «Layihə naviqasiyası»):
+        // ilk versiya dərc olunur və konkret o versiya razılaşdırmaya gedir.
+        $material = $approval->approvable;
+        $this->assertInstanceOf(Deliverable::class, $material);
+        $this->assertSame(DeliverableType::Drawing, $material->type);
+        $this->assertNotNull($material->published_version_id, 'Müştəri təsdiqlədiyi faylı görməlidir.');
+        $this->assertSame($material->published_version_id, $approval->deliverable_version_id);
+        $this->assertSame('Material: Qonaq otağının planı', $approval->subjectLabel());
         $this->assertSame($this->studio->tenant->id, $approval->tenant_id);
 
         Notification::assertSentTo($this->studio->portalUser, ApprovalRequested::class);
 
         // Portal: kart, qeyd və fayl linki görünür; fayl açılır; qərar verilir.
+        $fileUrl = route('portal.materials.download', [$project->id, $material->id, $material->published_version_id, 0]);
         $portal = $this->actingAs($this->studio->portalUser, 'customer');
         $portal->get(route('portal.approvals', $project->id))
             ->assertOk()
-            ->assertSee('Sənəd: Qonaq otağının planı')
+            ->assertSee('Material: Qonaq otağının planı')
             ->assertSee('Divarların yerinə baxın.')
-            ->assertSee(route('portal.documents.download', [$project->id, $approval->approvable->id]), false);
+            ->assertSee($fileUrl, false);
 
-        $download = $portal->get(route('portal.documents.download', [$project->id, $approval->approvable->id]));
+        $download = $portal->get($fileUrl);
         $download->assertOk();
         $this->assertSame($bytes, $download->streamedContent());
 
@@ -206,16 +214,20 @@ class ApprovalCreateTest extends TestCase
         );
     }
 
-    public function test_the_project_page_has_an_approvals_tab_with_the_create_button(): void
+    /**
+     * TZ «Layihə naviqasiyası»: ayrıca «Razılaşdırmalar» tabı yoxdur —
+     * razılaşdırma materialın yanındadır («Fayllar» → kart → «Razılaşdırmaya göndər»).
+     */
+    public function test_approvals_live_next_to_the_materials_on_the_project_page(): void
     {
         $this->asStaff('owner');
 
-        $index = array_search(ApprovalsRelationManager::class, ProjectResource::getRelations(), true);
-        $this->assertIsInt($index, 'Layihə səhifəsində «Razılaşdırmalar» tabı yoxdur.');
+        $this->assertNotContains(ApprovalsRelationManager::class, ProjectResource::getRelations());
+        $this->assertSame(MaterialsRelationManager::class, ProjectResource::getRelations()['materials']);
 
-        $this->get(ProjectResource::getUrl('edit', ['record' => $this->studio->project]).'?relation='.$index)
+        $this->get(ProjectResource::getUrl('edit', ['record' => $this->studio->project]).'?relation=materials')
             ->assertOk()
-            ->assertSee('Razılaşdırma yarat');
+            ->assertSee('Yeni material');
     }
 
     public function test_an_archived_project_is_not_offered(): void

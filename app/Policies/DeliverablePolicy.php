@@ -37,8 +37,13 @@ class DeliverablePolicy
         return $this->allowsOn($user, $record->project, AccessLevel::Edit, $record->project_id);
     }
 
+    /**
+     * Müştərinin təsdiqlədiyi versiyası olan material silinmir — qərar və fayl
+     * tarixçədə qalmalıdır (yeni iş yalnız yeni versiya ilə gedir).
+     */
     public function delete(User $user, Deliverable $record): bool
     {
-        return $this->allowsOn($user, $record->project, AccessLevel::Edit, $record->project_id);
+        return $this->allowsOn($user, $record->project, AccessLevel::Edit, $record->project_id)
+            && ! $record->hasApprovedVersion();
     }
 }

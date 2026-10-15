@@ -193,7 +193,9 @@ class PortalProcurementTest extends TestCase
         $header = str_replace('"', '', rtrim(strtok(substr($csv, 3), "\n"), "\r"));
         $this->assertSame(
             'Ad;Analoq;Kateqoriya;Otaq;Ölçü vahidi;Say;Vahidin qiyməti;Cəmi;Endirim %;Endirimlə;'
-            .'Mövcudluq;Razılaşdırma;Alınıb;Çatdırılma;Keçid;Çatdırılma/quraşdırma;Ehtiyat %;Şərh',
+            .'Mövcudluq;Razılaşdırma;Alınıb;Çatdırılma;Keçid;Çatdırılma/quraşdırma;Ehtiyat %;Şərh;'
+            // Spesifikasiya ilə birləşmədən gələn sahələr sona əlavə olunub.
+            .'Brend;Model;Xüsusiyyətlər;Seçim statusu',
             $header
         );
 

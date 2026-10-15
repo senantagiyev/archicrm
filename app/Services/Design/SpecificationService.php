@@ -2,6 +2,7 @@
 
 namespace App\Services\Design;
 
+use App\Enums\SelectionStatus;
 use App\Enums\SpecificationStatus;
 use App\Models\ProcurementItem;
 use App\Models\SpecificationItem;
@@ -34,13 +35,18 @@ class SpecificationService
             $procurement = ProcurementItem::create([
                 'project_id' => $item->project_id,
                 'name' => $item->product_name,
+                'brand' => $item->brand,
+                'model' => $item->model,
                 'category' => $item->category->label(),
                 'room' => $item->room,
+                'unit' => $item->unit,
                 'price' => $item->client_price,
+                'supplier_cost' => $item->supplier_cost,
                 'qty' => $item->quantity,
                 'store' => $item->supplier,
                 'url' => $item->link,
                 'photo_path' => $item->image,
+                'selection_status' => SelectionStatus::Selected,
             ]);
 
             $item->forceFill([

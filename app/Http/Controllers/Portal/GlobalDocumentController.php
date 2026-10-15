@@ -23,7 +23,7 @@ class GlobalDocumentController extends Controller
 
         $documents = Document::query()
             ->whereIn('project_id', $projectIds)
-            ->where('visible_to_client', true)
+            ->visibleToClient()
             ->with('project')
             ->latest()
             ->get();

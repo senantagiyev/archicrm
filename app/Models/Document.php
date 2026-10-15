@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\DocumentType;
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,9 +38,34 @@ class Document extends Model
             ->dontSubmitEmptyLogs();
     }
 
+    /**
+     * Portalda görünən sənədlər.
+     *
+     * Material kartına köçürülmüş sənədin görünürlüyünü artıq material idarə
+     * edir (dərc edilmiş versiya): köhnə `visible_to_client` donmuş tarixçədir
+     * və materialı dərcdən çıxaran heyətin qərarını üstələməməlidir.
+     */
+    public function scopeVisibleToClient(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query): void {
+            $query->where(fn (Builder $q) => $q->whereNull('migrated_deliverable_id')->where('visible_to_client', true))
+                ->orWhereIn('migrated_deliverable_id', Deliverable::query()
+                    ->withoutGlobalScopes()
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('published_version_id')
+                    ->select('id'));
+        });
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /** «Fayllar» material kartı — köhnə linklər bura yönləndirilir. */
+    public function migratedDeliverable(): BelongsTo
+    {
+        return $this->belongsTo(Deliverable::class, 'migrated_deliverable_id');
     }
 
     public function uploadedBy(): MorphTo

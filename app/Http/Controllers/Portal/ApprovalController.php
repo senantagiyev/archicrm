@@ -22,7 +22,7 @@ class ApprovalController extends Controller
 
         $approvals = $project->approvals()
             ->whereIn('status', [ApprovalStatus::Pending->value, ApprovalStatus::Approved->value, ApprovalStatus::Rejected->value])
-            ->with(['approvable'])
+            ->with(['approvable', 'deliverableVersion'])
             // Pending first. Plain SQL rather than MySQL's field(), which made this
             // page — the one screen where the client commits to money — impossible
             // to cover with a test.

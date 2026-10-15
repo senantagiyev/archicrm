@@ -3,6 +3,7 @@
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Staff\ChatController;
 use App\Http\Controllers\Staff\FileController;
+use App\Http\Controllers\Staff\MaterialController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => view('landing'))->name('landing');
@@ -29,6 +30,13 @@ Route::middleware(['auth:web'])->prefix('staff-chat')->name('staff.chat.')->grou
 Route::middleware(['auth:web'])->get('/files/{file}/download', [FileController::class, 'download'])
     ->middleware('throttle:staff-write')
     ->name('files.download');
+
+// «Fayllar» material kartlarının faylları (versiya + fayl indeksi) — eyni qayda:
+// policy (FilesDocuments + layihə üzvlüyü), public disk URL-i yox.
+Route::middleware(['auth:web'])->get('/materials/versions/{version}/files/{index}', [MaterialController::class, 'download'])
+    ->whereNumber('index')
+    ->middleware('throttle:staff-write')
+    ->name('materials.download');
 
 // Unified staff calendar feed (TZ §8.7) — consumed by the Filament Calendar page.
 Route::middleware(['auth:web'])->get('/calendar/events', [CalendarController::class, 'events'])

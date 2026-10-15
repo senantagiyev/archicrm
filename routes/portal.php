@@ -10,6 +10,7 @@ use App\Http\Controllers\Portal\EstimateController;
 use App\Http\Controllers\Portal\FileController;
 use App\Http\Controllers\Portal\GlobalApprovalController;
 use App\Http\Controllers\Portal\GlobalDocumentController;
+use App\Http\Controllers\Portal\MaterialController;
 use App\Http\Controllers\Portal\NotificationController;
 use App\Http\Controllers\Portal\PaymentController;
 use App\Http\Controllers\Portal\ProcurementController;
@@ -55,6 +56,11 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/projects/{project}/stages', [StageController::class, 'index'])->name('stages');
         Route::get('/projects/{project}/files', [FileController::class, 'index'])->name('files');
         Route::get('/projects/{project}/files/{file}/download', [FileController::class, 'download'])->name('files.download');
+        // Material kartının faylı: yalnız dərc edilmiş / razılaşdırmaya göndərilmiş versiya.
+        Route::get('/projects/{project}/materials/{material}/versions/{version}/files/{index}', [MaterialController::class, 'download'])
+            ->whereNumber(['material', 'version', 'index'])
+            ->middleware('throttle:portal-read')
+            ->name('materials.download');
         Route::get('/projects/{project}/diary', [DiaryController::class, 'index'])->name('diary');
         // Foto birbaşa public disk linki ilə verilsəydi, linki bilən kənar şəxs
         // onu sessiyasız aça bilərdi — ona görə avtorizasiyalı marşrutdan keçir.
@@ -76,6 +82,9 @@ Route::prefix('portal')->name('portal.')->group(function () {
             Route::post('/projects/{project}/brief-discuss/{section}', [BriefController::class, 'discuss'])->name('brief.discuss');
             Route::post('/projects/{project}/chat', [ChatController::class, 'send'])->name('chat.send');
             Route::post('/approvals/{approval}/decide', [ApprovalController::class, 'decide'])->name('approvals.decide');
+            // «Fayllar» material kartı: müştərinin dərc edilmiş versiyaya şərhi.
+            Route::post('/projects/{project}/materials/{material}/comments', [MaterialController::class, 'comment'])
+                ->whereNumber('material')->name('materials.comments.store');
         });
 
         // Debounced, idempotent — higher ceiling so fast typing is never blocked.
@@ -98,6 +107,9 @@ Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/projects/{project}/procurement', [ProcurementController::class, 'index'])->middleware('throttle:portal-read')->name('procurement');
         Route::get('/projects/{project}/procurement/export', [ProcurementController::class, 'export'])->middleware('throttle:portal-read')->name('procurement.export');
         Route::get('/projects/{project}/procurement/{item}/photo', [ProcurementController::class, 'photo'])->whereNumber('item')->middleware('throttle:portal-read')->name('procurement.photo');
+        // Pozisiyanın şəkilləri və texniki sənədləri (eyni fayl, təkrar yükləmə yox).
+        Route::get('/projects/{project}/procurement/{item}/attachments/{index}', [ProcurementController::class, 'attachment'])
+            ->whereNumber(['item', 'index'])->middleware('throttle:portal-read')->name('procurement.attachment');
 
         // Polling endpoints — generous read limit.
         Route::middleware('throttle:portal-read')->group(function () {

@@ -25,4 +25,20 @@ enum DocumentType: string
             self::Other => 'Digər',
         };
     }
+
+    /**
+     * Mühasibat sənədləri — «Maliyyə → Müqavilələr və sənədlər»
+     * (`ContractDocumentResource`). Qalan tiplər layihə materiallarıdır.
+     *
+     * @return array<int, self>
+     */
+    public static function accounting(): array
+    {
+        return [self::Contract, self::Act];
+    }
+
+    public function isAccounting(): bool
+    {
+        return in_array($this, self::accounting(), true);
+    }
 }

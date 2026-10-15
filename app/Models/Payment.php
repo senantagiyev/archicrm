@@ -16,7 +16,7 @@ class Payment extends Model
     use BelongsToTenant, HasFactory, HasOptimisticLock, LogsActivity;
 
     protected $fillable = [
-        'project_id', 'title', 'amount', 'due_date', 'paid_at', 'method', 'status',
+        'project_id', 'procurement_item_id', 'title', 'amount', 'due_date', 'paid_at', 'method', 'status',
     ];
 
     protected function casts(): array
@@ -41,13 +41,28 @@ class Payment extends Model
             if ((float) $payment->amount <= 0) {
                 throw new \RuntimeException('Ödənişin məbləği sıfırdan böyük olmalıdır.');
             }
+
+            // Komplektasiya pozisiyasına bağlanan ödəniş həmin pozisiyanın
+            // «faktiki ödənişi» kimi göstərilir. Başqa layihənin (və ya başqa
+            // studiyanın) pozisiyasına bağlamaq yad layihənin göstəricisini
+            // dəyişərdi — forma seçimi məhdudlaşdırır, bura son səddir.
+            if ($payment->procurement_item_id !== null && $payment->isDirty(['procurement_item_id', 'project_id'])) {
+                $itemProject = ProcurementItem::query()
+                    ->withoutGlobalScopes()
+                    ->whereKey($payment->procurement_item_id)
+                    ->value('project_id');
+
+                if ($itemProject === null || (int) $itemProject !== (int) $payment->project_id) {
+                    throw new \RuntimeException('Ödəniş yalnız öz layihəsinin komplektasiya pozisiyasına bağlana bilər.');
+                }
+            }
         });
     }
 
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['title', 'amount', 'status', 'paid_at'])
+            ->logOnly(['title', 'amount', 'status', 'paid_at', 'procurement_item_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -55,5 +70,10 @@ class Payment extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function procurementItem(): BelongsTo
+    {
+        return $this->belongsTo(ProcurementItem::class);
     }
 }

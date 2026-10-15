@@ -18,8 +18,10 @@ class DocumentController extends Controller
     {
         $project = $this->clientProject($project);
 
+        // Material kartına köçürülmüş sənədin görünürlüyünü material idarə edir
+        // (bax `Document::scopeVisibleToClient`); yükləmə linki materiala gedir.
         $documents = $project->documents()
-            ->where('visible_to_client', true)
+            ->visibleToClient()
             ->latest()
             ->get();
 
@@ -68,8 +70,13 @@ class DocumentController extends Controller
         $project = $this->clientProject($project);
 
         $document = $project->documents()
-            ->where('visible_to_client', true)
+            ->visibleToClient()
             ->findOrFail($document);
+
+        // Köçürülmüş sənəd: köhnə link materialın dərc edilmiş versiyasına gedir.
+        if ($document->migrated_deliverable_id !== null) {
+            return FileController::redirectToPublished($project->id, $document->migrated_deliverable_id);
+        }
 
         $ext = pathinfo($document->file_path, PATHINFO_EXTENSION);
         $name = Str::of($document->title)->ascii()->replaceMatches('/[^A-Za-z0-9 _-]/', '')->trim();

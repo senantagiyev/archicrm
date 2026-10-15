@@ -24,7 +24,7 @@ class DeliverableVersionPolicy
 
     public function view(User $user, DeliverableVersion $version): bool
     {
-        return $this->allowsOn($user, $version->deliverable?->project, AccessLevel::View, $version->deliverable?->project_id);
+        return $this->allowsOnMaterial($user, $version, AccessLevel::View);
     }
 
     public function create(User $user): bool
@@ -34,11 +34,27 @@ class DeliverableVersionPolicy
 
     public function update(User $user, DeliverableVersion $version): bool
     {
-        return $this->allowsOn($user, $version->deliverable?->project, AccessLevel::Edit, $version->deliverable?->project_id);
+        return $this->allowsOnMaterial($user, $version, AccessLevel::Edit);
     }
 
     public function delete(User $user, DeliverableVersion $version): bool
     {
-        return $this->allowsOn($user, $version->deliverable?->project, AccessLevel::Edit, $version->deliverable?->project_id);
+        return $this->allowsOnMaterial($user, $version, AccessLevel::Edit);
+    }
+
+    /**
+     * Silinmiş (soft-delete) materialın versiyası «layihəsiz qeyd» kimi oxunmamalıdır:
+     * `allowsOn(null, null)` domen səviyyəsi ilə icazə verir və layihə üzvlüyü
+     * yoxlanmırdı — yəni yad layihənin silinmiş materialının faylı açılardı.
+     */
+    private function allowsOnMaterial(User $user, DeliverableVersion $version, AccessLevel $minimum): bool
+    {
+        $deliverable = $version->deliverable;
+
+        if ($deliverable === null) {
+            return false;
+        }
+
+        return $this->allowsOn($user, $deliverable->project, $minimum, $deliverable->project_id);
     }
 }

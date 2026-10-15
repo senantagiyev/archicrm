@@ -18,13 +18,17 @@ class Stage extends Model
     protected $fillable = [
         'project_id', 'name', 'position',
         'date_plan_start', 'date_plan_end', 'date_fact_start', 'date_fact_end',
-        'status', 'responsible_user_id', 'readiness', 'weight',
+        'status', 'responsible_user_id', 'readiness', 'weight', 'default_categories',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => StageStatus::class,
+            // Material kateqoriyaları (DeliverableType dəyərləri), bu mərhələnin
+            // layihə daxilində STANDART mərhələ olduğu — kontekstsiz yükləmədə
+            // kateqoriya seçiləndə mərhələ buradan avtomatik dolur.
+            'default_categories' => 'array',
             'date_plan_start' => 'date',
             'date_plan_end' => 'date',
             'date_fact_start' => 'date',
@@ -53,6 +57,12 @@ class Stage extends Model
     public function tasks(): HasMany
     {
         return $this->hasMany(Task::class);
+    }
+
+    /** Mərhələyə bağlı materiallar («Fayllar»da saxlanılır, burada yalnız əlaqə). */
+    public function deliverables(): HasMany
+    {
+        return $this->hasMany(Deliverable::class);
     }
 
     /** TZ §5.10: overdue when the plan end date passed and the stage is not done. */

@@ -165,12 +165,19 @@ class ProjectMembersAttachTest extends TestCase
         $this->assertFalse($this->studio->project->members()->whereKey($designer->id)->exists());
     }
 
+    /**
+     * TZ «Layihə naviqasiyası»: İcmal (səhifənin öz məzmunu), sonra Brif,
+     * Mərhələlər, Fayllar, Komplektasiya, Müəllif nəzarəti. Komanda tab deyil —
+     * «Layihə parametrləri» səhifəsindədir.
+     */
     public function test_brief_is_the_first_tab_and_stages_the_second(): void
     {
         $relations = ProjectResource::getRelations();
 
-        $this->assertSame(BriefAnswersRelationManager::class, $relations[0]);
-        $this->assertSame(StagesRelationManager::class, $relations[1]);
+        $this->assertSame(['brief', 'stages', 'materials', 'procurement', 'supervision'], array_keys($relations));
+        $this->assertSame(BriefAnswersRelationManager::class, $relations['brief']);
+        $this->assertSame(StagesRelationManager::class, $relations['stages']);
+        $this->assertNotContains(MembersRelationManager::class, $relations);
     }
 
     /** @return array<int|string, string> */

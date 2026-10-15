@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Staff;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProjectFile;
+use App\Support\MaterialFiles;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -16,11 +18,22 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
  */
 class FileController extends Controller
 {
-    public function download(ProjectFile $file): StreamedResponse
+    public function download(ProjectFile $file): StreamedResponse|RedirectResponse
     {
         Gate::authorize('view', $file);
 
-        abort_unless(Storage::disk('public')->exists($file->file_path), 404, 'Fayl tapılmadı.');
+        // Material kartına köçürülmüş fayl: köhnə link materialın HƏMİN faylına
+        // yönləndirilir (köçürmənin yaratdığı birinci versiya). Hədəf marşrut
+        // policy-ni yenidən yoxlayır.
+        if ($file->migrated_deliverable_id !== null) {
+            $version = $file->migratedDeliverable?->versions()->reorder()->orderBy('version_number')->first();
+
+            abort_if($version === null, 404, 'Fayl tapılmadı.');
+
+            return redirect()->route('materials.download', ['version' => $version, 'index' => 0]);
+        }
+
+        abort_unless(MaterialFiles::readable($file->file_path), 404, 'Fayl tapılmadı.');
 
         return Storage::disk('public')->download(
             $file->file_path,

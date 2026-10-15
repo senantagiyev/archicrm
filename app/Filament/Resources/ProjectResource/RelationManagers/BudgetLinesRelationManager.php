@@ -2,16 +2,18 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
-use App\Enums\ApprovalStatus;
-use App\Filament\Concerns\OptimisticLock;
-use App\Services\Approvals\ApprovalService;
+use App\Filament\Resources\BudgetLineResource;
 use Filament\Actions;
-use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
-use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * Köhnə layihə tabı. Smeta artıq «Maliyyə → Smeta»-dadır
+ * (`BudgetLineResource`); forma, cədvəl və razılaşdırma action-ları oradan
+ * gəlir ki, iki nüsxə bir-birindən ayrılmasın.
+ */
 class BudgetLinesRelationManager extends RelationManager
 {
     protected static bool $isLazy = false;
@@ -24,117 +26,20 @@ class BudgetLinesRelationManager extends RelationManager
 
     public function form(Schema $form): Schema
     {
-        return $form->schema([
-            Forms\Components\TextInput::make('work_type')
-                ->label('İş növü')
-                ->required()
-                ->maxLength(191)
-                ->columnSpanFull(),
-            Forms\Components\TextInput::make('room')
-                ->label('Otaq')
-                ->maxLength(191),
-            Forms\Components\TextInput::make('unit')
-                ->label('Vahid')
-                ->placeholder('m² / ədəd / m')
-                ->maxLength(16),
-            Forms\Components\TextInput::make('qty')
-                ->label('Miqdar / həcm')
-                ->numeric()
-                ->default(1)
-                ->minValue(0)
-                ->required(),
-            Forms\Components\TextInput::make('work_price')
-                ->label('İşin qiyməti')
-                ->numeric()
-                ->default(0)
-                ->minValue(0)
-                ->suffix('₼'),
-            Forms\Components\TextInput::make('material_price')
-                ->label('Materialın qiyməti')
-                ->numeric()
-                ->default(0)
-                ->minValue(0)
-                ->suffix('₼'),
-            Forms\Components\Toggle::make('visible_to_client')
-                ->label('Sifarişçiyə görünür')
-                ->helperText('Yalnız yekun məbləğ göstərilir; iş/material qiymətləri müştəriyə heç vaxt ötürülmür.')
-                ->inline(false),
-        ])->columns(2);
+        return $form->schema(BudgetLineResource::formFields(withProject: false))->columns(2);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('work_type')
-                    ->label('İş növü')
-                    ->searchable()
-                    ->wrap(),
-                Tables\Columns\TextColumn::make('room')
-                    ->label('Otaq'),
-                Tables\Columns\TextColumn::make('qty')
-                    ->label('Miqdar')
-                    ->numeric(2),
-                Tables\Columns\TextColumn::make('work_price')
-                    ->label('İş')
-                    ->money('AZN'),
-                Tables\Columns\TextColumn::make('material_price')
-                    ->label('Material')
-                    ->money('AZN'),
-                Tables\Columns\TextColumn::make('total')
-                    ->label('Cəmi')
-                    ->money('AZN')
-                    ->weight('bold')
-                    ->summarize(Tables\Columns\Summarizers\Sum::make()->money('AZN')->label('Cəm')),
-                Tables\Columns\IconColumn::make('visible_to_client')
-                    ->label('Müştəriyə')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-eye')
-                    ->falseIcon('heroicon-o-eye-slash')
-                    ->tooltip(fn ($record) => $record->visible_to_client ? 'Müştəri yekun məbləği görür' : 'Müştəriyə görünmür'),
-                Tables\Columns\TextColumn::make('approval_status')
-                    ->label('Razılaşma')
-                    ->badge()
-                    ->formatStateUsing(fn (ApprovalStatus $state) => $state->label())
-                    ->color(fn (ApprovalStatus $state) => $state->color()),
-            ])
+            ->modifyQueryUsing(fn (Builder $query) => $query->with('stage'))
+            ->columns(BudgetLineResource::tableColumns(withProject: false))
             ->defaultSort('position')
-            ->filters([
-                Tables\Filters\SelectFilter::make('approval_status')
-                    ->label('Razılaşma statusu')
-                    ->options(collect(ApprovalStatus::cases())->mapWithKeys(fn ($s) => [$s->value => $s->label()])),
-            ])
+            ->filters(BudgetLineResource::tableFilters())
             ->headerActions([
                 Actions\CreateAction::make()->label('Sətir əlavə et'),
             ])
-            ->actions([
-                Actions\Action::make('requestApproval')
-                    ->label('Razılaşdırmaya göndər')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->visible(fn ($record) => in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)
-                        && auth()->user()->can('update', $record))
-                    ->requiresConfirmation()
-                    ->modalDescription('Sətir sifarişçiyə razılaşdırma üçün göndəriləcək və ona bildiriş gedəcək.')
-                    ->action(fn ($record, ApprovalService $service) => $service->request($record, auth()->user())),
-                Actions\EditAction::make()->using(OptimisticLock::updateUsing()),
-                Actions\DeleteAction::make()
-                    ->requiresConfirmation()
-                    ->hidden(fn ($record) => $record->approval_status === ApprovalStatus::Approved),
-            ])
-            ->bulkActions([
-                Actions\BulkAction::make('requestApprovalBulk')
-                    ->label('Razılaşdırmaya göndər')
-                    ->icon('heroicon-o-paper-airplane')
-                    ->requiresConfirmation()
-                    ->deselectRecordsAfterCompletion()
-                    ->action(function ($records, ApprovalService $service) {
-                        foreach ($records as $record) {
-                            if (in_array($record->approval_status, [ApprovalStatus::Draft, ApprovalStatus::Rejected], true)
-                                && auth()->user()->can('update', $record)) {
-                                $service->request($record, auth()->user());
-                            }
-                        }
-                    }),
-            ]);
+            ->actions(BudgetLineResource::tableActions(inRelationManager: true))
+            ->bulkActions(BudgetLineResource::tableBulkActions());
     }
 }

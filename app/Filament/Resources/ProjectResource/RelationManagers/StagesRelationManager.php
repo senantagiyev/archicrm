@@ -2,7 +2,12 @@
 
 namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
+use App\Enums\DeliverableType;
 use App\Enums\StageStatus;
+use App\Filament\Actions\ChangesAndDecisionsAction;
+use App\Filament\Resources\ProjectResource;
+use App\Models\Deliverable;
+use App\Models\Stage;
 use App\Models\StageTemplate;
 use App\Models\User;
 use App\Services\Stages\StageTemplateService;
@@ -69,6 +74,15 @@ class StagesRelationManager extends RelationManager
                 ->label('Sıra')
                 ->numeric()
                 ->default(fn () => ($this->getOwnerRecord()->stages()->max('position') ?? 0) + 1),
+            // «Fayllar»: bu kateqoriyalı material mərhələ kontekstindən kənar
+            // yüklənəndə mərhələ avtomatik bu mərhələ seçilir (şablondan da gəlir).
+            Forms\Components\Select::make('default_categories')
+                ->label('Standart material kateqoriyaları')
+                ->options(DeliverableType::options())
+                ->multiple()
+                ->native(false)
+                ->helperText('Bu kateqoriyalı materiallar yüklənəndə mərhələ avtomatik bu mərhələ seçilir.')
+                ->columnSpanFull(),
         ])->columns(2);
     }
 
@@ -105,6 +119,11 @@ class StagesRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('tasks_count')
                     ->label('Tapşırıqlar')
                     ->counts('tasks'),
+                // Materiallar «Fayllar»da saxlanılır; burada yalnız əlaqənin sayı.
+                Tables\Columns\TextColumn::make('deliverables_count')
+                    ->label('Materiallar')
+                    ->counts('deliverables')
+                    ->url(fn ($record) => self::materialsUrl($record)),
             ])
             ->headerActions([
                 Actions\Action::make('applyTemplate')
@@ -142,10 +161,33 @@ class StagesRelationManager extends RelationManager
                 Actions\CreateAction::make()->label('Mərhələ əlavə et'),
             ])
             ->actions([
-                Actions\EditAction::make(),
-                Actions\DeleteAction::make()
-                    ->requiresConfirmation()
-                    ->modalDescription('Mərhələ tapşırıqları ilə birlikdə silinəcək.'),
+                // «Fayllar» bölməsini bu mərhələ süzgəci ilə açır (aktiv süzgəc
+                // görünür və sıfırlanır). Yükləmə orada mərhələni avtomatik seçir.
+                Actions\Action::make('openMaterials')
+                    ->label('Materialları aç')
+                    ->icon('heroicon-o-folder-open')
+                    ->color('gray')
+                    ->visible(fn () => auth()->user()?->can('viewAny', Deliverable::class))
+                    ->url(fn ($record) => self::materialsUrl($record)),
+                // Qalanları menyuda — sətir üfüqi sürüşməsin (smoke test).
+                Actions\ActionGroup::make([
+                    // Bu mərhələnin dəyişiklik sorğuları və qərarları (TZ §9).
+                    ChangesAndDecisionsAction::make(),
+                    Actions\EditAction::make(),
+                    Actions\DeleteAction::make()
+                        ->requiresConfirmation()
+                        ->modalDescription('Mərhələ tapşırıqları ilə birlikdə silinəcək.'),
+                ]),
             ]);
+    }
+
+    /**
+     * «Fayllar» tabı bu mərhələ süzgəci ilə (`?relation=materials&stage=ID`).
+     * Materialın surəti yaradılmır — eyni kart ümumi siyahıda da açılır.
+     */
+    public static function materialsUrl(Stage $stage): string
+    {
+        return ProjectResource::getUrl('edit', ['record' => $stage->project_id])
+            .'?'.http_build_query(['relation' => 'materials', 'stage' => $stage->id]);
     }
 }

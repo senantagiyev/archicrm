@@ -4,6 +4,7 @@ namespace App\Filament\Resources;
 
 use App\Enums\PurchaseOrderStatus;
 use App\Filament\Resources\PurchaseOrderResource\Pages;
+use App\Models\ProcurementItem;
 use App\Models\Project;
 use App\Models\PurchaseOrder;
 use App\Models\Supplier;
@@ -13,6 +14,8 @@ use Filament\Forms;
 use Filament\Forms\Components\Repeater;
 use Filament\Resources\Resource;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -48,6 +51,8 @@ class PurchaseOrderResource extends Resource
                     ->label('Layihə')
                     ->options(fn () => Project::orderBy('name')->pluck('name', 'id'))
                     ->searchable()
+                    // Pozisiya sətirlərindəki «Komplektasiya pozisiyası» seçimi layihədən asılıdır.
+                    ->live()
                     ->native(false),
                 Forms\Components\Select::make('status')
                     ->label('Status')
@@ -71,6 +76,33 @@ class PurchaseOrderResource extends Resource
                 Repeater::make('items')
                     ->label('')
                     ->schema([
+                        // Komplektasiya ilə AÇIQ əlaqə: bu sətrin dəyəri (say ×
+                        // qiymət) pozisiyanın «Sifariş dəyəri» göstəricisidir
+                        // (`ProcurementValueService`). Pozisiyanın plan qiyməti
+                        // bundan dəyişmir — ad/say yalnız boş olduqda doldurulur.
+                        Forms\Components\Select::make('procurement_item_id')
+                            ->label('Komplektasiya pozisiyası')
+                            ->options(fn (Get $get) => static::procurementOptions($get('../../project_id')))
+                            ->in(fn (Get $get) => array_keys(static::procurementOptions($get('../../project_id'))))
+                            ->searchable()
+                            ->native(false)
+                            ->live()
+                            ->afterStateUpdated(function (Get $get, Set $set, $state): void {
+                                $item = filled($state) ? ProcurementItem::query()->find($state) : null;
+
+                                if ($item === null) {
+                                    return;
+                                }
+
+                                if (blank($get('name'))) {
+                                    $set('name', $item->name);
+                                }
+
+                                if (blank($get('qty')) || (float) $get('qty') === 1.0) {
+                                    $set('qty', (float) $item->qty);
+                                }
+                            })
+                            ->columnSpanFull(),
                         Forms\Components\TextInput::make('name')
                             ->label('Ad')
                             ->required(),
@@ -216,5 +248,19 @@ class PurchaseOrderResource extends Resource
         }
 
         return $query;
+    }
+
+    /** @return array<int, string> sifarişin öz layihəsinin komplektasiya pozisiyaları */
+    public static function procurementOptions(mixed $projectId): array
+    {
+        if (blank($projectId)) {
+            return [];
+        }
+
+        return ProcurementItem::query()
+            ->where('project_id', (int) $projectId)
+            ->orderBy('name')
+            ->pluck('name', 'id')
+            ->all();
     }
 }

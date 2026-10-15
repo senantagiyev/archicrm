@@ -11,9 +11,19 @@
             $photos = collect($entry->photos ?? [])->filter()->values();
         @endphp
 
-        <article class="mb-4 rounded-ds-xl border border-black/8 bg-card px-5 py-4 last:mb-0">
+        <article id="entry-{{ $entry->id }}" data-diary-entry="{{ $entry->id }}" class="mb-4 scroll-mt-24 rounded-ds-xl border border-black/8 bg-card px-5 py-4 last:mb-0">
             <div class="mb-2 flex flex-wrap items-center gap-2 text-helper text-black/55">
-                <span class="font-semibold text-black/70">{{ $entry->published_at->format('d.m.Y H:i') }}</span>
+                {{-- Növ (səfər / hesabat) və səfər tarixi; dərc anı ikinci dərəcəlidir. --}}
+                <span @class([
+                    'rounded-pill px-2.5 py-0.5 text-helper font-semibold',
+                    'bg-sel-bg text-ink' => $entry->kind === \App\Enums\DiaryEntryKind::Visit,
+                    'bg-neutral-soft text-black/70' => $entry->kind !== \App\Enums\DiaryEntryKind::Visit,
+                ])>{{ $entry->kind?->translatedLabel() ?? \App\Enums\DiaryEntryKind::Visit->translatedLabel() }}</span>
+                @if ($entry->visited_on)
+                    <span class="font-semibold text-black/70">{{ t('portal.diary_visit_date') }}: {{ $entry->visited_on->format('d.m.Y') }}</span>
+                    <span aria-hidden="true">·</span>
+                @endif
+                <span class="{{ $entry->visited_on ? '' : 'font-semibold text-black/70' }}">{{ $entry->published_at->format('d.m.Y H:i') }}</span>
                 @if ($entry->author)
                     <span aria-hidden="true">·</span>
                     <span>{{ $entry->author->name }}</span>

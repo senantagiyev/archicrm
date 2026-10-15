@@ -4,9 +4,12 @@ namespace App\Filament\Resources\ProjectResource\RelationManagers;
 
 use App\Enums\ApprovalStatus;
 use App\Enums\ChangeRequestStatus;
+use App\Filament\Actions\LinkToSubjectAction;
+use App\Filament\Resources\ProjectResource\RelationManagers\Concerns\ScopesToChangeSubject;
 use App\Models\ChangeRequest;
 use App\Models\User;
 use App\Services\Approvals\ApprovalService;
+use App\Support\ChangeSubjects;
 use Filament\Actions;
 use Filament\Actions\Action;
 use Filament\Forms;
@@ -34,6 +37,8 @@ use RuntimeException;
  */
 class ChangeRequestsRelationManager extends RelationManager
 {
+    use ScopesToChangeSubject;
+
     protected static bool $isLazy = false;
 
     protected static string $relationship = 'changeRequests';
@@ -101,11 +106,18 @@ class ChangeRequestsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->description('Razılaşdırılmış işdən sonra müştərinin istədiyi dəyişikliklər (məs. divarın yerinin dəyişməsi, materialın əvəzlənməsi). Hər sorğuda dəyişikliyin qiymətə və müddətə təsiri yazılır və iş başlamazdan əvvəl müştəri təsdiqi qeyd olunur — sonradan «bunu kim istədi, neçəyə razılaşdıq» sualı yaranmır.')
+            ->description(fn () => $this->isScopedToSubject()
+                ? $this->changeSubjectDescription().' — bu obyektə aid dəyişikliklər. Burada yaradılan sorğu avtomatik ona bağlanır; təsdiq axını (studiya → müştəri portalı) eynidir.'
+                : 'Razılaşdırılmış işdən sonra müştərinin istədiyi dəyişikliklər (məs. divarın yerinin dəyişməsi, materialın əvəzlənməsi). Hər sorğuda dəyişikliyin qiymətə və müddətə təsiri yazılır və iş başlamazdan əvvəl müştəri təsdiqi qeyd olunur — sonradan «bunu kim istədi, neçəyə razılaşdıq» sualı yaranmır.')
             // Siyasət (policy) hər sətir üçün `$record->project`-ə baxır. Əvvəlcədən
             // yüklənməsə, iki və daha çox sorğu olan layihədə qeyri-production
             // mühitdə cədvəl «Attempted to lazy load [project]» ilə çökürdü.
-            ->modifyQueryUsing(fn (Builder $query) => $query->with(['project', 'responsible', 'approvals']))
+            ->modifyQueryUsing(fn (Builder $query) => $this->scopeToChangeSubject(
+                $query->with(['project', 'responsible', 'approvals', 'affectedEntity'])
+            ))
+            // Obyektin panelində (material / mərhələ / irad) başlıq nəyin
+            // sorğularına baxıldığını deyir; ümumi izah orada təkrarlanmır.
+            ->heading(fn () => $this->isScopedToSubject() ? 'Dəyişiklik sorğuları' : null)
             ->columns([
                 Tables\Columns\TextColumn::make('number')->label('Nömrə')->searchable(),
                 Tables\Columns\TextColumn::make('title')
@@ -130,6 +142,14 @@ class ChangeRequestsRelationManager extends RelationManager
                 Tables\Columns\TextColumn::make('responsible.name')
                     ->label('Məsul')
                     ->placeholder('—'),
+                // Ümumi siyahıda: sorğu hansı material / mərhələ / irada aiddir.
+                // Boşdursa — köhnə, əlaqələndirilməmiş qeyddir («Əlaqələndir»).
+                Tables\Columns\TextColumn::make('affected_entity')
+                    ->label('Aid olduğu obyekt')
+                    ->state(fn (ChangeRequest $record) => ChangeSubjects::describe($record->affectedEntity))
+                    ->placeholder('Əlaqələndirilməyib')
+                    ->wrap()
+                    ->hidden(fn () => $this->isScopedToSubject()),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Vəziyyət')->badge()
                     ->formatStateUsing(fn (ChangeRequestStatus $state) => $state->label())
@@ -160,7 +180,7 @@ class ChangeRequestsRelationManager extends RelationManager
                     ->mutateDataUsing(function (array $data): array {
                         $data['requested_by_user_id'] = auth()->id();
 
-                        return $data;
+                        return $this->withChangeSubject($data, ChangeRequest::class);
                     }),
             ])
             ->actions([
@@ -169,6 +189,8 @@ class ChangeRequestsRelationManager extends RelationManager
                     ->icon('heroicon-o-arrow-right-circle')
                     ->button()
                     ->color('primary'),
+                LinkToSubjectAction::make()
+                    ->hidden(fn () => $this->isScopedToSubject()),
                 Actions\EditAction::make()
                     ->hidden(fn (ChangeRequest $record) => $record->status->isLocked()),
                 Actions\DeleteAction::make()

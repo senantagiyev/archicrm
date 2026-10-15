@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\ApprovalResource;
 
+use App\Enums\DeliverableType;
 use App\Enums\DeliverableVersionStatus;
-use App\Enums\DocumentType;
 use App\Enums\ProjectStatus;
 use App\Filament\Resources\ProjectResource;
 use App\Models\Approval;
@@ -98,8 +98,8 @@ class ApprovalRequestForm
                     ApprovalService::SUBJECT_STAGE => 'Mərhələnin nəticəsi',
                 ])
                 ->descriptions([
-                    ApprovalService::SUBJECT_UPLOAD => 'Çertyoj, plan, kollaj və s. — fayl «Sənədlər»ə əlavə olunur və müştəriyə açılır.',
-                    ApprovalService::SUBJECT_DOCUMENT => '«Sənədlər» tabındakı fayl; daxili idisə, müştəriyə açılır.',
+                    ApprovalService::SUBJECT_UPLOAD => 'Çertyoj, plan, kollaj və s. — «Fayllar»da yeni material kartı yaranır və müştəriyə dərc olunur.',
+                    ApprovalService::SUBJECT_DOCUMENT => 'Müqavilə, akt və ya köhnə sənəd; daxili idisə, müştəriyə açılır.',
                     ApprovalService::SUBJECT_DELIVERABLE => 'Smeta və komplektasiya sətirləri öz cədvəllərindən göndərilir.',
                 ])
                 ->default(ApprovalService::SUBJECT_UPLOAD)
@@ -115,16 +115,16 @@ class ApprovalRequestForm
                 ->maxLength(191)
                 ->visible(fn (Get $get): bool => $get('subject_type') === ApprovalService::SUBJECT_UPLOAD),
 
-            Forms\Components\Select::make('document_type')
-                ->label('Sənədin tipi')
-                ->options(collect(DocumentType::cases())->mapWithKeys(fn ($t) => [$t->value => $t->label()]))
-                ->default(DocumentType::Other->value)
+            Forms\Components\Select::make('material_type')
+                ->label('Kateqoriya')
+                ->options(DeliverableType::options())
+                ->default(DeliverableType::Custom->value)
                 ->required()
                 ->native(false)
                 ->visible(fn (Get $get): bool => $get('subject_type') === ApprovalService::SUBJECT_UPLOAD),
 
-            // Qaydalar «Sənədlər» tabının yükləməsi ilə eynidir: eyni diskə, eyni
-            // qovluğa düşür və portal onu eyni marşrutla verir.
+            // Material kartının ilk versiyası olur (MaterialService) — eyni disk və
+            // qovluq, portal onu materialın dərc olunmuş versiyası kimi verir.
             Forms\Components\FileUpload::make('file_path')
                 ->label('Fayl')
                 ->acceptedFileTypes(['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'image/jpeg', 'image/png', 'image/webp', 'text/plain', 'text/csv'])
@@ -132,7 +132,7 @@ class ApprovalRequestForm
                 ->rules([SafeUpload::document()])
                 ->helperText('PDF, Word, Excel və ya şəkil (JPG/PNG). Bir neçə variant göstərmək lazımdırsa, onları bir PDF-də birləşdirin.')
                 ->disk('public')
-                ->directory('documents')
+                ->directory('materials')
                 ->required()
                 ->visible(fn (Get $get): bool => $get('subject_type') === ApprovalService::SUBJECT_UPLOAD)
                 ->columnSpanFull(),

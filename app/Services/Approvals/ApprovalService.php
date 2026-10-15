@@ -4,7 +4,6 @@ namespace App\Services\Approvals;
 
 use App\Enums\ApprovalStatus;
 use App\Enums\ChangeRequestStatus;
-use App\Enums\DocumentType;
 use App\Enums\TaskPriority;
 use App\Enums\TaskStatus;
 use App\Models\Approval;
@@ -12,6 +11,7 @@ use App\Models\BudgetLine;
 use App\Models\ChangeRequest;
 use App\Models\ClientUser;
 use App\Models\Deliverable;
+use App\Models\DeliverableVersion;
 use App\Models\Document;
 use App\Models\ProcurementItem;
 use App\Models\Project;
@@ -22,10 +22,13 @@ use App\Notifications\ApprovalDecided;
 use App\Notifications\ApprovalRequested;
 use App\Services\Automation\AutomationEngine;
 use App\Services\Design\DeliverableService;
+use App\Services\Design\MaterialService;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Throwable;
 
 class ApprovalService
 {
@@ -45,9 +48,17 @@ class ApprovalService
      * @param  array<int, array{key: string, label: string, note?: string}>  $variants
      *                                                                                  Roomix-dəki «pick one option» halı: bir neçə variant göndərilir,
      *                                                                                  müştəri birini seçir. Boş massiv adi bəli/xeyr deməkdir.
+     * @param  DeliverableVersion|null  $deliverableVersion  material üçün razılaşdırılan VERSİYA
+     *                                                       (verilməyibsə — cari versiya). Qərar
+     *                                                       yalnız bu versiyaya tətbiq olunur.
      */
-    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null, array $variants = [], ?string $note = null): Approval
+    public function request(Model $approvable, User $requestedBy, ?Carbon $respondBy = null, array $variants = [], ?string $note = null, ?DeliverableVersion $deliverableVersion = null): Approval
     {
+        if ($deliverableVersion !== null
+            && (! $approvable instanceof Deliverable || (int) $deliverableVersion->deliverable_id !== (int) $approvable->getKey())) {
+            throw new InvalidArgumentException('Versiya bu materiala aid deyil.');
+        }
+
         // `visible_to_client = false` means the studio marked this line internal.
         // The portal prints the approval's subject label and total verbatim, so
         // the flag has to stop the request, not just hide a column in the panel.
@@ -96,6 +107,9 @@ class ApprovalService
         $approval = Approval::create([
             'approvable_type' => $approvable->getMorphClass(),
             'approvable_id' => $approvable->getKey(),
+            'deliverable_version_id' => $approvable instanceof Deliverable
+                ? ($deliverableVersion?->id ?? $approvable->current_version_id)
+                : null,
             'project_id' => $project->id,
             'requested_by_user_id' => $requestedBy->id,
             'status' => ApprovalStatus::Pending,
@@ -105,10 +119,10 @@ class ApprovalService
             'respond_by' => $respondBy,
         ]);
 
-        $this->setSubjectStatus($approvable, ApprovalStatus::Pending);
+        $this->setSubjectStatus($approvable, ApprovalStatus::Pending, $approval);
 
         foreach ($project->client->clientUsers as $clientUser) {
-            $clientUser->notify(new ApprovalRequested($approval));
+            $this->notifySafely($clientUser, new ApprovalRequested($approval));
         }
 
         return $approval;
@@ -128,7 +142,7 @@ class ApprovalService
      * Obyekt yalnız VERİLƏN layihədən axtarılır: başqa layihənin (və ya başqa
      * studiyanın) sənədinin id-si göndərilsə, `findOrFail` 404 verir.
      *
-     * @param  array{subject_type: string, subject_id?: int|string|null, title?: string|null, document_type?: string|null, file_path?: string|null, note?: string|null, respond_by?: string|null}  $data
+     * @param  array{subject_type: string, subject_id?: int|string|null, title?: string|null, material_type?: string|null, stage_id?: int|string|null, file_path?: string|array<int, string>|null, note?: string|null, respond_by?: string|null}  $data
      */
     public function requestFromPanel(Project $project, User $requestedBy, array $data): Approval
     {
@@ -137,17 +151,15 @@ class ApprovalService
 
         return DB::transaction(function () use ($project, $requestedBy, $data, $respondBy, $note): Approval {
             $subject = match ($data['subject_type'] ?? null) {
-                self::SUBJECT_UPLOAD => Document::create([
-                    'project_id' => $project->id,
-                    'type' => $data['document_type'] ?? DocumentType::Other->value,
+                // Yeni fayl «Fayllar» bölməsində material kartı olur (TZ «Layihə
+                // naviqasiyası» §5–6): əvvəl «Sənədlər»ə «Digər» sənəd kimi
+                // düşürdü, o tab isə artıq yoxdur. Dərc aşağıda, sonra razılaşdırma.
+                self::SUBJECT_UPLOAD => app(MaterialService::class)->create($project, [
                     'title' => $data['title'],
-                    'file_path' => $data['file_path'],
-                    'uploaded_by_type' => 'user',
-                    'uploaded_by_id' => $requestedBy->id,
-                    // Müştəri təsdiqləyəcəyi faylı görməlidir — portal yalnız
-                    // `visible_to_client` sənədləri verir.
-                    'visible_to_client' => true,
-                ]),
+                    'type' => $data['material_type'] ?? null,
+                    'stage_id' => $data['stage_id'] ?? null,
+                    'files' => $data['file_path'],
+                ], $requestedBy),
                 self::SUBJECT_DOCUMENT => $project->documents()->findOrFail($data['subject_id'] ?? null),
                 self::SUBJECT_DELIVERABLE => $project->deliverables()->findOrFail($data['subject_id'] ?? null),
                 self::SUBJECT_STAGE => $project->stages()->findOrFail($data['subject_id'] ?? null),
@@ -161,8 +173,11 @@ class ApprovalService
                 $subject->update(['visible_to_client' => true]);
             }
 
-            if ($subject instanceof Deliverable && ! $subject->client_visible) {
-                $subject->update(['client_visible' => true]);
+            // Material: müştəri razılaşdırdığı versiyanı görməlidir — cari versiya
+            // dərc edilir (dərc ≠ təsdiq; təsdiq müştərinin qərarıdır).
+            if ($subject instanceof Deliverable && $subject->current_version_id
+                && (int) $subject->published_version_id !== (int) $subject->current_version_id) {
+                $subject->forceFill(['published_version_id' => $subject->current_version_id])->save();
             }
 
             return $this->request($subject, $requestedBy, $respondBy, [], $note);
@@ -220,7 +235,7 @@ class ApprovalService
             // A subject deleted after the request went out is not a reason to 500
             // on the client — the decision itself is still recorded.
             if ($approval->approvable) {
-                $this->setSubjectStatus($approval->approvable, $approval->status);
+                $this->setSubjectStatus($approval->approvable, $approval->status, $approval);
             }
 
             // Rədd edilmiş dəyişiklik sorğusu bağlanır — onun üçün «Düzəliş»
@@ -230,9 +245,28 @@ class ApprovalService
             }
         });
 
-        $approval->requestedBy?->notify(new ApprovalDecided($approval));
+        if ($approval->requestedBy !== null) {
+            $this->notifySafely($approval->requestedBy, new ApprovalDecided($approval));
+        }
 
         return $approval;
+    }
+
+    /**
+     * Bildiriş razılaşdırmanın özünü sındırmamalıdır. Bildirişlər `ShouldQueue`
+     * olsa da `QUEUE_CONNECTION=sync` olduqda poçt xətası (SMTP limiti — smoke
+     * testdə Mailtrap «Too many emails per second», prod-da Gmail kvotası)
+     * birbaşa bura atılırdı: «Razılaşdırmaya göndər» bütünlüklə geri qaytarılırdı,
+     * müştərinin portaldakı qərarı isə 500 ilə bitirdi. Panel bildirişi (database
+     * kanalı) poçtdan əvvəl yazılır; poçt xətası jurnala düşür.
+     */
+    private function notifySafely(object $notifiable, Notification $notification): void
+    {
+        try {
+            $notifiable->notify($notification);
+        } catch (Throwable $e) {
+            report($e);
+        }
     }
 
     /**
@@ -246,7 +280,12 @@ class ApprovalService
             return;
         }
 
-        $stage = Stage::query()
+        // Materialın öz mərhələsi varsa, düzəliş tapşırığı ora düşür.
+        $subjectStage = $approval->approvable instanceof Deliverable && $approval->approvable->stage_id
+            ? Stage::query()->where('project_id', $approval->project_id)->find($approval->approvable->stage_id)
+            : null;
+
+        $stage = $subjectStage ?? Stage::query()
             ->where('project_id', $approval->project_id)
             ->orderBy('position')
             ->first();
@@ -267,14 +306,14 @@ class ApprovalService
         ]);
     }
 
-    private function setSubjectStatus(Model $approvable, ApprovalStatus $status): void
+    private function setSubjectStatus(Model $approvable, ApprovalStatus $status, ?Approval $approval = null): void
     {
         match (true) {
             // forceFill: approval_status is deliberately non-fillable (audit HIGH-2).
             $approvable instanceof BudgetLine,
             $approvable instanceof ProcurementItem => $approvable->forceFill(['approval_status' => $status])->save(),
             // Deliverables run their own version state machine (TZ §9.2).
-            $approvable instanceof Deliverable => $this->applyDeliverableDecision($approvable, $status),
+            $approvable instanceof Deliverable => $this->applyDeliverableDecision($approvable, $status, $approval),
             $approvable instanceof ChangeRequest => $this->applyChangeRequestDecision($approvable, $status),
             $approvable instanceof Stage, $approvable instanceof Document => null,
             default => throw new InvalidArgumentException('Bu obyekt razılaşdırıla bilməz: '.$approvable::class),
@@ -328,14 +367,23 @@ class ApprovalService
         $changeRequest->transitionTo($target);
     }
 
-    private function applyDeliverableDecision(Deliverable $deliverable, ApprovalStatus $status): void
+    /**
+     * Qərar razılaşdırmanın VERSİYASINA tətbiq olunur (köhnə sətirlərdə versiya
+     * yoxdursa — cari versiyaya). Mərhələyə toxunulmur: materialın təsdiqi
+     * bütün mərhələni avtomatik tamamlamır (TZ «Layihə naviqasiyası» §4).
+     */
+    private function applyDeliverableDecision(Deliverable $deliverable, ApprovalStatus $status, ?Approval $approval = null): void
     {
         $service = app(DeliverableService::class);
 
+        $version = $approval?->deliverable_version_id
+            ? $deliverable->versions()->whereKey($approval->deliverable_version_id)->first()
+            : null;
+
         match ($status) {
-            ApprovalStatus::Pending => $service->markSentForApproval($deliverable),
-            ApprovalStatus::Approved => $service->onApproved($deliverable),
-            ApprovalStatus::Rejected => $service->onRevisionRequired($deliverable),
+            ApprovalStatus::Pending => $service->markSentForApproval($deliverable, $version),
+            ApprovalStatus::Approved => $service->onApproved($deliverable, $version),
+            ApprovalStatus::Rejected => $service->onRevisionRequired($deliverable, $version),
             default => null,
         };
     }

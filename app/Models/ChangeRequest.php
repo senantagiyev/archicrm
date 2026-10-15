@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Enums\ChangeRequestStatus;
 use App\Models\Concerns\BelongsToTenant;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use RuntimeException;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -67,7 +69,7 @@ class ChangeRequest extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['status', 'title', 'schedule_impact_days', 'cost_impact'])
+            ->logOnly(['status', 'title', 'schedule_impact_days', 'cost_impact', 'affected_entity_type', 'affected_entity_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -80,6 +82,31 @@ class ChangeRequest extends Model
     public function responsible(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsible_user_id');
+    }
+
+    /**
+     * Sorğunun aid olduğu obyekt: material, mərhələ və ya irad (`ChangeSubjects`).
+     * Köhnə qeydlərdə boşdur — onlar İcmaldakı «Yoxlanmalı qeydlər»də görünür.
+     */
+    public function affectedEntity(): MorphTo
+    {
+        return $this->morphTo('affectedEntity', 'affected_entity_type', 'affected_entity_id');
+    }
+
+    /** Yalnız bu obyektə bağlı sorğular. */
+    public function scopeForSubject(Builder $query, Model $subject): Builder
+    {
+        return $query
+            ->where($query->qualifyColumn('affected_entity_type'), $subject->getMorphClass())
+            ->where($query->qualifyColumn('affected_entity_id'), $subject->getKey());
+    }
+
+    /** Heç bir obyektə bağlanmamış (köhnə) sorğular — avtomatik bölüşdürülmür. */
+    public function scopeUnlinked(Builder $query): Builder
+    {
+        return $query->where(fn (Builder $inner) => $inner
+            ->whereNull($query->qualifyColumn('affected_entity_type'))
+            ->orWhereNull($query->qualifyColumn('affected_entity_id')));
     }
 
     /** Müştəriyə portalda göndərilmiş təsdiq sorğuları (ApprovalService). */

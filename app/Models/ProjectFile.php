@@ -33,9 +33,25 @@ class ProjectFile extends Model
         return $query->whereIn('visibility', FileVisibility::clientVisible());
     }
 
+    /**
+     * Material kartına köçürülməmiş sətirlər. Köçürülmüş sətir SİLİNMİR, amma
+     * onun görünürlüyünü artıq material (dərc edilmiş versiya) idarə edir —
+     * köhnə sətrin `visibility`-si donmuş tarixçədir.
+     */
+    public function scopeNotMigrated($query)
+    {
+        return $query->whereNull('migrated_deliverable_id');
+    }
+
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /** «Fayllar» material kartı — köhnə linklər bura yönləndirilir. */
+    public function migratedDeliverable(): BelongsTo
+    {
+        return $this->belongsTo(Deliverable::class, 'migrated_deliverable_id');
     }
 
     public function uploadedBy(): MorphTo

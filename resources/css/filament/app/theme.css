@@ -125,3 +125,38 @@
 .fi-btn { font-weight: 600; border-radius: 9px; }
 .fi-input-wrp { border-radius: 10px; }
 .fi-badge { font-weight: 600; letter-spacing: 0.01em; }
+
+/* ============ Layihə kartı: dar ekranda bölmələrin yığcam menyusu ============
+   TZ «Layihə naviqasiyası», meyar 13. EditProject tab sətrini
+   `.archi-project-tabs` ilə işarələyir; 640px-dən dar ekranda uzun üfüqi
+   sətir gizlədilir və `tabs-mobile-select.blade.php`-dəki <select> görünür. */
+.archi-project-section-select { display: none; }
+@media (max-width: 639.98px) {
+  .archi-project-tabs > .fi-tabs { display: none !important; }
+  .archi-project-tabs > .fi-sc-tabs-tab.fi-active { margin-top: 1rem; }
+  .archi-project-section-select {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .archi-project-section-select-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgb(107 114 128);
+  }
+  .archi-project-section-select select {
+    width: 100%;
+    border-radius: 10px;
+    border: 1px solid rgba(17, 17, 17, 0.12);
+    background-color: #ffffff;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--archi-ink);
+  }
+  .dark .archi-project-section-select select {
+    background-color: #1a1814;
+    border-color: rgba(255, 255, 255, 0.12);
+    color: #ffffff;
+  }
+}

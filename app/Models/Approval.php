@@ -17,7 +17,7 @@ class Approval extends Model
     use BelongsToTenant, HasOptimisticLock, LogsActivity;
 
     protected $fillable = [
-        'approvable_type', 'approvable_id', 'project_id',
+        'approvable_type', 'approvable_id', 'deliverable_version_id', 'project_id',
         'requested_by_user_id', 'client_user_id',
         'status', 'version', 'comment', 'note', 'variants', 'chosen_variant',
         'respond_by', 'decided_at',
@@ -88,6 +88,15 @@ class Approval extends Model
         return $this->belongsTo(Project::class);
     }
 
+    /**
+     * Material razılaşdırmasında konkret versiya. Yeni versiya köhnənin
+     * təsdiqini miras almır — qərar həmişə bu versiyaya aiddir.
+     */
+    public function deliverableVersion(): BelongsTo
+    {
+        return $this->belongsTo(DeliverableVersion::class);
+    }
+
     public function requestedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by_user_id');
@@ -106,7 +115,7 @@ class Approval extends Model
             $this->approvable instanceof ProcurementItem => 'Komplektasiya: '.$this->approvable->name,
             $this->approvable instanceof Stage => 'Mərhələ: '.$this->approvable->name,
             $this->approvable instanceof Document => 'Sənəd: '.$this->approvable->title,
-            $this->approvable instanceof Deliverable => 'Dizayn: '.$this->approvable->title,
+            $this->approvable instanceof Deliverable => 'Material: '.$this->approvable->title,
             $this->approvable instanceof ChangeRequest => 'Dəyişiklik sorğusu: '.$this->approvable->title,
             default => 'Obyekt #'.$this->approvable_id,
         };

@@ -8,6 +8,23 @@ use Illuminate\Database\Seeder;
 class StageTemplateSeeder extends Seeder
 {
     /**
+     * Material kateqoriyası → standart mərhələ (TZ «Layihə naviqasiyası» §5):
+     * «Fayllar»da mərhələ kontekstindən kənar yükləmədə kateqoriya seçiləndə
+     * mərhələ buradan dolur. Açar — bəndin ingiliscə adı (dildən asılı deyil).
+     *
+     * @var array<string, list<string>>
+     */
+    private const DEFAULT_CATEGORIES = [
+        'Measurements & technical analysis' => ['photo'],
+        'Layout solutions' => ['layout'],
+        'Concept & style collages' => ['moodboard', 'concept'],
+        'Sketch design' => ['visualization'],
+        'Concept & 3D visualization' => ['moodboard', 'concept', 'visualization'],
+        'Working drawings' => ['drawing'],
+        'Budget & procurement' => ['specification', 'material_selection', 'furniture_selection', 'lighting_selection'],
+    ];
+
+    /**
      * The three Roomix presets (TZ Blok 2.2): sketch design project / full
      * complex project / author supervision only. Idempotent — upserts by key.
      */
@@ -64,6 +81,7 @@ class StageTemplateSeeder extends Seeder
                     'name' => $name,
                     'position' => $i,
                     'default_duration_days' => $days,
+                    'default_categories' => self::DEFAULT_CATEGORIES[$name['en']] ?? null,
                 ]);
             }
         }

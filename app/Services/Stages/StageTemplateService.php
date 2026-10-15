@@ -66,6 +66,9 @@ class StageTemplateService
                 // əlimizdəki yeganə göstəricidir; müddət verilməyibsə çəki 1
                 // qalır — yəni əvvəlki davranış.
                 'weight' => min(self::WEIGHT_MAX, max(1, (int) ($item->default_duration_days ?? 1))),
+                // Kateqoriya → standart mərhələ: «Fayllar»da kontekstsiz yükləmədə
+                // kateqoriya seçiləndə mərhələ buradan avtomatik dolur.
+                'default_categories' => $item->default_categories ?: null,
             ]);
 
             $existing[] = mb_strtolower(trim($name));

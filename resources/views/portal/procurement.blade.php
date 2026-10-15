@@ -1,4 +1,4 @@
-<x-portal.shell :title="t('portal.nav_procurement')" :project="$project" active="documents">
+<x-portal.shell :title="t('portal.nav_procurement')" :project="$project" active="procurement">
     <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 class="text-heading font-semibold">{{ t('portal.nav_procurement') }}</h1>
 
@@ -14,14 +14,25 @@
         </a>
     </div>
 
-    {{-- Sürüşmə YALNIZ bu qutudadır: cədvəl 19 sütunludur və telefonda səhifənin
-         özünü üfüqi sürüşdürsəydi, başlıq və menyu da kənara çıxardı. --}}
+    {{-- Sürüşmə YALNIZ bu qutudadır: cədvəl geniş sütunludur və telefonda səhifənin
+         özünü üfüqi sürüşdürsəydi, başlıq və menyu da kənara çıxardı.
+         Spesifikasiya ilə birləşmədən gələn sahələr (brend, model, xüsusiyyətlər,
+         seçim statusu, əlavələr) müştəriyə açıqdır; təchizatçı mayası
+         (`supplier_cost`) və daxili ləğv səbəbi heç vaxt göstərilmir. --}}
+    {{-- Boş siyahıda 2400px-lik boş cədvəl göstərilmir: mesaj sağa sürüşüb
+         görünmürdü (smoke test, 2026-10-15). --}}
+    @if ($items->isEmpty())
+        <div class="rounded-ds-xl border border-black/8 bg-card px-4 py-12 text-center text-black/55">{{ t('portal.no_procurement') }}</div>
+    @else
     <div class="overflow-x-auto rounded-ds-xl border border-black/8 bg-card">
-        <table class="w-full min-w-[1800px] text-body">
+        <table class="w-full min-w-[2400px] text-body">
             <thead>
                 <tr class="border-b border-black/8 text-left text-helper font-semibold text-black/60">
                     <th class="px-4 py-3.5">{{ t('portal.procurement_photo') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_name') }}</th>
+                    <th class="px-4 py-3.5">{{ t('portal.procurement_brand') }}</th>
+                    <th class="px-4 py-3.5">{{ t('portal.procurement_model') }}</th>
+                    <th class="px-4 py-3.5">{{ t('portal.procurement_characteristics') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_analog') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_category') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.estimate_room') }}</th>
@@ -32,6 +43,7 @@
                     <th class="px-4 py-3.5 text-right">{{ t('portal.procurement_discount') }}</th>
                     <th class="px-4 py-3.5 text-right">{{ t('portal.procurement_with_discount') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_availability') }}</th>
+                    <th class="px-4 py-3.5">{{ t('portal.procurement_selection') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.nav_approvals') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_bought') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_delivery') }}</th>
@@ -39,11 +51,12 @@
                     <th class="px-4 py-3.5 text-right">{{ t('portal.procurement_delivery_assembly') }}</th>
                     <th class="px-4 py-3.5 text-right">{{ t('portal.procurement_reserve') }}</th>
                     <th class="px-4 py-3.5">{{ t('portal.procurement_comment') }}</th>
+                    <th class="px-4 py-3.5">{{ t('portal.procurement_attachments') }}</th>
                 </tr>
             </thead>
             <tbody>
                 @forelse ($items as $item)
-                    <tr class="border-b border-black/5 last:border-0">
+                    <tr id="item-{{ $item->id }}" class="scroll-mt-24 border-b border-black/5 last:border-0">
                         <td class="px-4 py-4">
                             @if ($item->photo_path)
                                 {{-- Foto birbaşa `public` disk linki ilə deyil, avtorizasiyalı
@@ -59,6 +72,9 @@
                             @endif
                         </td>
                         <td class="px-4 py-4 font-medium">{{ $item->name }}</td>
+                        <td class="px-4 py-4 text-black/70">{{ $item->brand ?: '—' }}</td>
+                        <td class="px-4 py-4 text-black/70">{{ $item->model ?: '—' }}</td>
+                        <td class="max-w-[260px] whitespace-pre-line px-4 py-4 text-black/70">{{ $item->characteristics ?: '—' }}</td>
                         <td class="px-4 py-4 text-black/70">{{ $item->analog ?: '—' }}</td>
                         <td class="px-4 py-4 text-black/70">{{ $item->category ?: '—' }}</td>
                         <td class="px-4 py-4 text-black/70">{{ $item->room ?: '—' }}</td>
@@ -72,6 +88,19 @@
                         <td class="px-4 py-4 text-right font-semibold">{{ number_format($item->totalWithDiscount(), 2, '.', ' ') }} ₼</td>
                         <td class="px-4 py-4 text-black/70">{{ $item->availability ?: '—' }}</td>
                         <td class="px-4 py-4">
+                            @if ($item->selection_status)
+                                @php
+                                    $selectionKey = 'enums.selection_status.'.$item->selection_status->value;
+                                    $selectionLabel = t($selectionKey);
+                                @endphp
+                                <span class="rounded-pill bg-neutral-soft px-3 py-1 text-helper font-medium text-black/70">
+                                    {{ is_string($selectionLabel) && $selectionLabel !== $selectionKey ? $selectionLabel : $item->selection_status->label() }}
+                                </span>
+                            @else
+                                <span class="text-black/45">—</span>
+                            @endif
+                        </td>
+                        <td class="px-4 py-4">
                             @if ($item->approval_status)
                                 <span @class([
                                     'rounded-pill px-3 py-1 text-helper font-medium',
@@ -80,6 +109,10 @@
                                     'bg-error-soft text-error' => $item->approval_status === \App\Enums\ApprovalStatus::Rejected,
                                     'bg-neutral-soft text-black/60' => $item->approval_status === \App\Enums\ApprovalStatus::Draft,
                                 ])>{{ $item->approval_status->translatedLabel() }}</span>
+                                @if ($item->approval_status === \App\Enums\ApprovalStatus::Pending)
+                                    {{-- Qərar razılaşdırma kartında verilir (variant/şərh qaydaları orada). --}}
+                                    <a href="{{ route('portal.approvals', $project) }}" class="mt-1.5 block text-helper font-semibold underline underline-offset-2">{{ t('portal.procurement_decide') }} →</a>
+                                @endif
                             @else
                                 <span class="text-black/45">—</span>
                             @endif
@@ -99,13 +132,25 @@
                         <td class="px-4 py-4 text-right text-black/70">{{ number_format((float) $item->delivery_assembly_price, 2, '.', ' ') }} ₼</td>
                         <td class="px-4 py-4 text-right text-black/70">{{ number_format((float) $item->reserve_percent, 2, '.', ' ') }}%</td>
                         <td class="px-4 py-4 text-black/70">{{ $item->comment ?: '—' }}</td>
+                        <td class="px-4 py-4">
+                            {{-- Şəkillər və texniki sənədlər pozisiyanın özündədir —
+                                 avtorizasiyalı marşrutla açılır (public disk linki yox). --}}
+                            @php $attachments = \App\Http\Controllers\Portal\ProcurementController::attachmentPaths($item); @endphp
+                            @forelse ($attachments as $i => $path)
+                                <a href="{{ route('portal.procurement.attachment', [$project->id, $item->id, $i]) }}" target="_blank" rel="noopener"
+                                   class="block whitespace-nowrap text-helper underline underline-offset-2">{{ t('portal.procurement_file', ['n' => $i + 1]) }}@if (pathinfo($path, PATHINFO_EXTENSION)) ({{ strtoupper(pathinfo($path, PATHINFO_EXTENSION)) }})@endif</a>
+                            @empty
+                                <span class="text-black/45">—</span>
+                            @endforelse
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="19" class="px-4 py-12 text-center text-black/55">{{ t('portal.no_procurement') }}</td></tr>
+                    <tr><td colspan="25" class="px-4 py-12 text-center text-black/55">{{ t('portal.no_procurement') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
     </div>
+    @endif
 
     @if ($items->isNotEmpty())
         {{-- Roomix-də yekunlar cədvəlin ALTINDADIR. Cədvəl üfüqi sürüşdüyü üçün

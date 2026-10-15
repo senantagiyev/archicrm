@@ -1,4 +1,7 @@
-<x-portal.shell :title="t('portal.nav_approvals')" :project="$project" active="documents">
+{{-- Bölmə deyil: İcmaldan açılır (ona görə «İcmal» vurğulanır). Materialların
+     razılaşdırması əsasən «Fayllar»dakı kartda verilir; bu siyahı köhnə
+     keçidlər və smeta / komplektasiya / dəyişiklik sorğuları üçün qalır. --}}
+<x-portal.shell :title="t('portal.nav_approvals')" :project="$project" active="approvals">
     <h1 class="mb-6 text-heading font-semibold">{{ t('portal.nav_approvals') }}</h1>
 
     @php
@@ -9,7 +12,7 @@
 
     <div class="space-y-4">
         @forelse ($approvals as $approval)
-            <div class="rounded-ds-xl border border-black/8 bg-card p-6">
+            <div id="approval-{{ $approval->id }}" class="scroll-mt-24 rounded-ds-xl border border-black/8 bg-card p-6">
                 <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                         <p class="flex flex-wrap items-center gap-2 text-body font-semibold">
@@ -49,6 +52,15 @@
                             <a href="{{ route('portal.documents.download', [$project->id, $approval->approvable->id]) }}"
                                 class="mt-2 inline-flex items-center gap-1 text-helper font-semibold text-ink underline">
                                 {{ t('portal.approval_open_file') }}
+                            </a>
+                        @endif
+                        {{-- Material: razılaşdırmaya göndərilmiş VERSİYANIN faylı
+                             (müştəri daxili versiyaları görmür). --}}
+                        @if ($approval->approvable instanceof \App\Models\Deliverable && $approval->deliverable_version_id)
+                            <a href="{{ route('portal.materials.download', [$project->id, $approval->approvable->id, $approval->deliverable_version_id, 0]) }}"
+                                class="mt-2 inline-flex items-center gap-1 text-helper font-semibold text-ink underline">
+                                {{ t('portal.approval_open_file') }}
+                                @if ($approval->deliverableVersion) (v{{ $approval->deliverableVersion->version_number }}) @endif
                             </a>
                         @endif
                     </div>

@@ -27,7 +27,7 @@ class ApprovalDecided extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $verdict = $this->approval->status === ApprovalStatus::Approved ? 'razılaşdı' : 'rədd etdi';
+        $verdict = $this->approval->status === ApprovalStatus::Approved ? 'təsdiqlədi' : 'düzəliş tələb etdi';
 
         return (new MailMessage)
             ->subject('Razılaşdırma qərarı — '.$this->approval->project?->name)
@@ -41,7 +41,9 @@ class ApprovalDecided extends Notification implements ShouldQueue
         $approved = $this->approval->status === ApprovalStatus::Approved;
 
         return $this->panelMessage(
-            title: $approved ? 'Pozisiya razılaşdırıldı' : 'Pozisiya rədd edildi',
+            // Mövzu material, smeta, mərhələ və s. ola bilər — «Pozisiya» yalnız
+            // komplektasiyaya uyğun idi. Nə olduğu `body`-də (subjectLabel) yazılır.
+            title: $approved ? 'Müştəri təsdiqlədi' : 'Müştəri düzəliş tələb etdi',
             body: $this->approval->subjectLabel().($this->approval->comment ? ' — '.$this->approval->comment : ''),
             url: ApprovalResource::getUrl(),
             icon: $approved ? 'heroicon-o-check-circle' : 'heroicon-o-x-circle',

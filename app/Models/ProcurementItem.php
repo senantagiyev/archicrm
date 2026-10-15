@@ -3,12 +3,15 @@
 namespace App\Models;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\PurchaseStatus;
+use App\Enums\SelectionStatus;
 use App\Models\Concerns\BelongsToTenant;
 use App\Models\Concerns\HasOptimisticLock;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
@@ -19,20 +22,27 @@ class ProcurementItem extends Model
 
     // approval_status is NOT fillable — set only by ApprovalService (audit HIGH-2).
     protected $fillable = [
-        'project_id', 'photo_path', 'sku', 'name', 'analog', 'category', 'room', 'unit',
-        'price', 'qty', 'total', 'discount_percent', 'availability',
-        'store', 'url', 'attachment_url',
+        'project_id', 'budget_line_id', 'photo_path', 'sku', 'name', 'analog',
+        'brand', 'model', 'characteristics', 'category', 'room', 'unit',
+        'price', 'supplier_cost', 'qty', 'total', 'discount_percent', 'availability',
+        'store', 'url', 'attachment_url', 'attachments', 'selection_status',
         'reserve_percent', 'delivery_assembly_price',
         'purchase_status', 'delivery_date', 'cancel_comment', 'comment', 'paid',
         'visible_to_client',
     ];
+
+    /** supplier_cost is internal (studio's buying price) — never in serialized payloads. */
+    protected $hidden = ['supplier_cost'];
 
     protected function casts(): array
     {
         return [
             'approval_status' => ApprovalStatus::class,
             'purchase_status' => PurchaseStatus::class,
+            'selection_status' => SelectionStatus::class,
+            'attachments' => 'array',
             'price' => 'decimal:2',
+            'supplier_cost' => 'decimal:2',
             'qty' => 'decimal:2',
             'total' => 'decimal:2',
             'reserve_percent' => 'decimal:2',
@@ -79,7 +89,7 @@ class ProcurementItem extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'price', 'qty', 'approval_status', 'purchase_status', 'paid'])
+            ->logOnly(['name', 'price', 'qty', 'approval_status', 'selection_status', 'purchase_status', 'paid', 'budget_line_id'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs();
     }
@@ -90,7 +100,46 @@ class ProcurementItem extends Model
      */
     public function isDeletionLocked(): bool
     {
-        return $this->approval_status === ApprovalStatus::Approved && $this->paid;
+        return $this->approval_status === ApprovalStatus::Approved
+            && ($this->paid || $this->paidAmount() > 0);
+    }
+
+    /**
+     * FAKTİKİ ÖDƏNİŞ — mənbəyi mühasibatlıqdır: pozisiyaya bağlanmış və
+     * «Ödənilib» statusunda olan `Payment` qeydlərinin cəmi.
+     *
+     * `paid` bayrağı (əl ilə qoyulan işarə) və plan/sifariş dəyərləri bu
+     * rəqəmi DƏYİŞMİR və bu rəqəmdən dəyişmir — üç göstərici ayrıdır.
+     * Cədvəldə `withSum(... as paid_payments_total)` ilə əvvəlcədən yüklənir.
+     */
+    public function paidAmount(): float
+    {
+        if (array_key_exists('paid_payments_total', $this->attributes)) {
+            return round((float) $this->attributes['paid_payments_total'], 2);
+        }
+
+        if (! $this->exists) {
+            return 0.0;
+        }
+
+        return round((float) $this->payments()->where('status', PaymentStatus::Paid->value)->sum('amount'), 2);
+    }
+
+    public function budgetLine(): BelongsTo
+    {
+        return $this->belongsTo(BudgetLine::class);
+    }
+
+    /** Mühasibatlıqdakı ödəniş qeydləri (`payments.procurement_item_id`). */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /** Köhnə spesifikasiya sətirləri (birləşmədən sonra yalnız tarixçə). */
+    public function specificationItems(): HasMany
+    {
+        return $this->hasMany(SpecificationItem::class);
     }
 
     /**

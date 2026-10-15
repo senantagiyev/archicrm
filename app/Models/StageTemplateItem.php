@@ -10,9 +10,16 @@ class StageTemplateItem extends Model
 {
     use HasTranslations;
 
-    protected $fillable = ['stage_template_id', 'name', 'position', 'default_duration_days'];
+    protected $fillable = ['stage_template_id', 'name', 'position', 'default_duration_days', 'default_categories'];
 
     public array $translatable = ['name'];
+
+    protected function casts(): array
+    {
+        // Şablondan açılan mərhələyə köçürülür (StageTemplateService::apply):
+        // bu kateqoriyalı materiallar üçün mərhələ standart seçilir.
+        return ['default_categories' => 'array'];
+    }
 
     public function template(): BelongsTo
     {

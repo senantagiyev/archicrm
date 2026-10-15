@@ -288,6 +288,12 @@ class RolesIsolationTest extends TestCase
                 ." (status {$status}).",
             );
 
+            // Modeli başqa bölmə ilə paylaşan resursun siyahı qapısı resursun
+            // özündədir; modelin policy-si o biri bölmənin domenini yoxlayır.
+            if (isset(self::SHARED_MODEL_RESOURCES[$slug])) {
+                continue;
+            }
+
             // Policy qatı da eyni cavabı verməlidir (servis/API yolu üçün).
             $this->assertSame(
                 $expected,
@@ -1264,6 +1270,14 @@ class RolesIsolationTest extends TestCase
      * Bu cədvəl TZ §5.4 matrisinin resurs qarşılığıdır. Policy-dən KÖÇÜRÜLMÜR —
      * policy matrisdən ayrılanda test qırılsın deyə əl ilə yazılıb.
      */
+    private const SHARED_MODEL_RESOURCES = [
+        // `documents` cədvəli: müqavilə/akt «Maliyyə»dədir (Ödənişlər domeni,
+        // ContractDocumentResource::canViewAny), qalan sənədlər layihənindir
+        // (Fayllar/Sənədlər domeni, DocumentPolicy::viewAny). Sətir səviyyəsində
+        // DocumentPolicy tipə görə düzgün domeni yoxlayır.
+        'contract-documents' => 'Document',
+    ];
+
     private const RESOURCE_GATES = [
         'clients' => [Client::class, 'clients', 1, 2],
         'leads' => [Lead::class, 'clients', 1, 2],
@@ -1273,6 +1287,11 @@ class RolesIsolationTest extends TestCase
         'meetings' => [Meeting::class, 'projects', 1, 2],
         'expenses' => [Expense::class, 'payments', 1, 2],
         'invoices' => [Invoice::class, 'payments', 1, 2],
+        // Maliyyə: köhnə layihə tablarından çıxarılan resurslar — hüquq köhnə
+        // relation manager-lərdəki policy-lərlə eynidir.
+        'payments' => [Payment::class, 'payments', 1, 3],
+        'budget-lines' => [BudgetLine::class, 'budget', 1, 2],
+        'contract-documents' => [Document::class, 'payments', 1, 2],
         'purchase-orders' => [PurchaseOrder::class, 'procurement', 1, 2],
         'suppliers' => [Supplier::class, 'procurement', 1, 2],
         'brief-questions' => [BriefQuestion::class, 'brief', 1, null],

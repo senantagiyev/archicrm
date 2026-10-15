@@ -23,8 +23,15 @@ class StageController extends Controller
 
         // Məsul şəxs sətirdə göstərilir, ona görə əvvəlcədən yüklənir —
         // əks halda hər mərhələ üçün ayrıca sorğu gedərdi.
+        //
+        // «Materiallar — N» (TZ «Layihə naviqasiyası» §4): yalnız müştəriyə
+        // DƏRC EDİLMİŞ materiallar sayılır — daxili material sayda da görünmür.
+        // Materiallar «Fayllar»da saxlanılır, burada yalnız əlaqə (say + filtr).
         $stages = $project->stages()
             ->with('responsible')
+            ->withCount(['deliverables as published_materials_count' => fn ($query) => $query
+                ->where('project_id', $project->id)
+                ->whereNotNull('published_version_id')])
             ->orderBy('position')
             ->orderBy('id')
             ->get();
