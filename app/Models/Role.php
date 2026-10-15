@@ -56,6 +56,48 @@ class Role extends Model
             ->orderByRaw('tenant_id is null');
     }
 
+    /**
+     * The studio's role catalogue: its own rows plus the platform-wide rows it
+     * has NOT replaced with a copy. Listing both made an edited built-in role
+     * look duplicated, and editing the stale platform row again failed with
+     * «açar artıq istifadə olunub» because the copy already held that key.
+     */
+    public function scopeCatalogFor(Builder $query, ?int $tenantId): Builder
+    {
+        return $query
+            ->forTenant($tenantId)
+            ->where(fn (Builder $inner) => $inner
+                ->whereNotNull('roles.tenant_id')
+                ->orWhereNotExists(fn ($copy) => $copy
+                    ->selectRaw('1')
+                    ->from('roles as studio_copy')
+                    ->whereColumn('studio_copy.key', 'roles.key')
+                    ->where('studio_copy.tenant_id', $tenantId)));
+    }
+
+    /** Keys of the platform-wide roles (tenant_id = null). */
+    public static function platformKeys(): array
+    {
+        return static::query()->whereNull('tenant_id')->pluck('key')->all();
+    }
+
+    /** A studio row that stands in for the platform-wide role with the same key. */
+    public function isStudioCopy(?array $platformKeys = null): bool
+    {
+        return $this->tenant_id !== null
+            && in_array($this->key, $platformKeys ?? static::platformKeys(), true);
+    }
+
+    /** The row a studio actually edits for this role: its own copy, if it has one. */
+    public function editableFor(?int $tenantId): self
+    {
+        if ($this->tenant_id !== null || $tenantId === null) {
+            return $this;
+        }
+
+        return static::query()->where('tenant_id', $tenantId)->where('key', $this->key)->first() ?? $this;
+    }
+
     public function level(Domain $domain): AccessLevel
     {
         $value = $this->levels[$domain->value] ?? 0;

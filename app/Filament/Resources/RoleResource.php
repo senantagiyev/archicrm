@@ -51,11 +51,12 @@ class RoleResource extends Resource
     /**
      * The studio sees the platform-wide catalogue plus its own roles. Editing a
      * platform row from here copies it into the studio first (see EditRole), so
-     * one studio's governance decisions never reach another's.
+     * one studio's governance decisions never reach another's. Once copied, the
+     * copy replaces the platform row in the list — one role, one row.
      */
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->forTenant(auth()->user()?->tenant_id);
+        return parent::getEloquentQuery()->catalogFor(auth()->user()?->tenant_id);
     }
 
     /** AZ labels for the access domains (TZ §5.4). */
@@ -103,8 +104,17 @@ class RoleResource extends Resource
                         ignoreRecord: true,
                         modifyRuleUsing: fn (Unique $rule) => $rule->where('tenant_id', auth()->user()?->tenant_id),
                     )
-                    ->disabled(fn (?Role $record) => $record?->is_system)
-                    ->helperText('Sistem rollarında dəyişdirilə bilməz.'),
+                    // A standard role's key is how the staff enum finds it; a
+                    // studio copy keeps that key or it stops replacing the role.
+                    ->disabled(fn (?Role $record) => $record?->is_system || $record?->isStudioCopy())
+                    // A custom role must not take a standard role's key — it
+                    // would silently replace that role for every holder.
+                    ->notIn(fn (?Role $record) => array_values(array_diff(Role::platformKeys(), [$record?->key])))
+                    ->validationMessages([
+                        'unique' => 'Bu açar artıq studiyanızın başqa rolunda istifadə olunur. Başqa açar yazın.',
+                        'not_in' => 'Bu açar standart rola aiddir. Standart rolu dəyişmək üçün siyahıda həmin rolu redaktə edin.',
+                    ])
+                    ->helperText('Standart rollarda dəyişdirilə bilməz.'),
                 Forms\Components\TextInput::make('name')
                     ->label('Ad')
                     ->required()
@@ -127,10 +137,13 @@ class RoleResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('name')
                     ->label('Ad')
-                    ->description(fn (Role $r) => $r->key)
+                    ->description(fn (Role $r) => $r->isStudioCopy()
+                        ? $r->key.' · standart rol, studiyanızda dəyişdirilib'
+                        : $r->key)
                     ->searchable(),
                 Tables\Columns\IconColumn::make('is_system')
                     ->label('Sistem')
+                    ->tooltip('Standart (sistem) rolu: açarı dəyişmir və silinmir. Redaktə etdikdə studiyanız üçün öz versiyası saxlanılır.')
                     ->boolean(),
                 Tables\Columns\IconColumn::make('own_projects_only')
                     ->label('Öz layihələri')
@@ -145,6 +158,7 @@ class RoleResource extends Resource
                 // Platform-wide rows belong to every studio; a studio may only
                 // delete a role it created itself.
                 Actions\DeleteAction::make()
+                    ->label(fn (Role $r) => $r->isStudioCopy() ? 'Standarta qaytar' : 'Sil')
                     ->visible(fn (Role $r) => ! $r->is_system && $r->tenant_id !== null),
             ])
             ->bulkActions([]);
